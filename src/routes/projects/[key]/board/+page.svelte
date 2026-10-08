@@ -1,16 +1,68 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { api, PRIORITY_LABELS } from '$lib/api';
+	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import Gantt from '$lib/components/Gantt.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import * as Collapsible from '$lib/components/ui/collapsible';
+	import { Input } from '$lib/components/ui/input';
+	import * as InputGroup from '$lib/components/ui/input-group';
+	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
+	import { openTicket } from '$lib/ticket-modal';
+	import { cn } from '$lib/utils';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import Ban from '@lucide/svelte/icons/ban';
+	import Calendar from '@lucide/svelte/icons/calendar';
+	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
+	import ListChecks from '@lucide/svelte/icons/list-checks';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Search from '@lucide/svelte/icons/search';
+	import UserRound from '@lucide/svelte/icons/user-round';
 
 	let { data } = $props();
 
 	type Item = (typeof data.tickets)[number];
 
+	const me = $derived(page.data.user?.id);
+
 	let search = $state('');
 	let showSubtasks = $state(false);
-	let error = $state('');
+	/** Filter nach Zuständigem: 'all', 'me', 'none' oder eine Benutzer-ID */
+	let assigneeFilter = $state('all');
 	let dialog: TicketDialog;
+
+	const filterLabel = $derived(
+		assigneeFilter === 'all'
+			? 'Alle Zuständigen'
+			: assigneeFilter === 'me'
+				? 'Mir zugewiesen'
+				: assigneeFilter === 'none'
+					? 'Nicht zugewiesen'
+					: (data.users.find((u) => u.id === assigneeFilter)?.name ?? 'Alle Zuständigen')
+	);
+
+	// Zeitplan über dem Board, auf-/zuklappbar; Zustand wird im Browser gemerkt
+	let showTimeline = $state(true);
+	const scheduled = $derived(data.tickets.filter((t) => t.startDate || t.dueDate).length);
+	onMount(() => {
+		try {
+			showTimeline = localStorage.getItem('board-timeline') !== 'closed';
+		} catch {}
+	});
+	$effect(() => {
+		try {
+			localStorage.setItem('board-timeline', showTimeline ? 'open' : 'closed');
+		} catch {}
+	});
 
 	// Lokale Kopie, damit Drag & Drop sofort sichtbar ist
 	let tickets = $state<Item[]>([]);
@@ -20,10 +72,18 @@
 
 	const byId = $derived(new Map(data.tickets.map((t) => [t.id, t])));
 
+	function matchesAssignee(t: Item) {
+		if (assigneeFilter === 'all') return true;
+		if (assigneeFilter === 'me') return t.assigneeId === me;
+		if (assigneeFilter === 'none') return !t.assigneeId;
+		return t.assigneeId === assigneeFilter;
+	}
+
 	const visible = $derived(
 		tickets.filter(
 			(t) =>
 				(showSubtasks || t.parentId === null) &&
+				matchesAssignee(t) &&
 				(!search ||
 					t.title.toLowerCase().includes(search.toLowerCase()) ||
 					t.key.toLowerCase().includes(search.toLowerCase()))
@@ -85,7 +145,7 @@
 		try {
 			await api('PATCH', `/tickets/${id}`, { columnId, position });
 		} catch (err) {
-			error = (err as Error).message;
+			toast.error((err as Error).message);
 		}
 		await invalidateAll();
 	}
@@ -93,6 +153,18 @@
 	function onDragEnd() {
 		dragId = null;
 		dropTarget = null;
+	}
+
+	async function assign(t: Item, assigneeId: string | null) {
+		t.assigneeId = assigneeId;
+		t.assigneeName = data.users.find((u) => u.id === assigneeId)?.name ?? null;
+		try {
+			await api('PATCH', `/tickets/${t.id}`, { assigneeId });
+			toast.success(assigneeId ? `${t.key} an ${t.assigneeName} zugewiesen` : `Zuweisung von ${t.key} entfernt`);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await invalidateAll();
 	}
 
 	// --- Schnell-Anlegen ---
@@ -107,17 +179,8 @@
 			quickTitle = '';
 			await invalidateAll();
 		} catch (err) {
-			error = (err as Error).message;
+			toast.error((err as Error).message);
 		}
-	}
-
-	function initials(name: string | null) {
-		return (name ?? '')
-			.split(/\s+/)
-			.map((p) => p[0])
-			.join('')
-			.slice(0, 2)
-			.toUpperCase();
 	}
 
 	function overdue(t: Item) {
@@ -125,24 +188,63 @@
 	}
 </script>
 
-<div class="toolbar row">
-	<input class="search" placeholder="Suchen…" bind:value={search} />
-	<label class="inline"><input type="checkbox" bind:checked={showSubtasks} /> Unteraufgaben anzeigen</label>
+<div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
+	<InputGroup.Root class="w-60">
+		<InputGroup.Addon><Search /></InputGroup.Addon>
+		<InputGroup.Input placeholder="Tickets suchen…" bind:value={search} />
+	</InputGroup.Root>
+	<Select.Root type="single" bind:value={assigneeFilter}>
+		<Select.Trigger class="w-48">
+			<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
+		</Select.Trigger>
+		<Select.Content>
+			<Select.Item value="all">Alle Zuständigen</Select.Item>
+			<Select.Item value="me">Mir zugewiesen</Select.Item>
+			<Select.Item value="none">Nicht zugewiesen</Select.Item>
+			<Select.Separator />
+			{#each data.users as u (u.id)}
+				<Select.Item value={u.id}>{u.name}</Select.Item>
+			{/each}
+		</Select.Content>
+	</Select.Root>
+	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> Unteraufgaben anzeigen</Label>
 	<span class="grow"></span>
-	{#if error}<span class="error">{error}</span>{/if}
-	<button class="primary" onclick={() => dialog.open()}>+ Ticket</button>
+	<Button onclick={() => dialog.open()}><Plus /> Ticket</Button>
 </div>
 
-<div class="board">
+<Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">
+	<Collapsible.Trigger class="group hover:bg-muted mx-5 mb-2 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-semibold">
+		<ChevronRight class="text-muted-foreground size-4 transition-transform group-data-[state=open]:rotate-90" />
+		<ChartGantt class="size-4" />
+		Zeitplan
+		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
+	</Collapsible.Trigger>
+	<Collapsible.Content>
+		<Gantt tickets={data.tickets} dependencies={data.dependencies} color={data.project.color} maxHeight="360px" />
+	</Collapsible.Content>
+</Collapsible.Root>
+
+<div class="flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5">
 	{#each data.columns as col (col.id)}
 		{@const list = columnTickets(col.id)}
-		<section class="column" class:done={col.isDone}>
-			<header class="row">
-				<strong class="grow">{col.name}</strong>
-				<span class="badge">{list.length}</span>
+		<section class="bg-muted/60 flex max-h-[calc(100vh-210px)] w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5">
+			<header class="flex items-center gap-1.5 py-1 pr-1 pl-2 text-sm">
+				{#if col.isDone}<CircleCheck class="text-success size-4" />{/if}
+				<strong class="font-semibold">{col.name}</strong>
+				<span class="text-muted-foreground text-xs font-medium">{list.length}</span>
+				<span class="grow"></span>
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					title="Ticket hinzufügen"
+					aria-label="Ticket hinzufügen"
+					onclick={() => ((quickColumn = col.id), (quickTitle = ''))}
+				>
+					<Plus />
+				</Button>
 			</header>
 			<div
-				class="cards"
+				class="flex min-h-10 flex-col gap-1.5 overflow-y-auto"
 				role="region"
 				aria-label={col.name}
 				ondragover={(e) => onDragOver(e, col.id, e.currentTarget as HTMLElement)}
@@ -150,48 +252,70 @@
 			>
 				{#each list as t, i (t.id)}
 					{#if dropTarget?.columnId === col.id && dropTarget.index === i && dragId !== t.id}
-						<div class="placeholder"></div>
+						<div class="bg-primary h-0.5 rounded-full"></div>
 					{/if}
-					<a
-						href="/tickets/{t.key}"
-						class="tcard card"
-						class:dragging={dragId === t.id}
+					<!-- Klick auf die Karte ist nur eine Abkürzung; per Tastatur führt der Titel-Link zum Ticket -->
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+					<div
+						class={cn(
+							'bg-card border-foreground/10 hover:border-foreground/25 flex cursor-grab flex-col gap-1.5 rounded-md border px-3 py-2.5 text-sm transition-colors',
+							dragId === t.id && 'opacity-40'
+						)}
 						data-card={t.id}
 						draggable="true"
+						role="listitem"
 						ondragstart={(e) => onDragStart(e, t)}
 						ondragend={onDragEnd}
+						onclick={(e) => openTicket(t.key, e)}
 					>
-						<div class="row">
+						<div class="flex items-center gap-2">
 							<span class="prio prio-{t.priority}" title={PRIORITY_LABELS[t.priority]}></span>
-							<span class="key grow">{t.key}</span>
-							{#if t.assigneeName}<span class="avatar" title={t.assigneeName}>{initials(t.assigneeName)}</span>{/if}
+							<span class="text-muted-foreground grow font-mono text-xs">{t.key}</span>
+							<AssigneePicker compact users={data.users} {me} value={t.assigneeId} onchange={(id) => assign(t, id)} />
 						</div>
-						<div class="title" class:closed-title={t.closed}>{t.title}</div>
+						<a
+							href="/tickets/{t.key}"
+							class={cn('font-medium break-words hover:underline', t.closed && 'text-muted-foreground line-through')}
+							onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
+							draggable="false">{t.title}</a
+						>
 						{#if t.parentId && byId.get(t.parentId)}
-							<div class="muted small">↳ {byId.get(t.parentId)?.key}</div>
+							<div class="text-muted-foreground flex items-center gap-1 text-xs">
+								<CornerDownRight class="size-3" />
+								{byId.get(t.parentId)?.key}
+							</div>
 						{/if}
-						<div class="row meta">
-							{#if t.subtaskCount > 0}
-								<span class="badge" class:ok={t.subtaskDone === t.subtaskCount}>☑ {t.subtaskDone}/{t.subtaskCount}</span>
-							{/if}
-							{#if t.openBlockers > 0 && !t.closed}
-								<span class="badge warn" title="Wartet auf andere Tickets">⛔ blockiert ({t.openBlockers})</span>
-							{/if}
-							{#if t.dueDate}
-								<span class="badge" class:warn={overdue(t)}>📅 {new Date(t.dueDate).toLocaleDateString('de-DE')}</span>
-							{/if}
-						</div>
-					</a>
+						{#if t.subtaskCount > 0 || (t.openBlockers > 0 && !t.closed) || t.dueDate}
+							<div class="flex flex-wrap gap-1">
+								{#if t.subtaskCount > 0}
+									<Badge variant="secondary" class={cn(t.subtaskDone === t.subtaskCount && 'text-success')}>
+										<ListChecks /> {t.subtaskDone}/{t.subtaskCount}
+									</Badge>
+								{/if}
+								{#if t.openBlockers > 0 && !t.closed}
+									<Badge variant="secondary" class="text-warning" title="Wartet auf andere Tickets">
+										<Ban /> blockiert ({t.openBlockers})
+									</Badge>
+								{/if}
+								{#if t.dueDate}
+									<Badge variant="secondary" class={cn(overdue(t) && 'text-destructive')}>
+										<Calendar /> {new Date(t.dueDate).toLocaleDateString('de-DE')}
+									</Badge>
+								{/if}
+							</div>
+						{/if}
+					</div>
 				{/each}
 				{#if dropTarget?.columnId === col.id && dropTarget.index >= list.filter((t) => t.id !== dragId).length}
-					<div class="placeholder"></div>
+					<div class="bg-primary h-0.5 rounded-full"></div>
 				{/if}
 			</div>
 			{#if quickColumn === col.id}
 				<form onsubmit={(e) => quickAdd(e, col.id)}>
 					<!-- svelte-ignore a11y_autofocus -->
-					<input
+					<Input
 						autofocus
+						class="bg-card"
 						placeholder="Titel, Enter zum Anlegen"
 						bind:value={quickTitle}
 						onblur={() => !quickTitle && (quickColumn = null)}
@@ -199,7 +323,14 @@
 					/>
 				</form>
 			{:else}
-				<button class="ghost add" onclick={() => ((quickColumn = col.id), (quickTitle = ''))}>+ Ticket hinzufügen</button>
+				<Button
+					variant="ghost"
+					size="sm"
+					class="text-muted-foreground justify-start"
+					onclick={() => ((quickColumn = col.id), (quickTitle = ''))}
+				>
+					<Plus /> Ticket hinzufügen
+				</Button>
 			{/if}
 		</section>
 	{/each}
@@ -211,94 +342,3 @@
 	users={data.users}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
 />
-
-<style>
-	.toolbar {
-		padding: 0.75rem 1rem;
-		flex-wrap: wrap;
-	}
-	.search {
-		width: 220px;
-	}
-	.board {
-		display: flex;
-		gap: 0.75rem;
-		padding: 0 1rem 1rem;
-		overflow-x: auto;
-		align-items: flex-start;
-		min-height: calc(100vh - 190px);
-	}
-	.column {
-		flex: 0 0 280px;
-		background: var(--surface-2);
-		border-radius: var(--radius);
-		padding: 0.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		max-height: calc(100vh - 200px);
-	}
-	.column header {
-		padding: 0.25rem 0.4rem;
-	}
-	.column.done header strong::after {
-		content: ' ✓';
-		color: var(--ok);
-	}
-	.cards {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		min-height: 40px;
-		overflow-y: auto;
-	}
-	.tcard {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		padding: 0.6rem 0.7rem;
-		color: var(--text);
-		cursor: grab;
-	}
-	.tcard:hover {
-		text-decoration: none;
-		border-color: var(--accent);
-	}
-	.tcard.dragging {
-		opacity: 0.4;
-	}
-	.title {
-		font-weight: 500;
-		word-break: break-word;
-	}
-	.meta {
-		flex-wrap: wrap;
-		gap: 0.3rem;
-	}
-	.meta:empty {
-		display: none;
-	}
-	.small {
-		font-size: 0.8rem;
-	}
-	.avatar {
-		width: 22px;
-		height: 22px;
-		border-radius: 50%;
-		background: var(--accent);
-		color: var(--accent-text);
-		font-size: 0.65rem;
-		display: grid;
-		place-items: center;
-		font-weight: 600;
-	}
-	.placeholder {
-		height: 4px;
-		border-radius: 2px;
-		background: var(--accent);
-	}
-	.add {
-		color: var(--muted);
-		justify-content: flex-start;
-	}
-</style>

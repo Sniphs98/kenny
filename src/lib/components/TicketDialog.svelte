@@ -1,15 +1,24 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { api, PRIORITY_LABELS } from '$lib/api';
+	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import DatePicker from '$lib/components/DatePicker.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
+	import { Textarea } from '$lib/components/ui/textarea';
 
 	type Option = { id: number | string; label: string };
 	let {
 		projectKey,
 		users,
 		parents
-	}: { projectKey: string; users: { id: string; name: string }[]; parents: Option[] } = $props();
+	}: { projectKey: string; users: { id: string; name: string; email?: string }[]; parents: Option[] } = $props();
 
-	let dialog: HTMLDialogElement;
+	let isOpen = $state(false);
 	let form = $state(blank());
 	let error = $state('');
 
@@ -18,10 +27,10 @@
 			title: '',
 			description: '',
 			priority: 'medium',
-			assigneeId: '',
+			assigneeId: null as string | null,
 			startDate: '',
 			dueDate: '',
-			parentId: '' as string | number,
+			parentId: '',
 			columnId: undefined as number | undefined
 		};
 	}
@@ -30,7 +39,7 @@
 	export function open(preset: Partial<ReturnType<typeof blank>> = {}) {
 		form = { ...blank(), ...preset };
 		error = '';
-		dialog.showModal();
+		isOpen = true;
 	}
 
 	async function submit(e: SubmitEvent) {
@@ -38,52 +47,78 @@
 		try {
 			await api('POST', `/projects/${projectKey}/tickets`, {
 				...form,
-				parentId: form.parentId || null,
-				assigneeId: form.assigneeId || null
+				startDate: form.startDate || null,
+				dueDate: form.dueDate || null,
+				parentId: form.parentId ? Number(form.parentId) : null
 			});
-			dialog.close();
+			isOpen = false;
 			await invalidateAll();
 		} catch (err) {
 			error = (err as Error).message;
 		}
 	}
+
+	const parentLabel = $derived(parents.find((p) => String(p.id) === form.parentId)?.label ?? 'Keinem Ticket');
 </script>
 
-<dialog bind:this={dialog}>
-	<form class="stack" onsubmit={submit}>
-		<h2>Neues Ticket</h2>
-		<label>Titel <input bind:value={form.title} required maxlength="300" /></label>
-		<label>Beschreibung <textarea bind:value={form.description} rows="4"></textarea></label>
-		<div class="row">
-			<label class="grow">
-				Priorität
-				<select bind:value={form.priority}>
-					{#each Object.entries(PRIORITY_LABELS) as [v, l]}<option value={v}>{l}</option>{/each}
-				</select>
-			</label>
-			<label class="grow">
-				Zuständig
-				<select bind:value={form.assigneeId}>
-					<option value="">Niemand</option>
-					{#each users as u}<option value={u.id}>{u.name}</option>{/each}
-				</select>
-			</label>
-		</div>
-		<div class="row">
-			<label class="grow">Start <input type="date" bind:value={form.startDate} /></label>
-			<label class="grow">Fällig <input type="date" bind:value={form.dueDate} /></label>
-		</div>
-		<label>
-			Unteraufgabe von
-			<select bind:value={form.parentId}>
-				<option value="">Keinem Ticket</option>
-				{#each parents as p}<option value={p.id}>{p.label}</option>{/each}
-			</select>
-		</label>
-		{#if error}<p class="error">{error}</p>{/if}
-		<div class="row" style="justify-content: flex-end">
-			<button type="button" onclick={() => dialog.close()}>Abbrechen</button>
-			<button class="primary">Anlegen</button>
-		</div>
-	</form>
-</dialog>
+<Dialog.Root bind:open={isOpen}>
+	<Dialog.Content class="sm:max-w-lg">
+		<form class="grid gap-4" onsubmit={submit}>
+			<Dialog.Header>
+				<Dialog.Title>Neues Ticket</Dialog.Title>
+			</Dialog.Header>
+			<div class="grid gap-2">
+				<Label for="t-title">Titel</Label>
+				<Input id="t-title" bind:value={form.title} required maxlength={300} />
+			</div>
+			<div class="grid gap-2">
+				<Label for="t-desc">Beschreibung</Label>
+				<Textarea id="t-desc" bind:value={form.description} rows={4} />
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<div class="grid gap-2">
+					<Label>Priorität</Label>
+					<Select.Root type="single" bind:value={form.priority}>
+						<Select.Trigger class="w-full">
+							<span class="flex items-center gap-2"><span class="prio prio-{form.priority}"></span>{PRIORITY_LABELS[form.priority]}</span>
+						</Select.Trigger>
+						<Select.Content>
+							{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
+								<Select.Item value={v}><span class="prio prio-{v}"></span>{l}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+				<div class="grid gap-2">
+					<Label>Zuständig</Label>
+					<AssigneePicker {users} me={page.data.user?.id} value={form.assigneeId} onchange={(id) => (form.assigneeId = id)} />
+				</div>
+				<div class="grid gap-2">
+					<Label for="t-start">Start</Label>
+					<DatePicker id="t-start" value={form.startDate || null} onchange={(d) => (form.startDate = d ?? '')} />
+				</div>
+				<div class="grid gap-2">
+					<Label for="t-due">Fällig</Label>
+					<DatePicker id="t-due" value={form.dueDate || null} min={form.startDate} onchange={(d) => (form.dueDate = d ?? '')} />
+				</div>
+			</div>
+			<div class="grid gap-2">
+				<Label>Unteraufgabe von</Label>
+				<Select.Root type="single" bind:value={form.parentId}>
+					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+					<Select.Content class="max-h-72">
+						<Select.Item value="">Keinem Ticket</Select.Item>
+						{#each parents as p (p.id)}
+							<Select.Item value={String(p.id)}>{p.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			{#if error}<p class="text-destructive text-sm">{error}</p>{/if}
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (isOpen = false)}>Abbrechen</Button>
+				<Button type="submit">Anlegen</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>

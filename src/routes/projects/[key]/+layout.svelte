@@ -1,68 +1,52 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import TicketModal from '$lib/components/TicketModal.svelte';
+	import { cn } from '$lib/utils';
+	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
+	import Settings from '@lucide/svelte/icons/settings';
+	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
 	let { data, children } = $props();
 
 	const tabs = [
-		{ href: 'board', label: 'Board' },
-		{ href: 'gantt', label: 'Gantt' },
-		{ href: 'settings', label: 'Einstellungen' }
+		{ href: 'board', label: 'Board', icon: SquareKanban },
+		{ href: 'gantt', label: 'Gantt', icon: ChartGantt },
+		{ href: 'settings', label: 'Einstellungen', icon: Settings }
 	];
 	const open = $derived(data.tickets.filter((t) => !t.closed).length);
 </script>
 
 <svelte:head><title>{data.project.name} · Kenny</title></svelte:head>
 
-<div class="phead" style="--c: {data.project.color}">
-	<div class="row">
-		<span class="dot"></span>
-		<h1>{data.project.name}</h1>
-		<span class="key">{data.project.key}</span>
-		<span class="badge">{open} offen / {data.tickets.length}</span>
+<div class="bg-card border-b px-5 pt-5">
+	<div class="flex items-center gap-3">
+		<span class="bg-primary-soft text-primary grid size-10 place-items-center rounded-lg text-sm font-semibold">
+			{data.project.key.slice(0, 2)}
+		</span>
+		<div>
+			<h1 class="text-xl font-semibold tracking-tight">{data.project.name}</h1>
+			<div class="text-muted-foreground text-xs">
+				<span class="font-mono">{data.project.key}</span> · {open} offen von {data.tickets.length} Tickets
+			</div>
+		</div>
 	</div>
-	<nav>
-		{#each tabs as t}
+	<nav class="mt-4 flex gap-1">
+		{#each tabs as t (t.href)}
+			{@const active = page.route.id?.endsWith('/' + t.href)}
 			<a
 				href="/projects/{data.project.key}/{t.href}"
-				class:active={page.url.pathname.endsWith('/' + t.href)}>{t.label}</a
+				class={cn(
+					'text-muted-foreground hover:text-foreground -mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium transition-colors',
+					active && 'border-primary text-foreground'
+				)}
 			>
+				<t.icon class="size-4" />
+				{t.label}
+			</a>
 		{/each}
 	</nav>
 </div>
 
 {@render children()}
 
-<style>
-	.phead {
-		padding: 1rem 1rem 0;
-		background: var(--surface);
-		border-bottom: 1px solid var(--border);
-	}
-	.phead h1 {
-		margin: 0;
-	}
-	.dot {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background: var(--c);
-	}
-	nav {
-		display: flex;
-		gap: 0.25rem;
-		margin-top: 0.75rem;
-	}
-	nav a {
-		padding: 0.5em 0.9em;
-		color: var(--muted);
-		border-bottom: 2px solid transparent;
-	}
-	nav a:hover {
-		text-decoration: none;
-		color: var(--text);
-	}
-	nav a.active {
-		color: var(--text);
-		border-bottom-color: var(--c);
-	}
-</style>
+<TicketModal />

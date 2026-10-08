@@ -16,3 +16,13 @@ export const PRIORITY_LABELS: Record<string, string> = {
 	high: 'Hoch',
 	urgent: 'Dringend'
 };
+
+/** Initialen für Avatare, z.B. "Max Muster" → "MM" */
+export function initials(name: string | null | undefined) {
+	return (name ?? '')
+		.split(/\s+/)
+		.map((p) => p[0] ?? '')
+		.join('')
+		.slice(0, 2)
+		.toUpperCase();
+}

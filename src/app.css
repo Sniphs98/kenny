@@ -1,274 +1,151 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Dark Mode über die Klasse .dark auf <html> (gesetzt von mode-watcher) */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * shadcn-svelte Theme (Basisfarbe "stone").
+ * --primary ist außerhalb von Projekten ein warmes Schwarzbraun;
+ * in Projekten wird es per accentStyle() aus $lib/theme mit der Projektfarbe überschrieben.
+ */
 :root {
-	--bg: #f6f7f9;
-	--surface: #ffffff;
-	--surface-2: #f0f2f5;
-	--border: #e2e5ea;
-	--text: #1d2330;
-	--muted: #6b7280;
-	--accent: #4f46e5;
-	--accent-text: #ffffff;
-	--danger: #dc2626;
-	--ok: #16a34a;
-	--warn: #d97706;
-	--radius: 8px;
-	--shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 3px rgb(0 0 0 / 8%);
-	--p-low: #94a3b8;
-	--p-medium: #3b82f6;
-	--p-high: #f59e0b;
-	--p-urgent: #ef4444;
 	color-scheme: light;
+	--radius: 0.625rem;
+	--background: oklch(0.985 0.001 106.423);
+	--foreground: oklch(0.147 0.004 49.25);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.147 0.004 49.25);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.147 0.004 49.25);
+	--primary: oklch(0.268 0.007 34.298);
+	--primary-foreground: oklch(0.985 0.001 106.423);
+	--primary-soft: oklch(0.268 0.007 34.298 / 8%);
+	--secondary: oklch(0.97 0.001 106.424);
+	--secondary-foreground: oklch(0.216 0.006 56.043);
+	--muted: oklch(0.97 0.001 106.424);
+	--muted-foreground: oklch(0.553 0.013 58.071);
+	--accent: oklch(0.97 0.001 106.424);
+	--accent-foreground: oklch(0.216 0.006 56.043);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.923 0.003 48.717);
+	--input: oklch(0.923 0.003 48.717);
+	--ring: oklch(0.709 0.01 56.259);
+	--success: oklch(0.627 0.17 149.214);
+	--warning: oklch(0.666 0.179 58.318);
+
+	--prio-low: #a8a29e;
+	--prio-medium: #3b82f6;
+	--prio-high: #f59e0b;
+	--prio-urgent: #ef4444;
 }
 
-@media (prefers-color-scheme: dark) {
+.dark {
+	color-scheme: dark;
+	--background: oklch(0.147 0.004 49.25);
+	--foreground: oklch(0.985 0.001 106.423);
+	--card: oklch(0.183 0.005 56);
+	--card-foreground: oklch(0.985 0.001 106.423);
+	--popover: oklch(0.216 0.006 56.043);
+	--popover-foreground: oklch(0.985 0.001 106.423);
+	--primary: oklch(0.923 0.003 48.717);
+	--primary-foreground: oklch(0.216 0.006 56.043);
+	--primary-soft: oklch(0.923 0.003 48.717 / 12%);
+	--secondary: oklch(0.268 0.007 34.298);
+	--secondary-foreground: oklch(0.985 0.001 106.423);
+	--muted: oklch(0.268 0.007 34.298);
+	--muted-foreground: oklch(0.709 0.01 56.259);
+	--accent: oklch(0.268 0.007 34.298);
+	--accent-foreground: oklch(0.985 0.001 106.423);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 15%);
+	--ring: oklch(0.553 0.013 58.071);
+	--success: oklch(0.792 0.209 151.711);
+	--warning: oklch(0.828 0.189 84.429);
+}
+
+@theme inline {
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: ui-monospace, 'Cascadia Code', SFMono-Regular, Menlo, monospace;
+
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+	--radius-2xl: calc(var(--radius) + 8px);
+	--radius-3xl: calc(var(--radius) + 12px);
+	--radius-4xl: calc(var(--radius) + 16px);
+
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary-soft: var(--primary-soft);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+}
+
+/*
+ * Squircle-Ecken (Superellipse) überall, wo der Browser es kann (Chromium 139+).
+ * Squircles wirken bei gleichem Radius kantiger, daher ein größerer Grundradius.
+ * Andere Browser fallen auf normale Rundungen zurück.
+ */
+@supports (corner-shape: squircle) {
 	:root {
-		--bg: #0f1218;
-		--surface: #171b23;
-		--surface-2: #1f2430;
-		--border: #2b3240;
-		--text: #e6e8ec;
-		--muted: #9aa3b2;
-		--accent: #818cf8;
-		--accent-text: #0f1218;
-		--shadow: 0 1px 2px rgb(0 0 0 / 40%);
-		color-scheme: dark;
+		--radius: 0.9rem;
+	}
+	*,
+	*::before,
+	*::after {
+		corner-shape: squircle;
+	}
+	/* Kreise (Avatare, Punkte, Farbfelder) bleiben rund */
+	.rounded-full,
+	.prio,
+	.rounded-full::after {
+		corner-shape: round;
 	}
 }
 
-* {
-	box-sizing: border-box;
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground font-sans antialiased;
+	}
 }
 
-html,
-body {
-	margin: 0;
-	background: var(--bg);
-	color: var(--text);
-	font-family:
-		system-ui,
-		-apple-system,
-		'Segoe UI',
-		Roboto,
-		sans-serif;
-	font-size: 14px;
-	line-height: 1.45;
-}
-
-a {
-	color: var(--accent);
-	text-decoration: none;
-}
-a:hover {
-	text-decoration: underline;
-}
-
-h1,
-h2,
-h3 {
-	margin: 0 0 0.5em;
-	line-height: 1.2;
-}
-h1 {
-	font-size: 1.5rem;
-}
-h2 {
-	font-size: 1.15rem;
-}
-h3 {
-	font-size: 1rem;
-}
-
-button,
-.btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.35em;
-	border: 1px solid var(--border);
-	background: var(--surface);
-	color: var(--text);
-	border-radius: 6px;
-	padding: 0.4em 0.8em;
-	font: inherit;
-	cursor: pointer;
-	text-decoration: none;
-	white-space: nowrap;
-}
-button:hover,
-.btn:hover {
-	background: var(--surface-2);
-	text-decoration: none;
-}
-button.primary,
-.btn.primary {
-	background: var(--accent);
-	border-color: var(--accent);
-	color: var(--accent-text);
-}
-button.primary:hover {
-	filter: brightness(1.08);
-}
-button.danger {
-	color: var(--danger);
-}
-button.ghost {
-	border-color: transparent;
-	background: transparent;
-}
-button.ghost:hover {
-	background: var(--surface-2);
-}
-button:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
-input,
-textarea,
-select {
-	font: inherit;
-	color: var(--text);
-	background: var(--surface);
-	border: 1px solid var(--border);
-	border-radius: 6px;
-	padding: 0.45em 0.6em;
-	width: 100%;
-}
-textarea {
-	resize: vertical;
-	min-height: 6em;
-}
-input[type='color'] {
-	padding: 2px;
-	height: 2.3em;
-	width: 4em;
-}
-input[type='checkbox'] {
-	width: auto;
-}
-input:focus,
-textarea:focus,
-select:focus {
-	outline: 2px solid var(--accent);
-	outline-offset: -1px;
-}
-
-label {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25em;
-	font-size: 0.85rem;
-	color: var(--muted);
-}
-label.inline {
-	flex-direction: row;
-	align-items: center;
-	color: var(--text);
-}
-
-.card {
-	background: var(--surface);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow);
-}
-
-.muted {
-	color: var(--muted);
-}
-.error {
-	color: var(--danger);
-}
-
-.row {
-	display: flex;
-	gap: 0.5rem;
-	align-items: center;
-}
-.grow {
-	flex: 1;
-}
-.stack {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.25em;
-	font-size: 0.75rem;
-	padding: 0.05em 0.5em;
-	border-radius: 999px;
-	background: var(--surface-2);
-	color: var(--muted);
-	border: 1px solid var(--border);
-	white-space: nowrap;
-}
-.badge.ok {
-	color: var(--ok);
-}
-.badge.warn {
-	color: var(--warn);
-}
-
-.prio {
-	display: inline-block;
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	flex: none;
-}
-.prio-low {
-	background: var(--p-low);
-}
-.prio-medium {
-	background: var(--p-medium);
-}
-.prio-high {
-	background: var(--p-high);
-}
-.prio-urgent {
-	background: var(--p-urgent);
-}
-
-.key {
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	font-size: 0.8em;
-	color: var(--muted);
-}
-.closed-title {
-	text-decoration: line-through;
-	color: var(--muted);
-}
-
-code,
-pre {
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	font-size: 0.85em;
-}
-pre {
-	background: var(--surface-2);
-	border: 1px solid var(--border);
-	border-radius: 6px;
-	padding: 0.75em;
-	overflow-x: auto;
-}
-
-.page {
-	max-width: 1100px;
-	margin: 0 auto;
-	padding: 1.5rem 1rem 3rem;
-}
-
-dialog {
-	border: 1px solid var(--border);
-	border-radius: 10px;
-	background: var(--surface);
-	color: var(--text);
-	padding: 1.25rem;
-	width: min(560px, calc(100vw - 2rem));
-	box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
-}
-dialog::backdrop {
-	background: rgb(0 0 0 / 35%);
+/* Prioritäts-Punkte (Board, Gantt, Ticket) */
+@layer components {
+	.prio {
+		@apply inline-block size-2 shrink-0 rounded-full;
+	}
+	.prio-low {
+		background: var(--prio-low);
+	}
+	.prio-medium {
+		background: var(--prio-medium);
+	}
+	.prio-high {
+		background: var(--prio-high);
+	}
+	.prio-urgent {
+		background: var(--prio-urgent);
+	}
 }

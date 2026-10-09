@@ -1,33 +1,33 @@
-name: Fehler melden
-description: Einen reproduzierbaren Fehler beschreiben.
+name: Report a bug
+description: Describe a reproducible bug.
 body:
   - type: textarea
     id: reproduction
     attributes:
-      label: Schritte zum Reproduzieren
-      description: Ausgangszustand und konkrete Schritte; keine Tokens oder privaten Daten.
+      label: Steps to reproduce
+      description: Describe the initial state and specific steps; omit tokens and private data.
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: Erwartetes und tatsächliches Verhalten
+      label: Expected and actual behavior
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: Container-Version, Browser und Betriebssystem
+      label: Container version, browser, and operating system
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Akzeptanzkriterien
-      description: Woran erkennen wir, dass der Fehler behoben ist?
+      label: Acceptance criteria
+      description: How can we verify that the bug is fixed?
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Bereinigte Logs oder Screenshots
+      label: Sanitized logs or screenshots

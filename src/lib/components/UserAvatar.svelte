@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import { initials } from '$lib/api';
 	import { cn } from '$lib/utils';
@@ -11,7 +12,7 @@
 	}: { name: string | null | undefined; size?: 'sm' | 'default' | 'lg'; class?: string } = $props();
 </script>
 
-<Avatar.Root {size} class={className} title={name ?? 'Niemand'}>
+<Avatar.Root {size} class={className} title={name ?? m.nobody()}>
 	<Avatar.Fallback
 		class={cn(name ? 'bg-primary-soft text-primary font-semibold' : 'border border-dashed bg-transparent')}
 	>

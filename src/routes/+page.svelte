@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { localizeError } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { untrack } from 'svelte';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
@@ -34,10 +36,10 @@
 <div class="mx-auto max-w-6xl px-5 py-8">
 	<div class="mb-6 flex items-end gap-4">
 		<div class="grow">
-			<h1 class="text-2xl font-semibold tracking-tight">Projekte</h1>
-			<p class="text-muted-foreground mt-1 text-sm">Alle Projekte und ihr aktueller Fortschritt.</p>
+			<h1 class="text-2xl font-semibold tracking-tight">{m.projects()}</h1>
+			<p class="text-muted-foreground mt-1 text-sm">{m.all_projects_and_their_current_progress()}</p>
 		</div>
-		<Button onclick={openDialog}><Plus /> Neues Projekt</Button>
+		<Button onclick={openDialog}><Plus /> {m.new_project()}</Button>
 	</div>
 
 	{#if data.projects.length === 0}
@@ -46,10 +48,10 @@
 				<FolderKanban class="size-6" />
 			</span>
 			<div>
-				<h2 class="text-lg font-semibold">Noch keine Projekte</h2>
-				<p class="text-muted-foreground text-sm">Lege dein erstes Projekt an, um Tickets zu erfassen.</p>
+				<h2 class="text-lg font-semibold">{m.no_projects_yet()}</h2>
+				<p class="text-muted-foreground text-sm">{m.create_your_first_project_to_start_tracking_tickets()}</p>
 			</div>
-			<Button onclick={openDialog}><Plus /> Projekt anlegen</Button>
+			<Button onclick={openDialog}><Plus /> {m.create_project()}</Button>
 		</Card.Root>
 	{:else}
 		<div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
@@ -77,7 +79,7 @@
 						{/if}
 						<Card.Footer class="mt-auto flex-col items-stretch gap-1.5 px-5">
 							<div class="text-muted-foreground flex text-xs">
-								<span class="grow">{p.open} offen · {done} erledigt</span>
+								<span class="grow">{m.open_done({ value1: p.open, value2: done })}</span>
 								{#if p.total > 0}<span>{Math.round((done / p.total) * 100)}%</span>{/if}
 							</div>
 							<div class="bg-muted h-1 overflow-hidden rounded-full">
@@ -98,38 +100,40 @@
 	<Dialog.Content class="sm:max-w-lg">
 		<form class="grid gap-4" method="POST" use:enhance>
 			<Dialog.Header>
-				<Dialog.Title>Neues Projekt</Dialog.Title>
-				<Dialog.Description>Tickets im Projekt bekommen das Kürzel als Präfix, z.B. WEB-1.</Dialog.Description>
+				<Dialog.Title>{m.new_project()}</Dialog.Title>
+				<Dialog.Description>{m.tickets_use_the_project_key_as_a_prefix_e_g_web_1()}</Dialog.Description>
 			</Dialog.Header>
 			<div class="flex gap-3">
 				<div class="grid grow gap-2">
-					<Label for="p-name">Name</Label>
+					<Label for="p-name">{m.name()}</Label>
 					<Input name="name" id="p-name" bind:value={$form.name} required maxlength={120} />
 				</div>
 				<div class="grid w-28 gap-2">
-					<Label for="p-key">Kürzel</Label>
-					<Input name="key" id="p-key" bind:value={$form.key} placeholder="auto" maxlength={10} />
+					<Label for="p-key">{m.key()}</Label>
+					<Input name="key" id="p-key" bind:value={$form.key} placeholder={m.auto()} maxlength={10} />
 				</div>
 			</div>
 			<div class="grid gap-2">
-				<Label>Farbe</Label>
+				<Label>{m.color()}</Label>
 				<ColorPicker bind:value={$form.color} />
 				<input type="hidden" name="color" value={$form.color} />
 			</div>
 			<div class="grid gap-2">
-				<Label for="p-desc">Beschreibung</Label>
+				<Label for="p-desc">{m.description()}</Label>
 				<Textarea name="description" id="p-desc" bind:value={$form.description} rows={3} />
 			</div>
-			{#each Object.values($errors).flat().filter(Boolean) as error, i (i)}<p
+			{#each Object.values($errors)
+				.flat()
+				.filter((value): value is string => typeof value === 'string') as error, i (i)}<p
 					class="text-destructive text-sm"
 					role="alert"
 				>
-					{error}
+					{localizeError(error)}
 				</p>{/each}
-			{#if $message}<p class="text-destructive text-sm" role="alert">{$message}</p>{/if}
+			{#if $message}<p class="text-destructive text-sm" role="alert">{localizeError($message)}</p>{/if}
 			<Dialog.Footer>
-				<Button variant="outline" onclick={() => (open = false)}>Abbrechen</Button>
-				<Button type="submit" disabled={$submitting}>Anlegen</Button>
+				<Button variant="outline" onclick={() => (open = false)}>{m.cancel()}</Button>
+				<Button type="submit" disabled={$submitting}>{m.create()}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

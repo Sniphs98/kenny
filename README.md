@@ -53,6 +53,14 @@ DATABASE_URL=/pfad/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny
 
 Der Ordner `drizzle/` muss neben dem Build liegen oder per `MIGRATIONS_DIR` angegeben werden. `/api/health` prüft, ob der Server auf die migrierte Datenbank zugreifen kann.
 
+### Sprache und Übersetzungen
+
+Über die Sprachauswahl kann die Oberfläche zwischen Deutsch und Englisch wechseln, auch auf der Login-Seite. Deutsch ist die Standardsprache; die Auswahl wird im Cookie `PARAGLIDE_LOCALE` gespeichert und gilt auch für Server-Rendering, Kalender, Datums- und Zahlenanzeigen. Eigene Projektnamen, Board-Spalten, Tags und Ticketinhalte werden nicht übersetzt. URLs und API-Feldnamen bleiben gleich.
+
+Die Übersetzungen stehen in `messages/de.json` und `messages/en.json`, die inlang-Konfiguration in `project.inlang/settings.json`. Neue UI-Texte in beiden Katalogen ergänzen und als `m.nachricht()` aus `$lib/paraglide/messages.js` verwenden. `npm ci`, `npm run dev`, `npm run build` und `npm run check` erzeugen die typisierten Nachrichten; manuell geht das mit `npm run i18n:compile`. Generierte Dateien unter `src/lib/paraglide/` werden nicht committed. Der Nachrichten-Plugin ist als npm-Abhängigkeit installiert; der Build benötigt keinen Download von einer CDN-URL.
+
+Die Sprachwahl lädt die aktuelle Seite neu. Fehler aus den frameworkfreien Verträgen und Services bleiben intern stabil und werden an der UI-/API-Grenze lokalisiert. Bei neuen fachlichen Fehlern auch die Zuordnung in `src/lib/i18n.ts` ergänzen.
+
 ### Datenbankschema ändern
 
 Schema in `src/lib/server/db/schema.ts` anpassen, dann `npm run db:generate`. Die neue Migration wird beim nächsten Start angewendet.
@@ -70,7 +78,7 @@ npm run docker:test               # Container, API, Upload und Persistenz nach N
 
 Unit-Tests liegen unter `tests/unit`, Service- und Migrationstests unter `tests/integration`, Browser- und HTTP-Tests unter `tests/e2e`. Die Service-Tests verwenden SQLite im Speicher. Playwright startet einen eigenen gebauten Node-Server auf Port 4174 mit einer frischen Datenbank unter `data/test`; Entwicklungsdaten bleiben unberührt. Jeder Test legt sein eigenes Projekt an.
 
-GitHub Actions prüft Pull Requests und `main` automatisch. Gemeinsame Zod-Verträge stehen in `src/lib/contracts`; Formulare verwenden Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) beschreibt den Issue-/PR-Ablauf, [AGENTS.md](AGENTS.md) die Regeln für KI-Änderungen. Mehrsprachigkeit mit Paraglide ist als späteres Feature vorgesehen.
+GitHub Actions prüft Pull Requests und `main` automatisch. Gemeinsame Zod-Verträge stehen in `src/lib/contracts`; Formulare verwenden Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) beschreibt den Issue-/PR-Ablauf, [AGENTS.md](AGENTS.md) die Regeln für KI-Änderungen. Die Oberfläche ist mit ParaglideJS auf Deutsch und Englisch verfügbar.
 
 ## REST-API
 

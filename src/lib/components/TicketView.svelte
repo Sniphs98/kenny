@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { PRIORITIES, type UpdateTicketInput } from '$lib/contracts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from '../../routes/tickets/[key]/$types';
@@ -61,7 +63,7 @@
 	let linkTarget = $state('');
 	let confirmDelete = $state(false);
 
-	const LINK_TYPES = { depends_on: 'setzt voraus', blocks: 'ist Voraussetzung für', relates: 'verknüpft mit' };
+	const LINK_TYPES = { depends_on: m.depends_on(), blocks: m.blocks(), relates: m.related_to() };
 
 	async function run(fn: () => Promise<unknown>) {
 		try {
@@ -99,15 +101,15 @@
 
 	async function remove() {
 		await api('DELETE', base);
-		toast.success(`Ticket ${t.key} gelöscht`);
+		toast.success(m.deleted_ticket({ value1: t.key }));
 		if (onDeleted) onDeleted();
 		else await goto(`/projects/${data.project.key}/board`, { invalidateAll: true });
 	}
 
 	const groups = $derived([
-		{ label: 'Setzt voraus', items: data.links.filter((l) => l.relation === 'depends_on') },
-		{ label: 'Ist Voraussetzung für', items: data.links.filter((l) => l.relation === 'blocks') },
-		{ label: 'Verknüpft mit', items: data.links.filter((l) => l.relation === 'relates') }
+		{ label: m.depends_on_2(), items: data.links.filter((l) => l.relation === 'depends_on') },
+		{ label: m.blocks_2(), items: data.links.filter((l) => l.relation === 'blocks') },
+		{ label: m.related_to_2(), items: data.links.filter((l) => l.relation === 'relates') }
 	]);
 	const openBlockers = $derived(data.links.filter((l) => l.relation === 'depends_on' && !l.ticket.closed));
 	const linkCandidates = $derived(data.projectTickets.filter((o) => o.id !== t.id));
@@ -118,7 +120,7 @@
 	const columnName = $derived(data.columns.find((c) => c.id === t.columnId)?.name ?? '');
 	const parentLabel = $derived.by(() => {
 		const p = parentCandidates.find((o) => o.id === t.parentId);
-		return p ? `${p.key} ${p.title}` : 'Keinem Ticket';
+		return p ? `${p.key} ${p.title}` : m.no_parent_ticket();
 	});
 </script>
 
@@ -129,21 +131,21 @@
 			bind:value={title}
 			onblur={saveTitle}
 			onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
-			aria-label="Titel"
+			aria-label={m.title()}
 		/>
 
 		{#if t.closed}
 			<Alert.Root class="text-success border-success/30 bg-success/5">
 				<CircleCheck />
-				<Alert.Title>Abgeschlossen am {new Date(t.closedAt!).toLocaleString('de-DE')}</Alert.Title>
+				<Alert.Title>{m.completed_on({ value1: new Date(t.closedAt!).toLocaleString(intlLocale()) })}</Alert.Title>
 			</Alert.Root>
 		{:else if openBlockers.length}
 			<Alert.Root class="text-warning border-warning/30 bg-warning/5">
 				<Ban />
 				<Alert.Title>
-					Wartet auf {openBlockers.length} offene{openBlockers.length === 1 ? 's' : ''} Ticket{openBlockers.length === 1
-						? ''
-						: 's'}:
+					{openBlockers.length === 1
+						? m.waiting_for_one_ticket()
+						: m.waiting_for_many_tickets({ count: openBlockers.length })}
 					{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
 						openBlockers.length - 1
 							? ', '
@@ -155,24 +157,24 @@
 		<Card.Root class="gap-4">
 			<Card.Header class="flex items-center gap-2">
 				<AlignLeft class="text-muted-foreground size-4" />
-				<Card.Title class="grow">Beschreibung</Card.Title>
+				<Card.Title class="grow">{m.description()}</Card.Title>
 				{#if !editingDesc}
-					<Button variant="ghost" size="sm" onclick={() => (editingDesc = true)}><Pencil /> Bearbeiten</Button>
+					<Button variant="ghost" size="sm" onclick={() => (editingDesc = true)}><Pencil /> {m.edit()}</Button>
 				{/if}
 			</Card.Header>
 			<Card.Content>
 				{#if editingDesc}
 					<Textarea bind:value={description} rows={8} />
 					<div class="mt-3 flex gap-2">
-						<Button onclick={saveDescription}>Speichern</Button>
+						<Button onclick={saveDescription}>{m.save()}</Button>
 						<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}
-							>Abbrechen</Button
+							>{m.cancel()}</Button
 						>
 					</div>
 				{:else if t.description}
 					<p class="whitespace-pre-wrap">{t.description}</p>
 				{:else}
-					<p class="text-muted-foreground">Keine Beschreibung.</p>
+					<p class="text-muted-foreground">{m.no_description()}</p>
 				{/if}
 			</Card.Content>
 		</Card.Root>
@@ -180,7 +182,7 @@
 		<Card.Root class="gap-4">
 			<Card.Header class="flex items-center gap-2">
 				<ListChecks class="text-muted-foreground size-4" />
-				<Card.Title class="grow">Unteraufgaben</Card.Title>
+				<Card.Title class="grow">{m.subtasks()}</Card.Title>
 				{#if data.subtasks.length}
 					<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
 						>{subDone}/{data.subtasks.length}</Badge
@@ -195,7 +197,7 @@
 								<Checkbox
 									checked={s.closed}
 									onCheckedChange={() => run(() => api('POST', `/tickets/${s.id}/${s.closed ? 'reopen' : 'close'}`))}
-									aria-label="Erledigt"
+									aria-label={m.done()}
 								/>
 								<a
 									href="/tickets/{s.key}"
@@ -210,8 +212,8 @@
 					</ul>
 				{/if}
 				<form class="flex gap-2" onsubmit={addSubtask}>
-					<Input placeholder="Neue Unteraufgabe" bind:value={newSubtask} />
-					<Button type="submit" variant="outline"><Plus /> Hinzufügen</Button>
+					<Input placeholder={m.new_subtask()} bind:value={newSubtask} />
+					<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
 				</form>
 			</Card.Content>
 		</Card.Root>
@@ -219,7 +221,7 @@
 		<Card.Root class="gap-4">
 			<Card.Header class="flex items-center gap-2">
 				<Link2 class="text-muted-foreground size-4" />
-				<Card.Title class="grow">Verknüpfungen</Card.Title>
+				<Card.Title class="grow">{m.links()}</Card.Title>
 			</Card.Header>
 			<Card.Content>
 				{#each groups as g (g.label)}
@@ -235,13 +237,13 @@
 										<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
 										{l.ticket.title}
 									</a>
-									{#if l.ticket.closed}<Badge variant="secondary" class="text-success">erledigt</Badge>{/if}
+									{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
 									<Button
 										variant="ghost"
 										size="icon-xs"
 										class="hover:text-destructive"
-										title="Verknüpfung entfernen"
-										aria-label="Verknüpfung entfernen"
+										title={m.remove_link()}
+										aria-label={m.remove_link()}
 										onclick={() => run(() => api('DELETE', `${base}/links/${l.id}`))}><X /></Button
 									>
 								</li>
@@ -261,13 +263,13 @@
 					<Input
 						class="min-w-40 flex-1"
 						list="ticket-options"
-						placeholder="Ticket, z.B. {data.project.key}-1"
+						placeholder={m.ticket_e_g_1({ value1: data.project.key })}
 						bind:value={linkTarget}
 					/>
 					<datalist id="ticket-options">
 						{#each linkCandidates as o (o.id)}<option value={o.key}>{o.title}</option>{/each}
 					</datalist>
-					<Button type="submit" variant="outline"><Link2 /> Verknüpfen</Button>
+					<Button type="submit" variant="outline"><Link2 /> {m.link()}</Button>
 				</form>
 			</Card.Content>
 		</Card.Root>
@@ -279,14 +281,14 @@
 		<Card.Content class="flex flex-col gap-4 px-5">
 			{#if t.closed}
 				<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
-					><RotateCcw /> Wieder öffnen</Button
+					><RotateCcw /> {m.reopen()}</Button
 				>
 			{:else}
-				<Button onclick={() => run(() => api('POST', `${base}/close`))}><Check /> Abschließen</Button>
+				<Button onclick={() => run(() => api('POST', `${base}/close`))}><Check /> {m.complete()}</Button>
 			{/if}
 
 			<div class="grid gap-2">
-				<Label>Status</Label>
+				<Label>{m.status()}</Label>
 				<Select.Root type="single" value={String(t.columnId)} onValueChange={(v) => patch({ columnId: Number(v) })}>
 					<Select.Trigger class="w-full">{columnName}</Select.Trigger>
 					<Select.Content>
@@ -295,7 +297,7 @@
 				</Select.Root>
 			</div>
 			<div class="grid gap-2">
-				<Label>Priorität</Label>
+				<Label>{m.priority_2()}</Label>
 				<Select.Root
 					type="single"
 					value={t.priority}
@@ -317,11 +319,11 @@
 				</Select.Root>
 			</div>
 			<div class="grid gap-2">
-				<Label>Tags</Label>
+				<Label>{m.tags()}</Label>
 				<TagPicker tags={data.tags} value={t.tags.map((g) => g.id)} onchange={(tags) => patch({ tags })} />
 			</div>
 			<div class="grid gap-2">
-				<Label>Zuständig</Label>
+				<Label>{m.assignee()}</Label>
 				<AssigneePicker
 					users={data.users}
 					me={page.data.user?.id}
@@ -333,20 +335,20 @@
 						class="text-primary -mt-1 self-start text-xs font-medium hover:underline"
 						onclick={() => patch({ assigneeId: page.data.user!.id })}
 					>
-						Mir zuweisen
+						{m.assign_to_me()}
 					</button>
 				{/if}
 			</div>
 			<div class="grid gap-2">
-				<Label for="start">Start</Label>
+				<Label for="start">{m.start()}</Label>
 				<DatePicker id="start" value={t.startDate} onchange={(d) => patch({ startDate: d })} />
 			</div>
 			<div class="grid gap-2">
-				<Label for="due">Fällig</Label>
+				<Label for="due">{m.due()}</Label>
 				<DatePicker id="due" value={t.dueDate} min={t.startDate} onchange={(d) => patch({ dueDate: d })} />
 			</div>
 			<div class="grid gap-2">
-				<Label>Unteraufgabe von</Label>
+				<Label>{m.subtask_of_2()}</Label>
 				<Select.Root
 					type="single"
 					value={t.parentId ? String(t.parentId) : ''}
@@ -354,7 +356,7 @@
 				>
 					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 					<Select.Content class="max-h-72">
-						<Select.Item value="">Keinem Ticket</Select.Item>
+						<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
 						{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item>{/each}
 					</Select.Content>
 				</Select.Root>
@@ -362,10 +364,10 @@
 
 			<Separator />
 			<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
-				<span>Erstellt {new Date(t.createdAt).toLocaleString('de-DE')}</span>
-				<span>Geändert {new Date(t.updatedAt).toLocaleString('de-DE')}</span>
+				<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
+				<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
 			</div>
-			<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> Ticket löschen</Button>
+			<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> {m.delete_ticket()}</Button>
 		</Card.Content>
 	</Card.Root>
 </div>
@@ -373,19 +375,19 @@
 <AlertDialog.Root bind:open={confirmDelete}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>Ticket {t.key} löschen?</AlertDialog.Title>
+			<AlertDialog.Title>{m.delete_ticket_2({ value1: t.key })}</AlertDialog.Title>
 			<AlertDialog.Description>
 				{#if data.subtasks.length}
-					Das Ticket und seine {data.subtasks.length} Unteraufgabe(n) werden endgültig gelöscht.
+					{m.the_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })}
 				{:else}
-					Das Ticket wird endgültig gelöscht.
+					{m.the_ticket_will_be_permanently_deleted()}
 				{/if}
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+			<AlertDialog.Cancel>{m.cancel()}</AlertDialog.Cancel>
 			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}
-				>Löschen</AlertDialog.Action
+				>{m.delete()}</AlertDialog.Action
 			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>

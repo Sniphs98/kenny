@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import * as Command from '$lib/components/ui/command';
 	import * as Popover from '$lib/components/ui/popover';
 	import { buttonVariants } from '$lib/components/ui/button';
@@ -49,7 +50,7 @@
 				: buttonVariants({ variant: 'outline', class: 'w-full justify-between font-normal' }),
 			className
 		)}
-		title={current ? `Zuständig: ${current.name}` : 'Niemandem zugewiesen'}
+		title={current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()}
 		onclick={(e) => e.stopPropagation()}
 	>
 		{#if compact}
@@ -57,27 +58,27 @@
 		{:else}
 			<span class="flex min-w-0 items-center gap-2">
 				<UserAvatar name={current?.name} size="sm" />
-				<span class={cn('truncate', !current && 'text-muted-foreground')}>{current?.name ?? 'Niemand'}</span>
+				<span class={cn('truncate', !current && 'text-muted-foreground')}>{current?.name ?? m.nobody()}</span>
 			</span>
 			<ChevronsUpDown class="text-muted-foreground" />
 		{/if}
 	</Popover.Trigger>
 	<Popover.Content class="w-64 p-0" align={compact ? 'end' : 'start'} onclick={(e) => e.stopPropagation()}>
 		<Command.Root>
-			<Command.Input placeholder="Benutzer suchen…" />
+			<Command.Input placeholder={m.search_users()} />
 			<Command.List>
-				<Command.Empty>Kein Benutzer gefunden.</Command.Empty>
+				<Command.Empty>{m.no_users_found()}</Command.Empty>
 				<Command.Group>
 					<Command.Item value="__none" keywords={['niemand', 'keiner']} onSelect={() => pick(null)}>
 						<UserRoundX class="text-muted-foreground" />
-						<span class="grow">Niemand</span>
+						<span class="grow">{m.nobody()}</span>
 						{#if !value}<Check />{/if}
 					</Command.Item>
 					{#each sorted as u (u.id)}
 						<Command.Item value={u.id} keywords={[u.name, u.email ?? '']} onSelect={() => pick(u.id)}>
 							<UserAvatar name={u.name} size="sm" />
 							<span class="grow truncate"
-								>{u.name}{#if u.id === me}<span class="text-muted-foreground"> (ich)</span>{/if}</span
+								>{u.name}{#if u.id === me}<span class="text-muted-foreground"> {m.me()}</span>{/if}</span
 							>
 							{#if u.id === value}<Check />{/if}
 						</Command.Item>

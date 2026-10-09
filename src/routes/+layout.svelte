@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import '@fontsource-variable/inter';
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -6,6 +7,7 @@
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth-client';
 	import { accentStyle, accentVars } from '$lib/theme';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -29,7 +31,7 @@
 	const links = [
 		{
 			href: '/',
-			label: 'Projekte',
+			label: m.projects(),
 			icon: FolderKanban,
 			match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
 		},
@@ -84,6 +86,7 @@
 				{/each}
 			</nav>
 			<span class="grow"></span>
+			<LanguageSwitcher />
 			<ThemeToggle />
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
@@ -100,17 +103,22 @@
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
-						<KeyRound /> API-Tokens
+						<KeyRound />
+						{m.api_tokens()}
 					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={logout}>
-						<LogOut /> Abmelden
+						<LogOut />
+						{m.sign_out()}
 					</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
 		</header>
 	{:else}
-		<div class="fixed top-3.5 right-5 z-30"><ThemeToggle /></div>
+		<div class="fixed top-3.5 right-5 z-30 flex items-center gap-2">
+			<LanguageSwitcher />
+			<ThemeToggle />
+		</div>
 	{/if}
 
 	<main>

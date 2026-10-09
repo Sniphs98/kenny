@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { localizeError } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
@@ -47,7 +49,7 @@
 				isOpen = false;
 				await invalidateAll();
 			} catch (err) {
-				error = err instanceof Error ? err.message : 'Ticket konnte nicht angelegt werden.';
+				error = err instanceof Error ? err.message : m.could_not_create_ticket();
 			}
 		}
 	});
@@ -74,26 +76,26 @@
 		isOpen = true;
 	}
 
-	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? 'Keinem Ticket');
+	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? m.no_parent_ticket());
 </script>
 
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content class="sm:max-w-lg">
 		<form class="grid gap-4" method="POST" use:enhance>
 			<Dialog.Header>
-				<Dialog.Title>Neues Ticket</Dialog.Title>
+				<Dialog.Title>{m.new_ticket()}</Dialog.Title>
 			</Dialog.Header>
 			<div class="grid gap-2">
-				<Label for="t-title">Titel</Label>
+				<Label for="t-title">{m.title()}</Label>
 				<Input id="t-title" bind:value={$form.title} required maxlength={300} />
 			</div>
 			<div class="grid gap-2">
-				<Label for="t-desc">Beschreibung</Label>
+				<Label for="t-desc">{m.description()}</Label>
 				<Textarea id="t-desc" bind:value={$form.description} rows={4} />
 			</div>
 			<div class="grid grid-cols-2 gap-3">
 				<div class="grid gap-2">
-					<Label>Priorität</Label>
+					<Label>{m.priority_2()}</Label>
 					<Select.Root type="single" bind:value={$form.priority}>
 						<Select.Trigger class="w-full">
 							<span class="flex items-center gap-2"
@@ -108,7 +110,7 @@
 					</Select.Root>
 				</div>
 				<div class="grid gap-2">
-					<Label>Zuständig</Label>
+					<Label>{m.assignee()}</Label>
 					<AssigneePicker
 						{users}
 						me={page.data.user?.id}
@@ -117,11 +119,11 @@
 					/>
 				</div>
 				<div class="grid gap-2">
-					<Label for="t-start">Start</Label>
+					<Label for="t-start">{m.start()}</Label>
 					<DatePicker id="t-start" value={$form.startDate || null} onchange={(d) => ($form.startDate = d ?? '')} />
 				</div>
 				<div class="grid gap-2">
-					<Label for="t-due">Fällig</Label>
+					<Label for="t-due">{m.due()}</Label>
 					<DatePicker
 						id="t-due"
 						value={$form.dueDate || null}
@@ -131,31 +133,33 @@
 				</div>
 			</div>
 			<div class="grid gap-2">
-				<Label>Tags</Label>
+				<Label>{m.tags()}</Label>
 				<TagPicker {tags} value={$form.tags} onchange={(refs) => ($form.tags = refs)} />
 			</div>
 			<div class="grid gap-2">
-				<Label>Unteraufgabe von</Label>
+				<Label>{m.subtask_of_2()}</Label>
 				<Select.Root type="single" bind:value={$form.parentId}>
 					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 					<Select.Content class="max-h-72">
-						<Select.Item value="">Keinem Ticket</Select.Item>
+						<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
 						{#each parents as p (p.id)}
 							<Select.Item value={String(p.id)}>{p.label}</Select.Item>
 						{/each}
 					</Select.Content>
 				</Select.Root>
 			</div>
-			{#each Object.values($errors).flat().filter(Boolean) as validationError, i (i)}<p
+			{#each Object.values($errors)
+				.flat()
+				.filter((value): value is string => typeof value === 'string') as validationError, i (i)}<p
 					class="text-destructive text-sm"
 					role="alert"
 				>
-					{validationError}
+					{localizeError(validationError)}
 				</p>{/each}
-			{#if error}<p class="text-destructive text-sm">{error}</p>{/if}
+			{#if error}<p class="text-destructive text-sm">{localizeError(error)}</p>{/if}
 			<Dialog.Footer>
-				<Button variant="outline" onclick={() => (isOpen = false)}>Abbrechen</Button>
-				<Button type="submit" disabled={$submitting}>Anlegen</Button>
+				<Button variant="outline" onclick={() => (isOpen = false)}>{m.cancel()}</Button>
+				<Button type="submit" disabled={$submitting}>{m.create()}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

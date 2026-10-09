@@ -1,3 +1,5 @@
+import { localizeError, intlLocale } from '$lib/i18n';
+import { m } from '$lib/paraglide/messages.js';
 import { z } from 'zod';
 import {
 	createProjectSchema,
@@ -23,7 +25,8 @@ export async function api(method: string, path: string, body?: unknown): Promise
 		body: body !== undefined ? JSON.stringify(body) : undefined
 	});
 	const data = await res.json().catch(() => ({}));
-	if (!res.ok) throw new Error(errorSchema.safeParse(data).data?.error ?? `Fehler ${res.status}`);
+	if (!res.ok)
+		throw new Error(localizeError(errorSchema.safeParse(data).data?.error) || m.error({ value1: res.status }));
 	return data;
 }
 
@@ -52,7 +55,8 @@ export async function upload(path: string, files: File[]): Promise<unknown> {
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok)
 		throw new Error(
-			errorSchema.safeParse(data).data?.error ?? (res.status === 413 ? 'Datei ist zu groß.' : `Fehler ${res.status}`)
+			localizeError(errorSchema.safeParse(data).data?.error) ||
+				(res.status === 413 ? m.file_is_too_large() : m.error({ value1: res.status }))
 		);
 	return data;
 }
@@ -67,14 +71,22 @@ export function formatSize(bytes: number) {
 		v /= 1024;
 		i++;
 	}
-	return `${v.toLocaleString('de-DE', { maximumFractionDigits: v < 10 ? 1 : 0 })} ${units[i]}`;
+	return `${v.toLocaleString(intlLocale(), { maximumFractionDigits: v < 10 ? 1 : 0 })} ${units[i]}`;
 }
 
 export const PRIORITY_LABELS: Record<string, string> = {
-	low: 'Niedrig',
-	medium: 'Mittel',
-	high: 'Hoch',
-	urgent: 'Dringend'
+	get low() {
+		return m.low();
+	},
+	get medium() {
+		return m.medium();
+	},
+	get high() {
+		return m.high();
+	},
+	get urgent() {
+		return m.urgent();
+	}
 };
 
 /** Initialen für Avatare, z.B. "Max Muster" → "MM" */

@@ -2,10 +2,11 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
+import { paraglideMiddleware } from '$lib/paraglide/server.js';
 
 const PUBLIC_PATHS = ['/login', '/api/'];
 
-export const handle: Handle = async ({ event, resolve }) => {
+const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 	if (session) {
 		event.locals.user = session.user;
@@ -19,3 +20,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return svelteKitHandler({ event, resolve, auth, building });
 };
+
+export const handle: Handle = ({ event, resolve }) =>
+	paraglideMiddleware(event.request, ({ locale }) =>
+		handleAuth({
+			event,
+			resolve: (event, options) =>
+				resolve(event, {
+					...options,
+					transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale)
+				})
+		})
+	);

@@ -1,3 +1,4 @@
+import { localizeError } from '$lib/i18n';
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 import type { ZodType } from 'zod';
 import { ApiError } from './errors';
@@ -18,9 +19,9 @@ export function apiHandler(
 			const body = opts.responseSchema ? opts.responseSchema.parse(result) : result;
 			return json(body ?? { ok: true }, { status: opts.status ?? 200 });
 		} catch (e) {
-			if (e instanceof ApiError) return json({ error: e.message }, { status: e.status });
+			if (e instanceof ApiError) return json({ error: localizeError(e.message) }, { status: e.status });
 			console.error(e);
-			return json({ error: 'Interner Fehler' }, { status: 500 });
+			return json({ error: localizeError('Interner Fehler') }, { status: 500 });
 		}
 	};
 }

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { api, formatSize, upload } from '$lib/api';
 	import type { AttachmentDto } from '$lib/contracts';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -41,7 +43,9 @@
 		uploading = list.length;
 		try {
 			await upload(`/tickets/${ticketId}/attachments`, list);
-			toast.success(list.length === 1 ? `„${list[0].name}“ hochgeladen` : `${list.length} Dateien hochgeladen`);
+			toast.success(
+				list.length === 1 ? m.uploaded({ value1: list[0].name }) : m.uploaded_files({ value1: list.length })
+			);
 			await refresh();
 		} catch (err) {
 			toast.error((err as Error).message);
@@ -76,7 +80,7 @@
 			/^image\.\w+$/.test(f.name)
 				? new File(
 						[f],
-						`Screenshot ${new Date().toLocaleString('de-DE').replace(/[/:]/g, '-')}${pasted.length > 1 ? ` (${i + 1})` : ''}.${f.name.split('.').pop()}`,
+						`Screenshot ${new Date().toLocaleString(intlLocale()).replace(/[/:]/g, '-')}${pasted.length > 1 ? ` (${i + 1})` : ''}.${f.name.split('.').pop()}`,
 						{ type: f.type }
 					)
 				: f
@@ -101,10 +105,10 @@
 >
 	<Card.Header class="flex items-center gap-2">
 		<Paperclip class="text-muted-foreground size-4" />
-		<Card.Title class="grow">Anhänge</Card.Title>
+		<Card.Title class="grow">{m.attachments()}</Card.Title>
 		{#if attachments.length}<Badge variant="secondary">{attachments.length}</Badge>{/if}
 		<Button variant="ghost" size="sm" disabled={uploading > 0} onclick={() => input.click()}>
-			{#if uploading}<LoaderCircle class="animate-spin" /> Lädt hoch…{:else}<Upload /> Hochladen{/if}
+			{#if uploading}<LoaderCircle class="animate-spin" /> {m.uploading()}{:else}<Upload /> {m.upload()}{/if}
 		</Button>
 		<input
 			bind:this={input}
@@ -155,8 +159,8 @@
 							variant="ghost"
 							size="icon-xs"
 							class="hover:text-destructive"
-							title="Anhang löschen"
-							aria-label="Anhang {a.filename} löschen"
+							title={m.delete_attachment()}
+							aria-label={m.delete_attachment_2({ value1: a.filename })}
 							onclick={() => (confirmDelete = a)}><Trash2 /></Button
 						>
 					</li>
@@ -169,10 +173,10 @@
 				class="text-muted-foreground hover:border-foreground/30 hover:text-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm transition-colors"
 				onclick={() => input.click()}
 			>
-				Dateien hierher ziehen, einfügen (Strg+V) oder klicken zum Auswählen
+				{m.drop_files_here_paste_ctrl_v_or_click_to_select()}
 			</button>
 		{:else}
-			<p class="text-muted-foreground text-xs">Weitere Dateien hierher ziehen oder mit Strg+V einfügen.</p>
+			<p class="text-muted-foreground text-xs">{m.drop_more_files_here_or_paste_with_ctrl_v()}</p>
 		{/if}
 	</Card.Content>
 </Card.Root>
@@ -184,19 +188,19 @@
 				<Dialog.Title class="truncate pr-8">{preview.filename}</Dialog.Title>
 				<Dialog.Description>
 					{formatSize(preview.size)}{#if preview.uploadedBy}
-						· {preview.uploadedBy}{/if} · {new Date(preview.createdAt).toLocaleString('de-DE')}
+						· {preview.uploadedBy}{/if} · {new Date(preview.createdAt).toLocaleString(intlLocale())}
 				</Dialog.Description>
 			</Dialog.Header>
 			<img src={preview.url} alt={preview.filename} class="bg-muted mx-auto max-h-[70vh] rounded-md object-contain" />
 			<Dialog.Footer>
 				<Button variant="ghost" class="hover:text-destructive mr-auto" onclick={() => (confirmDelete = preview)}
-					><Trash2 /> Löschen</Button
+					><Trash2 /> {m.delete()}</Button
 				>
 				<a href={preview.url} target="_blank" rel="noopener" class={buttonVariants({ variant: 'outline' })}
-					><ExternalLink /> In neuem Tab</a
+					><ExternalLink /> {m.open_in_new_tab()}</a
 				>
 				<a href="{preview.url}?download" download={preview.filename} class={buttonVariants()}
-					><Download /> Herunterladen</a
+					><Download /> {m.download()}</a
 				>
 			</Dialog.Footer>
 		{/if}
@@ -206,18 +210,20 @@
 <AlertDialog.Root open={!!confirmDelete} onOpenChange={(o) => !o && (confirmDelete = null)}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>Anhang löschen?</AlertDialog.Title>
-			<AlertDialog.Description>„{confirmDelete?.filename}“ wird endgültig gelöscht.</AlertDialog.Description>
+			<AlertDialog.Title>{m.delete_attachment_3()}</AlertDialog.Title>
+			<AlertDialog.Description
+				>{m.will_be_permanently_deleted({ value1: confirmDelete?.filename ?? '' })}</AlertDialog.Description
+			>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+			<AlertDialog.Cancel>{m.cancel()}</AlertDialog.Cancel>
 			<AlertDialog.Action
 				class="bg-destructive hover:bg-destructive/90 text-white"
 				onclick={() => {
 					const a = confirmDelete!;
 					confirmDelete = null;
 					remove(a);
-				}}>Löschen</AlertDialog.Action
+				}}>{m.delete()}</AlertDialog.Action
 			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>

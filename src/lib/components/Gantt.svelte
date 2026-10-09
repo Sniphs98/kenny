@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import type { UpdateTicketInput } from '$lib/contracts';
 	import { invalidateAll } from '$app/navigation';
 	import { createTicket, updateTicket } from '$lib/api';
@@ -57,9 +59,9 @@
 
 	const DAY = 86_400_000;
 	const ROW = 34;
-	const ZOOMS = { Tag: 36, Woche: 16, Monat: 6 } as const;
+	const ZOOMS = { day: 36, week: 16, month: 6 } as const;
 
-	let zoom = $state<keyof typeof ZOOMS>('Woche');
+	let zoom = $state<keyof typeof ZOOMS>('week');
 	let hideClosed = $state(false);
 	let showBacklog = $state(false);
 	/** Tickets ohne Termin standardmäßig ausblenden; eingeplant wird über „Ticket einplanen…“ */
@@ -165,7 +167,7 @@
 			const date = new Date(d * DAY);
 			const next = Math.min(end, Math.round(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / DAY));
 			out.push({
-				label: date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+				label: date.toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }),
 				left: x(d),
 				width: (next - d) * px
 			});
@@ -178,8 +180,8 @@
 
 	function dayLabel(d: number) {
 		const date = new Date(d * DAY);
-		if (zoom === 'Tag') return String(date.getUTCDate());
-		if (zoom === 'Woche' && date.getUTCDay() === 1) return String(date.getUTCDate());
+		if (zoom === 'day') return String(date.getUTCDate());
+		if (zoom === 'week' && date.getUTCDay() === 1) return String(date.getUTCDate());
 		return '';
 	}
 	const isWeekend = (d: number) => [0, 6].includes(new Date(d * DAY).getUTCDay());
@@ -314,14 +316,16 @@
 		if (toBacklog && backlogColumn) body.columnId = backlogColumn.id;
 		try {
 			await updateTicket(t.id, body);
-			toast.success(toBacklog ? `${t.key} zurück in den Backlog verschoben` : `${t.key} aus dem Zeitplan entfernt`);
+			toast.success(
+				toBacklog ? m.moved_back_to_backlog({ value1: t.key }) : m.removed_from_schedule({ value1: t.key })
+			);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
 		await invalidateAll();
 	}
 
-	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString('de-DE', { timeZone: 'UTC' });
+	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString(intlLocale(), { timeZone: 'UTC' });
 
 	async function plan(t: Item) {
 		planOpen = false;
@@ -338,7 +342,7 @@
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
 			await updateTicket(t.id, body);
-			toast.success(`${t.key} eingeplant ab ${fmtDay(start)}`);
+			toast.success(m.scheduled_from({ value1: t.key, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -375,7 +379,7 @@
 				dueDate: fromDay(start + 2)
 			});
 			id = t.id;
-			toast.success(`${t.key} angelegt und ab ${fmtDay(start)} eingeplant`);
+			toast.success(m.created_and_scheduled_from({ value1: t.key, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -437,32 +441,35 @@
 		variant="outline"
 		value={zoom}
 		onValueChange={(v) => v && (zoom = v as keyof typeof ZOOMS)}
-		aria-label="Zoom"
+		aria-label={m.zoom()}
 	>
 		{#each Object.keys(ZOOMS) as z (z)}
-			<ToggleGroup.Item value={z} class="px-3">{z}</ToggleGroup.Item>
+			<ToggleGroup.Item value={z} class="px-3"
+				>{z === 'day' ? m.day() : z === 'week' ? m.week() : m.month()}</ToggleGroup.Item
+			>
 		{/each}
 	</ToggleGroup.Root>
-	<Button variant="outline" size="sm" onclick={scrollToToday}><CalendarDays /> Heute</Button>
-	<Label class="ml-1 font-normal"><Checkbox bind:checked={hideClosed} /> Erledigte ausblenden</Label>
+	<Button variant="outline" size="sm" onclick={scrollToToday}><CalendarDays /> {m.today()}</Button>
+	<Label class="ml-1 font-normal"><Checkbox bind:checked={hideClosed} /> {m.hide_completed()}</Label>
 	<Label class="ml-1 font-normal">
-		<Checkbox bind:checked={showUndated} /> Ohne Termin anzeigen
-		<span class="text-muted-foreground text-xs">({undatedCount})</span>
+		<Checkbox bind:checked={showUndated} />
+		{m.show_unscheduled()} <span class="text-muted-foreground text-xs">({undatedCount})</span>
 	</Label>
 	{#if backlogColumns.size}
 		<Label class="ml-1 font-normal">
-			<Checkbox bind:checked={showBacklog} /> Backlog anzeigen
-			<span class="text-muted-foreground text-xs">({backlogCount})</span>
+			<Checkbox bind:checked={showBacklog} />
+			{m.show_backlog()} <span class="text-muted-foreground text-xs">({backlogCount})</span>
 		</Label>
 	{/if}
 	{#if tree.parents.length}
 		<Button variant="ghost" size="sm" onclick={toggleAll}>
-			{#if allExpanded}<ChevronsDownUp /> Alle zuklappen{:else}<ChevronsUpDown /> Alle aufklappen{/if}
+			{#if allExpanded}<ChevronsDownUp /> {m.collapse_all()}{:else}<ChevronsUpDown /> {m.expand_all()}{/if}
 		</Button>
 	{/if}
 	<span class="grow"></span>
 	<span class="text-muted-foreground flex items-center gap-1.5 text-xs max-lg:hidden">
-		<Info class="size-3.5" /> Balken ziehen zum Verschieben, Ränder ziehen für die Dauer
+		<Info class="size-3.5" />
+		{m.drag_bars_to_reschedule_drag_edges_to_change_duration()}
 	</span>
 	{@render actions?.()}
 </div>
@@ -477,7 +484,7 @@
 >
 	<div class="grid" style="width: {280 + range.days * px}px">
 		<!-- Kopfzeile -->
-		<div class="corner">Ticket</div>
+		<div class="corner">{m.ticket()}</div>
 		<div class="timehead" style="width: {range.days * px}px">
 			<div class="months">
 				{#each months as m (m.left)}
@@ -501,7 +508,7 @@
 							class="toggle"
 							class:open={expanded.has(t.id)}
 							aria-expanded={expanded.has(t.id)}
-							title="{expanded.has(t.id) ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'} ({childCount})"
+							title="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})"
 							onclick={() => toggle(t.id)}
 						>
 							<ChevronRight class="size-3.5" />
@@ -518,19 +525,21 @@
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger
 								class="rowaction"
-								title="Aus dem Zeitplan nehmen"
-								aria-label="{t.key} aus dem Zeitplan nehmen"
+								title={m.unschedule()}
+								aria-label={m.unschedule_2({ value1: t.key })}
 							>
 								<X class="size-3.5" />
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end" class="w-56">
 								<DropdownMenu.Label class="truncate">{t.key} {t.title}</DropdownMenu.Label>
 								<DropdownMenu.Item disabled={!t.startDate && !t.dueDate} onSelect={() => unschedule(t, false)}>
-									<CalendarX /> Aus dem Zeitplan entfernen
+									<CalendarX />
+									{m.remove_from_schedule()}
 								</DropdownMenu.Item>
 								{#if backlogColumn && t.columnId !== backlogColumn.id}
 									<DropdownMenu.Item onSelect={() => unschedule(t, true)}>
-										<Archive /> Zurück in den Backlog
+										<Archive />
+										{m.move_back_to_backlog()}
 									</DropdownMenu.Item>
 								{/if}
 							</DropdownMenu.Content>
@@ -540,7 +549,7 @@
 			{/each}
 			<button type="button" class="label planlabel" bind:this={planAnchor} onclick={() => openPlan(null)}>
 				<span class="toggle"><Plus class="size-3.5" /></span>
-				Ticket einplanen…
+				{m.schedule_ticket()}
 			</button>
 			<Popover.Root bind:open={planOpen}>
 				<Popover.Content
@@ -550,12 +559,12 @@
 					customAnchor={planDay !== null && planCell ? planCell : planAnchor}
 				>
 					<Command.Root>
-						<Command.Input placeholder="Ticket suchen oder neu anlegen…" bind:value={planQuery} />
+						<Command.Input placeholder={m.search_or_create_a_ticket()} bind:value={planQuery} />
 						<div class="text-muted-foreground border-b px-3 py-1.5 text-xs">
-							Einplanen ab {fmtDay(planDay ?? today)}{planDay === null ? ' (heute)' : ''}
+							{m.schedule_from({ value1: fmtDay(planDay ?? today), value2: planDay === null ? m.today_suffix() : '' })}
 						</div>
 						<Command.List class="max-h-80">
-							{#if !canCreatePlan}<Command.Empty>Keine offenen, ungeplanten Tickets gefunden.</Command.Empty>{/if}
+							{#if !canCreatePlan}<Command.Empty>{m.no_open_unscheduled_tickets_found()}</Command.Empty>{/if}
 							<Command.Group>
 								{#each planCandidates as { t, backlog, dated } (t.id)}
 									<Command.Item value={String(t.id)} keywords={[t.key, t.title]} onSelect={() => plan(t)}>
@@ -563,9 +572,11 @@
 										<span class="text-muted-foreground shrink-0 font-mono text-xs">{t.key}</span>
 										<span class="min-w-0 grow truncate">{t.title}</span>
 										{#if backlog}
-											<span class="bg-muted text-muted-foreground shrink-0 rounded px-1.5 text-[11px]">Backlog</span>
+											<span class="bg-muted text-muted-foreground shrink-0 rounded px-1.5 text-[11px]"
+												>{m.backlog()}</span
+											>
 										{:else if !dated}
-											<span class="text-muted-foreground shrink-0 text-[11px]">ohne Termin</span>
+											<span class="text-muted-foreground shrink-0 text-[11px]">{m.unscheduled()}</span>
 										{/if}
 									</Command.Item>
 								{/each}
@@ -574,7 +585,7 @@
 							{#if canCreatePlan}
 								<Command.Item value="__create" keywords={[planQuery]} forceMount onSelect={createPlanned}>
 									<Plus />
-									<span class="truncate">„{planQuery.trim()}“ als neues Ticket anlegen</span>
+									<span class="truncate">{m.create_as_a_new_ticket({ value1: planQuery.trim() })}</span>
 								</Command.Item>
 							{/if}
 						</Command.List>
@@ -602,7 +613,7 @@
 					style="top: {i * ROW}px"
 					onclick={(e) => setDates(e, t)}
 					role="presentation"
-					title={s ? '' : 'Klicken, um Termin zu setzen'}
+					title={s ? '' : m.set_schedule_date()}
 				>
 					{#if s}
 						<div
@@ -614,7 +625,7 @@
 							onpointerdown={(e) => pointerDown(e, t, 'move')}
 							role="button"
 							tabindex="-1"
-							title="{t.key}: {t.title} ({t.startDate ?? '?'} bis {t.dueDate ?? '?'})"
+							title={m.to({ value1: t.key, value2: t.title, value3: t.startDate ?? '?', value4: t.dueDate ?? '?' })}
 						>
 							{#if t.subtaskCount > 0}
 								<div class="progress" style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"></div>
@@ -642,7 +653,7 @@
 				}}
 				onmouseleave={() => (hoverDay = null)}
 				role="presentation"
-				title="Klicken, um ein Ticket ab diesem Tag einzuplanen"
+				title={m.click_to_schedule_a_ticket_starting_on_this_day()}
 			>
 				{#if planOpen && planDay !== null}
 					<!-- Gewählter Tag bleibt markiert, solange die Suche offen ist; die Suche hängt daran -->
@@ -682,11 +693,11 @@
 		class:active={resizing}
 		role="separator"
 		aria-orientation="horizontal"
-		aria-label="Höhe des Zeitplans ändern"
+		aria-label={m.resize_schedule()}
 		aria-valuenow={height}
 		aria-valuemin={MIN_HEIGHT}
 		tabindex="0"
-		title="Ziehen, um die Höhe zu ändern (Doppelklick: zurücksetzen)"
+		title={m.drag_to_resize_double_click_to_reset()}
 		onpointerdown={resizeStart}
 		onpointermove={resizeMove}
 		onpointerup={() => (resizing = null)}

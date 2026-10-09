@@ -10,3 +10,6 @@ package-lock.json
 drizzle/meta/
 src/lib/components/ui/
 todo/
+src/lib/paraglide/
+project.inlang/*
+!project.inlang/settings.json

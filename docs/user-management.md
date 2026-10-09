@@ -35,8 +35,10 @@ In a new installation, the first registered account becomes the instance adminis
 The migration for existing installations:
 
 - Makes the oldest account the instance administrator, ordered by creation time and then account ID.
-- Gives all existing users membership in all existing projects, preserving their previous access.
+- Gives all existing users membership in all existing projects, preserving project visibility and ticket editing.
 - Gives each project's recorded owner its project administrator role. Projects without an owner receive the bootstrapped administrator as project administrator.
+
+Other existing users become regular project members; changing settings requires a project administrator role.
 
 After upgrading, review **Users** and each project's **Members**, transfer instance administration if needed, and narrow access where appropriate. This backfill runs once; restarting does not restore removed memberships or promote later accounts. Back up the database before upgrading.
 

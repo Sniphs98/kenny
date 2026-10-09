@@ -130,260 +130,263 @@
 	});
 </script>
 
-<div class="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
-	<div class="flex min-w-0 flex-col gap-4">
-		<input
-			class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
-			bind:value={title}
-			onblur={saveTitle}
-			onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
-			aria-label={m.title()}
-		/>
+<div class="flex flex-col gap-4">
+	<input
+		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
+		bind:value={title}
+		onblur={saveTitle}
+		onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
+		aria-label={m.title()}
+	/>
 
-		{#if t.closed}
-			<Alert.Root class="text-success border-success/30 bg-success/5">
-				<CircleCheck />
-				<Alert.Title>{m.completed_on({ value1: new Date(t.closedAt!).toLocaleString(intlLocale()) })}</Alert.Title>
-			</Alert.Root>
-		{:else if openBlockers.length}
-			<Alert.Root class="text-warning border-warning/30 bg-warning/5">
-				<Ban />
-				<Alert.Title>
-					{openBlockers.length === 1
-						? m.waiting_for_one_ticket()
-						: m.waiting_for_many_tickets({ count: openBlockers.length })}
-					{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
-						openBlockers.length - 1
-							? ', '
-							: ''}{/each}
-				</Alert.Title>
-			</Alert.Root>
-		{/if}
+	{#if t.closed}
+		<Alert.Root class="text-success border-success/30 bg-success/5">
+			<CircleCheck />
+			<Alert.Title>{m.completed_on({ value1: new Date(t.closedAt!).toLocaleString(intlLocale()) })}</Alert.Title>
+		</Alert.Root>
+	{:else if openBlockers.length}
+		<Alert.Root class="text-warning border-warning/30 bg-warning/5">
+			<Ban />
+			<Alert.Title>
+				{openBlockers.length === 1
+					? m.waiting_for_one_ticket()
+					: m.waiting_for_many_tickets({ count: openBlockers.length })}
+				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
+					openBlockers.length - 1
+						? ', '
+						: ''}{/each}
+			</Alert.Title>
+		</Alert.Root>
+	{/if}
 
-		<Card.Root class="gap-4">
-			<Card.Header class="flex items-center gap-2">
-				<AlignLeft class="text-muted-foreground size-4" />
-				<Card.Title class="grow">{m.description()}</Card.Title>
-				{#if !editingDesc}
-					<Button variant="ghost" size="sm" onclick={() => (editingDesc = true)}><Pencil /> {m.edit()}</Button>
-				{/if}
-			</Card.Header>
-			<Card.Content>
-				{#if editingDesc}
-					<Textarea bind:value={description} rows={8} />
-					<div class="mt-3 flex gap-2">
-						<Button onclick={saveDescription}>{m.save()}</Button>
-						<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}
-							>{m.cancel()}</Button
+	<div class="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
+		<div class="flex min-w-0 flex-col gap-4">
+			<Card.Root class="gap-4">
+				<Card.Header class="flex items-center gap-2">
+					<AlignLeft class="text-muted-foreground size-4" />
+					<Card.Title class="grow">{m.description()}</Card.Title>
+					{#if !editingDesc}
+						<Button variant="ghost" size="sm" onclick={() => (editingDesc = true)}><Pencil /> {m.edit()}</Button>
+					{/if}
+				</Card.Header>
+				<Card.Content>
+					{#if editingDesc}
+						<Textarea bind:value={description} rows={8} />
+						<div class="mt-3 flex gap-2">
+							<Button onclick={saveDescription}>{m.save()}</Button>
+							<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}
+								>{m.cancel()}</Button
+							>
+						</div>
+					{:else if t.description}
+						<p class="whitespace-pre-wrap">{t.description}</p>
+					{:else}
+						<p class="text-muted-foreground">{m.no_description()}</p>
+					{/if}
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root class="gap-4">
+				<Card.Header class="flex items-center gap-2">
+					<ListChecks class="text-muted-foreground size-4" />
+					<Card.Title class="grow">{m.subtasks()}</Card.Title>
+					{#if data.subtasks.length}
+						<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
+							>{subDone}/{data.subtasks.length}</Badge
 						>
-					</div>
-				{:else if t.description}
-					<p class="whitespace-pre-wrap">{t.description}</p>
-				{:else}
-					<p class="text-muted-foreground">{m.no_description()}</p>
-				{/if}
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root class="gap-4">
-			<Card.Header class="flex items-center gap-2">
-				<ListChecks class="text-muted-foreground size-4" />
-				<Card.Title class="grow">{m.subtasks()}</Card.Title>
-				{#if data.subtasks.length}
-					<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
-						>{subDone}/{data.subtasks.length}</Badge
-					>
-				{/if}
-			</Card.Header>
-			<Card.Content>
-				{#if data.subtasks.length}
-					<ul class="-mx-2 mb-3 flex flex-col">
-						{#each data.subtasks as s (s.id)}
-							<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
-								<Checkbox
-									checked={s.closed}
-									onCheckedChange={() =>
-										run(async () =>
-											playIfCompleted(s.closed, await (s.closed ? reopenTicket(s.id) : closeTicket(s.id)))
-										)}
-									aria-label={m.done()}
-								/>
-								<a
-									href="/tickets/{s.key}"
-									class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
-								>
-									<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
-									{s.title}
-								</a>
-								<Badge variant="outline">{s.status}</Badge>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-				<form class="flex gap-2" onsubmit={addSubtask}>
-					<Input placeholder={m.new_subtask()} bind:value={newSubtask} />
-					<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
-				</form>
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root class="gap-4">
-			<Card.Header class="flex items-center gap-2">
-				<Link2 class="text-muted-foreground size-4" />
-				<Card.Title class="grow">{m.links()}</Card.Title>
-			</Card.Header>
-			<Card.Content>
-				{#each groups as g (g.label)}
-					{#if g.items.length}
-						<div class="text-muted-foreground mt-1 mb-1 text-xs font-semibold tracking-wide uppercase">{g.label}</div>
+					{/if}
+				</Card.Header>
+				<Card.Content>
+					{#if data.subtasks.length}
 						<ul class="-mx-2 mb-3 flex flex-col">
-							{#each g.items as l (l.id)}
-								<li class="hover:bg-muted flex items-center gap-2 rounded-md px-2 py-1">
+							{#each data.subtasks as s (s.id)}
+								<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
+									<Checkbox
+										checked={s.closed}
+										onCheckedChange={() =>
+											run(async () =>
+												playIfCompleted(s.closed, await (s.closed ? reopenTicket(s.id) : closeTicket(s.id)))
+											)}
+										aria-label={m.done()}
+									/>
 									<a
-										href="/tickets/{l.ticket.key}"
-										class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
+										href="/tickets/{s.key}"
+										class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
 									>
-										<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
-										{l.ticket.title}
+										<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
+										{s.title}
 									</a>
-									{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
-									<Hint text={m.remove_link()}>
-										{#snippet children(props)}
-											<Button
-												{...props}
-												variant="ghost"
-												size="icon-xs"
-												class="hover:text-destructive"
-												aria-label={m.remove_link()}
-												onclick={() => run(() => api('DELETE', `${base}/links/${l.id}`))}><X /></Button
-											>
-										{/snippet}
-									</Hint>
+									<Badge variant="outline">{s.status}</Badge>
 								</li>
 							{/each}
 						</ul>
 					{/if}
-				{/each}
-				<form class="flex flex-wrap gap-2" onsubmit={addLink}>
-					<Select.Root type="single" bind:value={linkType}>
-						<Select.Trigger class="w-48">{LINK_TYPES[linkType]}</Select.Trigger>
+					<form class="flex gap-2" onsubmit={addSubtask}>
+						<Input placeholder={m.new_subtask()} bind:value={newSubtask} />
+						<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
+					</form>
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root class="gap-4">
+				<Card.Header class="flex items-center gap-2">
+					<Link2 class="text-muted-foreground size-4" />
+					<Card.Title class="grow">{m.links()}</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					{#each groups as g (g.label)}
+						{#if g.items.length}
+							<div class="text-muted-foreground mt-1 mb-1 text-xs font-semibold tracking-wide uppercase">{g.label}</div>
+							<ul class="-mx-2 mb-3 flex flex-col">
+								{#each g.items as l (l.id)}
+									<li class="hover:bg-muted flex items-center gap-2 rounded-md px-2 py-1">
+										<a
+											href="/tickets/{l.ticket.key}"
+											class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
+										>
+											<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
+											{l.ticket.title}
+										</a>
+										{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
+										<Hint text={m.remove_link()}>
+											{#snippet children(props)}
+												<Button
+													{...props}
+													variant="ghost"
+													size="icon-xs"
+													class="hover:text-destructive"
+													aria-label={m.remove_link()}
+													onclick={() => run(() => api('DELETE', `${base}/links/${l.id}`))}><X /></Button
+												>
+											{/snippet}
+										</Hint>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					{/each}
+					<form class="flex flex-wrap gap-2" onsubmit={addLink}>
+						<Select.Root type="single" bind:value={linkType}>
+							<Select.Trigger class="w-48">{LINK_TYPES[linkType]}</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(LINK_TYPES) as [v, l] (v)}
+									<Select.Item value={v}>{l}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+						<TicketPicker class="min-w-40 flex-1" tickets={linkCandidates} bind:value={linkTarget} />
+						<Button type="submit" variant="outline" disabled={!linkTarget}><Link2 /> {m.link()}</Button>
+					</form>
+				</Card.Content>
+			</Card.Root>
+
+			<Attachments ticketId={t.id} attachments={data.attachments} {refresh} />
+		</div>
+
+		<Card.Root class="gap-4 py-5">
+			<Card.Content class="flex flex-col gap-4 px-5">
+				{#if t.closed}
+					<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
+						><RotateCcw /> {m.reopen()}</Button
+					>
+				{:else}
+					<Button onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
+						><Check /> {m.complete()}</Button
+					>
+				{/if}
+
+				<div class="grid gap-2">
+					<Label>{m.status()}</Label>
+					<Select.Root
+						type="single"
+						value={String(t.columnId)}
+						onValueChange={(v) =>
+							run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
+					>
+						<Select.Trigger class="w-full">{columnName}</Select.Trigger>
 						<Select.Content>
-							{#each Object.entries(LINK_TYPES) as [v, l] (v)}
-								<Select.Item value={v}>{l}</Select.Item>
+							{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+				<div class="grid gap-2">
+					<Label>{m.priority_2()}</Label>
+					<Select.Root
+						type="single"
+						value={t.priority}
+						onValueChange={(v) => {
+							const priority = PRIORITIES.find((p) => p === v);
+							if (priority) patch({ priority });
+						}}
+					>
+						<Select.Trigger class="w-full">
+							<span class="flex items-center gap-2"
+								><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span
+							>
+						</Select.Trigger>
+						<Select.Content>
+							{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
+								<Select.Item value={v}><span class="prio prio-{v}"></span>{l}</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
-					<TicketPicker class="min-w-40 flex-1" tickets={linkCandidates} bind:value={linkTarget} />
-					<Button type="submit" variant="outline" disabled={!linkTarget}><Link2 /> {m.link()}</Button>
-				</form>
+				</div>
+				<div class="grid gap-2">
+					<Label>{m.tags()}</Label>
+					<TagPicker tags={data.tags} value={t.tags.map((g) => g.id)} onchange={(tags) => patch({ tags })} />
+				</div>
+				<div class="grid gap-2">
+					<Label>{m.assignee()}</Label>
+					<AssigneePicker
+						users={data.users}
+						me={page.data.user?.id}
+						value={t.assigneeId}
+						onchange={(id) => patch({ assigneeId: id })}
+					/>
+					{#if page.data.user && t.assigneeId !== page.data.user.id}
+						<Button
+							variant="link"
+							size="xs"
+							class="-mt-1 h-auto self-start px-0"
+							onclick={() => patch({ assigneeId: page.data.user!.id })}
+						>
+							{m.assign_to_me()}
+						</Button>
+					{/if}
+				</div>
+				<div class="grid gap-2">
+					<Label for="start">{m.start()}</Label>
+					<DatePicker id="start" value={t.startDate} onchange={(d) => patch({ startDate: d })} />
+				</div>
+				<div class="grid gap-2">
+					<Label for="due">{m.due()}</Label>
+					<DatePicker id="due" value={t.dueDate} min={t.startDate} onchange={(d) => patch({ dueDate: d })} />
+				</div>
+				<div class="grid gap-2">
+					<Label>{m.subtask_of_2()}</Label>
+					<Select.Root
+						type="single"
+						value={t.parentId ? String(t.parentId) : ''}
+						onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
+					>
+						<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+						<Select.Content class="max-h-72">
+							<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
+							{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item
+								>{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+
+				<Separator />
+				<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
+					<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
+					<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
+				</div>
+				<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> {m.delete_ticket()}</Button>
 			</Card.Content>
 		</Card.Root>
-
-		<Attachments ticketId={t.id} attachments={data.attachments} {refresh} />
 	</div>
-
-	<Card.Root class="gap-4 py-5">
-		<Card.Content class="flex flex-col gap-4 px-5">
-			{#if t.closed}
-				<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
-					><RotateCcw /> {m.reopen()}</Button
-				>
-			{:else}
-				<Button onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
-					><Check /> {m.complete()}</Button
-				>
-			{/if}
-
-			<div class="grid gap-2">
-				<Label>{m.status()}</Label>
-				<Select.Root
-					type="single"
-					value={String(t.columnId)}
-					onValueChange={(v) =>
-						run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
-				>
-					<Select.Trigger class="w-full">{columnName}</Select.Trigger>
-					<Select.Content>
-						{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
-			<div class="grid gap-2">
-				<Label>{m.priority_2()}</Label>
-				<Select.Root
-					type="single"
-					value={t.priority}
-					onValueChange={(v) => {
-						const priority = PRIORITIES.find((p) => p === v);
-						if (priority) patch({ priority });
-					}}
-				>
-					<Select.Trigger class="w-full">
-						<span class="flex items-center gap-2"
-							><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span
-						>
-					</Select.Trigger>
-					<Select.Content>
-						{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
-							<Select.Item value={v}><span class="prio prio-{v}"></span>{l}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
-			<div class="grid gap-2">
-				<Label>{m.tags()}</Label>
-				<TagPicker tags={data.tags} value={t.tags.map((g) => g.id)} onchange={(tags) => patch({ tags })} />
-			</div>
-			<div class="grid gap-2">
-				<Label>{m.assignee()}</Label>
-				<AssigneePicker
-					users={data.users}
-					me={page.data.user?.id}
-					value={t.assigneeId}
-					onchange={(id) => patch({ assigneeId: id })}
-				/>
-				{#if page.data.user && t.assigneeId !== page.data.user.id}
-					<Button
-						variant="link"
-						size="xs"
-						class="-mt-1 h-auto self-start px-0"
-						onclick={() => patch({ assigneeId: page.data.user!.id })}
-					>
-						{m.assign_to_me()}
-					</Button>
-				{/if}
-			</div>
-			<div class="grid gap-2">
-				<Label for="start">{m.start()}</Label>
-				<DatePicker id="start" value={t.startDate} onchange={(d) => patch({ startDate: d })} />
-			</div>
-			<div class="grid gap-2">
-				<Label for="due">{m.due()}</Label>
-				<DatePicker id="due" value={t.dueDate} min={t.startDate} onchange={(d) => patch({ dueDate: d })} />
-			</div>
-			<div class="grid gap-2">
-				<Label>{m.subtask_of_2()}</Label>
-				<Select.Root
-					type="single"
-					value={t.parentId ? String(t.parentId) : ''}
-					onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
-				>
-					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-					<Select.Content class="max-h-72">
-						<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-						{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item>{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
-
-			<Separator />
-			<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
-				<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
-				<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
-			</div>
-			<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> {m.delete_ticket()}</Button>
-		</Card.Content>
-	</Card.Root>
 </div>
 
 <AlertDialog.Root bind:open={confirmDelete}>

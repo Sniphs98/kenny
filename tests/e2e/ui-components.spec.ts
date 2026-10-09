@@ -29,3 +29,27 @@ test('Trennlinie im Ticket ist sichtbar', async ({ page, request }) => {
 	expect(box?.height).toBe(1);
 	expect(box?.width).toBeGreaterThan(100);
 });
+
+test('Ticket: Beschreibung und Seitenleiste beginnen auf gleicher Höhe', async ({ page, request }) => {
+	const p = await createProject(request);
+	const t = await createTicket(request, p.key, { title: 'Bündig' });
+
+	const tops = async (scope: ReturnType<typeof page.locator>) => {
+		const description = scope.locator('[data-slot="card"]').filter({ hasText: 'Beschreibung' }).first();
+		const sidebar = scope
+			.locator('[data-slot="card"]')
+			.filter({ has: page.getByRole('button', { name: 'Abschließen' }) });
+		return [(await description.boundingBox())!.y, (await sidebar.boundingBox())!.y];
+	};
+
+	await open(page, `/tickets/${t.key}`);
+	const [descPage, sidePage] = await tops(page.locator('main'));
+	expect(Math.abs(descPage - sidePage)).toBeLessThan(1);
+
+	await open(page, `/projects/${p.key}/board`);
+	await page.locator('[data-card]').filter({ hasText: 'Bündig' }).getByRole('link', { name: 'Bündig' }).click();
+	const modal = page.getByRole('dialog');
+	await expect(modal).toBeVisible();
+	const [descModal, sideModal] = await tops(modal);
+	expect(Math.abs(descModal - sideModal)).toBeLessThan(1);
+});

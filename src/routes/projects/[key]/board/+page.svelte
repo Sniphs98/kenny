@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { api, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import TagBadge from '$lib/components/TagBadge.svelte';
 	import Gantt from '$lib/components/Gantt.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
@@ -16,16 +17,19 @@
 	import { openTicket } from '$lib/ticket-modal';
 	import { cn } from '$lib/utils';
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
 	import Ban from '@lucide/svelte/icons/ban';
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Circle from '@lucide/svelte/icons/circle';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
+	import TagIcon from '@lucide/svelte/icons/tag';
 	import UserRound from '@lucide/svelte/icons/user-round';
 
 	let { data } = $props();
@@ -38,6 +42,9 @@
 	let showSubtasks = $state(false);
 	/** Filter nach Zuständigem: 'all', 'me', 'none' oder eine Benutzer-ID */
 	let assigneeFilter = $state('all');
+	/** Filter nach Tag: 'all' oder eine Tag-ID */
+	let tagFilter = $state('all');
+	const tagFilterLabel = $derived(data.tags.find((g) => String(g.id) === tagFilter)?.name ?? 'Alle Tags');
 	let dialog: TicketDialog;
 
 	const filterLabel = $derived(
@@ -72,6 +79,26 @@
 
 	const byId = $derived(new Map(data.tickets.map((t) => [t.id, t])));
 
+	/** Unteraufgaben je Elternticket, für die aufklappbare Liste auf der Karte */
+	const childrenOf = $derived.by(() => {
+		const m = new Map<number, Item[]>();
+		for (const t of data.tickets) {
+			if (t.parentId === null) continue;
+			if (!m.has(t.parentId)) m.set(t.parentId, []);
+			m.get(t.parentId)!.push(t);
+		}
+		for (const list of m.values()) list.sort((a, b) => a.number - b.number);
+		return m;
+	});
+	/** Karten mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */
+	const expanded = new SvelteSet<number>();
+
+	function toggleSubtasks(e: MouseEvent, id: number) {
+		e.stopPropagation();
+		if (expanded.has(id)) expanded.delete(id);
+		else expanded.add(id);
+	}
+
 	function matchesAssignee(t: Item) {
 		if (assigneeFilter === 'all') return true;
 		if (assigneeFilter === 'me') return t.assigneeId === me;
@@ -84,6 +111,7 @@
 			(t) =>
 				(showSubtasks || t.parentId === null) &&
 				matchesAssignee(t) &&
+				(tagFilter === 'all' || t.tags.some((g) => String(g.id) === tagFilter)) &&
 				(!search ||
 					t.title.toLowerCase().includes(search.toLowerCase()) ||
 					t.key.toLowerCase().includes(search.toLowerCase()))
@@ -207,6 +235,18 @@
 			{/each}
 		</Select.Content>
 	</Select.Root>
+	<Select.Root type="single" bind:value={tagFilter}>
+		<Select.Trigger class="w-40">
+			<span class="flex items-center gap-2 truncate"><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span>
+		</Select.Trigger>
+		<Select.Content>
+			<Select.Item value="all">Alle Tags</Select.Item>
+			{#if data.tags.length}<Select.Separator />{/if}
+			{#each data.tags as g (g.id)}
+				<Select.Item value={String(g.id)}><TagBadge name={g.name} color={g.color} /></Select.Item>
+			{/each}
+		</Select.Content>
+	</Select.Root>
 	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> Unteraufgaben anzeigen</Label>
 	<span class="grow"></span>
 	<Button onclick={() => dialog.open()}><Plus /> Ticket</Button>
@@ -220,7 +260,7 @@
 		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
 	</Collapsible.Trigger>
 	<Collapsible.Content>
-		<Gantt tickets={data.tickets} dependencies={data.dependencies} color={data.project.color} maxHeight="360px" />
+		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} color={data.project.color} maxHeight="360px" />
 	</Collapsible.Content>
 </Collapsible.Root>
 
@@ -279,6 +319,11 @@
 							onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
 							draggable="false">{t.title}</a
 						>
+						{#if t.tags.length}
+							<div class="flex flex-wrap gap-1">
+								{#each t.tags as g (g.id)}<TagBadge name={g.name} color={g.color} />{/each}
+							</div>
+						{/if}
 						{#if t.parentId && byId.get(t.parentId)}
 							<div class="text-muted-foreground flex items-center gap-1 text-xs">
 								<CornerDownRight class="size-3" />
@@ -288,9 +333,22 @@
 						{#if t.subtaskCount > 0 || (t.openBlockers > 0 && !t.closed) || t.dueDate}
 							<div class="flex flex-wrap gap-1">
 								{#if t.subtaskCount > 0}
-									<Badge variant="secondary" class={cn(t.subtaskDone === t.subtaskCount && 'text-success')}>
-										<ListChecks /> {t.subtaskDone}/{t.subtaskCount}
-									</Badge>
+									<button
+										type="button"
+										class="group/sub rounded-4xl"
+										data-state={expanded.has(t.id) ? 'open' : 'closed'}
+										aria-expanded={expanded.has(t.id)}
+										title={expanded.has(t.id) ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'}
+										onclick={(e) => toggleSubtasks(e, t.id)}
+									>
+										<Badge
+											variant="secondary"
+											class={cn('hover:bg-secondary/70 cursor-pointer', t.subtaskDone === t.subtaskCount && 'text-success')}
+										>
+											<ChevronRight class="transition-transform group-data-[state=open]/sub:rotate-90" />
+											<ListChecks /> {t.subtaskDone}/{t.subtaskCount}
+										</Badge>
+									</button>
 								{/if}
 								{#if t.openBlockers > 0 && !t.closed}
 									<Badge variant="secondary" class="text-warning" title="Wartet auf andere Tickets">
@@ -303,6 +361,28 @@
 									</Badge>
 								{/if}
 							</div>
+						{/if}
+						{#if expanded.has(t.id) && childrenOf.get(t.id)?.length}
+							<ul class="-mx-1 flex flex-col border-t pt-1.5">
+								{#each childrenOf.get(t.id)! as s (s.id)}
+									<li>
+										<a
+											href="/tickets/{s.key}"
+											class="hover:bg-muted flex items-center gap-1.5 rounded px-1 py-0.5 text-xs"
+											onclick={(e) => (e.stopPropagation(), openTicket(s.key, e))}
+											draggable="false"
+										>
+											{#if s.closed}
+												<CircleCheck class="text-success size-3.5 shrink-0" />
+											{:else}
+												<Circle class="text-muted-foreground size-3.5 shrink-0" />
+											{/if}
+											<span class="text-muted-foreground shrink-0 font-mono">{s.key}</span>
+											<span class={cn('truncate', s.closed && 'text-muted-foreground line-through')}>{s.title}</span>
+										</a>
+									</li>
+								{/each}
+							</ul>
 						{/if}
 					</div>
 				{/each}
@@ -340,5 +420,6 @@
 	bind:this={dialog}
 	projectKey={data.project.key}
 	users={data.users}
+	tags={data.tags}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
 />

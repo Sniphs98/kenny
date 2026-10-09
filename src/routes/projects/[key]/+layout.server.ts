@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { ApiError } from '$lib/server/errors';
 import { getColumns, getProject } from '$lib/server/services/projects';
+import { listTags } from '$lib/server/services/tags';
 import { listDependencies, listTickets, listUsers } from '$lib/server/services/tickets';
 
 export const load = ({ params }) => {
@@ -10,6 +11,7 @@ export const load = ({ params }) => {
 			project,
 			columns: getColumns(project.id),
 			tickets: listTickets(project.id),
+			tags: listTags(project.id),
 			dependencies: listDependencies(project.id),
 			users: listUsers()
 		};

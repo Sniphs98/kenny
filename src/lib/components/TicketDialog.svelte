@@ -4,6 +4,7 @@
 	import { api, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
@@ -15,8 +16,14 @@
 	let {
 		projectKey,
 		users,
+		tags,
 		parents
-	}: { projectKey: string; users: { id: string; name: string; email?: string }[]; parents: Option[] } = $props();
+	}: {
+		projectKey: string;
+		users: { id: string; name: string; email?: string }[];
+		tags: { id: number; name: string; color: string }[];
+		parents: Option[];
+	} = $props();
 
 	let isOpen = $state(false);
 	let form = $state(blank());
@@ -28,6 +35,7 @@
 			description: '',
 			priority: 'medium',
 			assigneeId: null as string | null,
+			tags: [] as (number | string)[],
 			startDate: '',
 			dueDate: '',
 			parentId: '',
@@ -101,6 +109,10 @@
 					<Label for="t-due">Fällig</Label>
 					<DatePicker id="t-due" value={form.dueDate || null} min={form.startDate} onchange={(d) => (form.dueDate = d ?? '')} />
 				</div>
+			</div>
+			<div class="grid gap-2">
+				<Label>Tags</Label>
+				<TagPicker {tags} value={form.tags} onchange={(refs) => (form.tags = refs)} />
 			</div>
 			<div class="grid gap-2">
 				<Label>Unteraufgabe von</Label>

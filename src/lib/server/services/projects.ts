@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { boardColumn, project, ticket } from '../db/schema';
 import { ApiError } from '../errors';
+import { insertDefaultTags } from './tags';
 import { str, optStr } from './validate';
 
 export const DEFAULT_COLUMNS = [
@@ -97,6 +98,7 @@ export function createProject(input: Record<string, unknown>, userId: string | n
 		DEFAULT_COLUMNS.forEach((c, i) =>
 			tx.insert(boardColumn).values({ projectId: p.id, name: c.name, isDone: c.isDone, position: i }).run()
 		);
+		insertDefaultTags(tx, p.id);
 		return p;
 	});
 }
@@ -123,6 +125,7 @@ export function addColumn(projectId: number, input: Record<string, unknown>) {
 			projectId,
 			name: str(input.name, 'name', { max: 60 }),
 			isDone: input.isDone === true,
+			isBacklog: input.isBacklog === true,
 			position: cols.length ? Math.max(...cols.map((c) => c.position)) + 1 : 0
 		})
 		.returning()
@@ -141,6 +144,7 @@ export function updateColumn(projectId: number, columnId: number, input: Record<
 		const patch: Partial<typeof boardColumn.$inferInsert> = {};
 		if (input.name !== undefined) patch.name = str(input.name, 'name', { max: 60 });
 		if (input.isDone !== undefined) patch.isDone = input.isDone === true;
+		if (input.isBacklog !== undefined) patch.isBacklog = input.isBacklog === true;
 		if (Object.keys(patch).length) tx.update(boardColumn).set(patch).where(eq(boardColumn.id, columnId)).run();
 
 		// Abgeschlossen-Status der Tickets an die Spalte anpassen

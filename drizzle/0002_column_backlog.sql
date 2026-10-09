@@ -1,0 +1,1 @@
+ALTER TABLE `board_column` ADD `is_backlog` integer DEFAULT false NOT NULL;

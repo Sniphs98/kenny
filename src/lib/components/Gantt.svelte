@@ -7,22 +7,30 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
 	import { toast } from 'svelte-sonner';
+	import type { getColumns } from '$lib/server/services/projects';
 	import type { listDependencies, listTickets } from '$lib/server/services/tickets';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
+	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Info from '@lucide/svelte/icons/info';
 	import type { Snippet } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	type Item = ReturnType<typeof listTickets>[number];
 
 	let {
 		tickets: source,
 		dependencies,
+		columns,
 		color,
 		maxHeight = 'calc(100vh - 210px)',
 		actions
 	}: {
 		tickets: Item[];
 		dependencies: ReturnType<typeof listDependencies>;
+		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
+		columns: ReturnType<typeof getColumns>;
 		color: string;
 		/** Maximale Höhe des Diagramms, danach wird gescrollt */
 		maxHeight?: string;
@@ -36,6 +44,10 @@
 
 	let zoom = $state<keyof typeof ZOOMS>('Woche');
 	let hideClosed = $state(false);
+	let showBacklog = $state(false);
+
+	const backlogColumns = $derived(new Set(columns.filter((c) => c.isBacklog).map((c) => c.id)));
+	const backlogCount = $derived(source.filter((t) => backlogColumns.has(t.columnId)).length);
 
 	const px = $derived(ZOOMS[zoom]);
 
@@ -49,9 +61,19 @@
 		tickets = source.map((t) => ({ ...t }));
 	});
 
-	/** Tickets hierarchisch sortieren: Eltern, darunter ihre Unteraufgaben */
-	const rows = $derived.by(() => {
-		const list = tickets.filter((t) => !hideClosed || !t.closed);
+	/** Tickets mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */
+	const expanded = new SvelteSet<number>();
+
+	function toggle(id: number) {
+		if (expanded.has(id)) expanded.delete(id);
+		else expanded.add(id);
+	}
+
+	/** Tickets hierarchisch sortieren: Eltern, darunter ihre (aufgeklappten) Unteraufgaben */
+	const tree = $derived.by(() => {
+		const list = tickets.filter(
+			(t) => (!hideClosed || !t.closed) && (showBacklog || !backlogColumns.has(t.columnId))
+		);
 		const ids = new Set(list.map((t) => t.id));
 		const children = new Map<number | null, Item[]>();
 		for (const t of list) {
@@ -60,16 +82,24 @@
 			children.get(parent)!.push(t);
 		}
 		const sortKey = (t: Item) => (t.startDate ?? t.dueDate ?? '9999') + String(t.number).padStart(6, '0');
-		const out: { t: Item; depth: number }[] = [];
+		const out: { t: Item; depth: number; childCount: number }[] = [];
 		const walk = (parent: number | null, depth: number) => {
 			for (const t of (children.get(parent) ?? []).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))) {
-				out.push({ t, depth });
-				walk(t.id, depth + 1);
+				const childCount = children.get(t.id)?.length ?? 0;
+				out.push({ t, depth, childCount });
+				if (expanded.has(t.id)) walk(t.id, depth + 1);
 			}
 		};
 		walk(null, 0);
-		return out;
+		return { rows: out, parents: [...children.keys()].filter((id) => id !== null) };
 	});
+	const rows = $derived(tree.rows);
+	const allExpanded = $derived(tree.parents.length > 0 && tree.parents.every((id) => expanded.has(id)));
+
+	function toggleAll() {
+		if (allExpanded) expanded.clear();
+		else for (const id of tree.parents) expanded.add(id);
+	}
 
 	function span(t: Item) {
 		if (!t.startDate && !t.dueDate) return null;
@@ -243,6 +273,17 @@
 	</ToggleGroup.Root>
 	<Button variant="outline" size="sm" onclick={scrollToToday}><CalendarDays /> Heute</Button>
 	<Label class="ml-1 font-normal"><Checkbox bind:checked={hideClosed} /> Erledigte ausblenden</Label>
+	{#if backlogColumns.size}
+		<Label class="ml-1 font-normal">
+			<Checkbox bind:checked={showBacklog} /> Backlog anzeigen
+			<span class="text-muted-foreground text-xs">({backlogCount})</span>
+		</Label>
+	{/if}
+	{#if tree.parents.length}
+		<Button variant="ghost" size="sm" onclick={toggleAll}>
+			{#if allExpanded}<ChevronsDownUp /> Alle zuklappen{:else}<ChevronsUpDown /> Alle aufklappen{/if}
+		</Button>
+	{/if}
 	<span class="grow"></span>
 	<span class="text-muted-foreground flex items-center gap-1.5 text-xs max-lg:hidden">
 		<Info class="size-3.5" /> Balken ziehen zum Verschieben, Ränder ziehen für die Dauer
@@ -274,12 +315,28 @@
 
 		<!-- Ticketliste links -->
 		<div class="labels">
-			{#each rows as { t, depth } (t.id)}
-				<a class="label" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)} style="padding-left: {0.6 + depth * 1.1}rem" title={t.title}>
-					<span class="prio prio-{t.priority}"></span>
-					<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
-					<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
-				</a>
+			{#each rows as { t, depth, childCount } (t.id)}
+				<div class="label" style="padding-left: {0.3 + depth * 1.1}rem">
+					{#if childCount}
+						<button
+							type="button"
+							class="toggle"
+							class:open={expanded.has(t.id)}
+							aria-expanded={expanded.has(t.id)}
+							title="{expanded.has(t.id) ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'} ({childCount})"
+							onclick={() => toggle(t.id)}
+						>
+							<ChevronRight class="size-3.5" />
+						</button>
+					{:else}
+						<span class="toggle"></span>
+					{/if}
+					<a class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)} title={t.title}>
+						<span class="prio prio-{t.priority}"></span>
+						<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
+						<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
+					</a>
+				</div>
 			{/each}
 			{#if rows.length === 0}
 				<div class="label text-muted-foreground">Noch keine Tickets</div>
@@ -438,7 +495,34 @@
 	}
 	.label:hover {
 		background: var(--muted);
+	}
+	.link {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		min-width: 0;
+		flex: 1;
+		height: 100%;
+		color: inherit;
 		text-decoration: none;
+	}
+	.toggle {
+		flex: 0 0 18px;
+		height: 18px;
+		display: grid;
+		place-items: center;
+		border-radius: 4px;
+		color: var(--muted-foreground);
+	}
+	button.toggle:hover {
+		background: color-mix(in srgb, var(--foreground) 10%, transparent);
+		color: var(--foreground);
+	}
+	.toggle :global(svg) {
+		transition: transform 0.12s;
+	}
+	.toggle.open :global(svg) {
+		transform: rotate(90deg);
 	}
 	.ttl {
 		overflow: hidden;

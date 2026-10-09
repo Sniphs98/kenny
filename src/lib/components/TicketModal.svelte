@@ -15,7 +15,10 @@
 
 	/** Nach Änderungen: Hintergrund und Ticket neu laden, ohne das Modal zu schließen */
 	async function refresh() {
-		const href = page.url.pathname;
+		// Beim Shallow Routing zeigt page.url weiter auf den Hintergrund (Board/Gantt),
+		// daher die Ticket-URL selbst bilden
+		if (!data) return;
+		const href = `/tickets/${data.ticket.key}`;
 		await refreshAll();
 		const result = await preloadData(href);
 		if (result.type === 'loaded' && result.status === 200) {

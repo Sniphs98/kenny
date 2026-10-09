@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth-schema';
 
@@ -30,7 +30,9 @@ export const boardColumn = sqliteTable(
 		name: text('name').notNull(),
 		position: integer('position').notNull().default(0),
 		/** Tickets in dieser Spalte gelten als abgeschlossen */
-		isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false)
+		isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false),
+		/** Backlog: Tickets in dieser Spalte werden im Gantt standardmäßig ausgeblendet */
+		isBacklog: integer('is_backlog', { mode: 'boolean' }).notNull().default(false)
 	},
 	(t) => [index('board_column_project_idx').on(t.projectId)]
 );
@@ -101,6 +103,33 @@ export const ticketLink = sqliteTable(
 	]
 );
 
+/** Tags pro Projekt, z.B. "Bug", "Feature", "Story" */
+export const tag = sqliteTable(
+	'tag',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		projectId: integer('project_id')
+			.notNull()
+			.references(() => project.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		color: text('color').notNull().default('#6366f1')
+	},
+	(t) => [uniqueIndex('tag_project_name_idx').on(t.projectId, t.name)]
+);
+
+export const ticketTag = sqliteTable(
+	'ticket_tag',
+	{
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		tagId: integer('tag_id')
+			.notNull()
+			.references(() => tag.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.ticketId, t.tagId] }), index('ticket_tag_tag_idx').on(t.tagId)]
+);
+
 /** Persönliche API-Tokens für die REST-API. Gespeichert wird nur der SHA-256-Hash. */
 export const apiToken = sqliteTable('api_token', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -119,3 +148,4 @@ export type Project = typeof project.$inferSelect;
 export type BoardColumn = typeof boardColumn.$inferSelect;
 export type Ticket = typeof ticket.$inferSelect;
 export type TicketLink = typeof ticketLink.$inferSelect;
+export type Tag = typeof tag.$inferSelect;

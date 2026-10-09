@@ -14,6 +14,7 @@ import {
 } from '../db/schema';
 import { ApiError } from '../errors';
 import { getColumns, getProject } from './projects';
+import { setTicketTags, tagsByTicket, type TagDto } from './tags';
 import { oneOf, optDate, optInt, optStr, str } from './validate';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -62,13 +63,13 @@ function present(t: Ticket, projectKey: string, column?: { name: string; isDone:
 		updatedAt: t.updatedAt
 	};
 }
-export type TicketDto = ReturnType<typeof present>;
+export type TicketDto = ReturnType<typeof present> & { tags: TagDto[] };
 
-export function getTicket(ref: string | number) {
+export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);
 	const p = getProject(t.projectId);
 	const col = db.select().from(boardColumn).where(eq(boardColumn.id, t.columnId)).get();
-	return present(t, p.key, col);
+	return { ...present(t, p.key, col), tags: tagsByTicket([t.id]).get(t.id) ?? [] };
 }
 
 export type TicketListItem = TicketDto & {
@@ -115,12 +116,14 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 		.groupBy(ticket.parentId)
 		.all();
 	const subMap = new Map(subs.map((s) => [s.parentId, s]));
+	const tags = tagsByTicket(ids);
 
 	return rows.map(({ t, assigneeName }) => {
 		const myDeps = deps.filter((d) => d.sourceId === t.id);
 		const s = subMap.get(t.id);
 		return {
 			...present(t, p.key, cols.get(t.columnId)),
+			tags: tags.get(t.id) ?? [],
 			assigneeName,
 			subtaskCount: s?.total ?? 0,
 			subtaskDone: Number(s?.done ?? 0),
@@ -185,7 +188,7 @@ export function getTicketDetail(ref: string | number) {
 		: null;
 
 	return {
-		ticket: present(t, p.key, colMap.get(t.columnId)),
+		ticket: { ...present(t, p.key, colMap.get(t.columnId)), tags: tagsByTicket([t.id]).get(t.id) ?? [] },
 		project: p,
 		columns: cols,
 		parent: parent ? present(parent, p.key, colMap.get(parent.columnId)) : null,
@@ -291,6 +294,8 @@ export function createTicket(projectRef: string | number, input: Record<string, 
 		if (!Array.isArray(relatesTo)) throw new ApiError(400, 'Feld "relatesTo" muss eine Liste sein.');
 		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates');
 
+		if (input.tags !== undefined) setTicketTags(tx, t.id, p.id, input.tags);
+
 		return t;
 	});
 	return getTicket(created.id);
@@ -314,6 +319,10 @@ export function updateTicket(ref: string | number, input: Record<string, unknown
 			patch.dueDate !== undefined ? patch.dueDate : t.dueDate
 		);
 		if (Object.keys(patch).length) tx.update(ticket).set(patch).where(eq(ticket.id, t.id)).run();
+		if (input.tags !== undefined) {
+			setTicketTags(tx, t.id, t.projectId, input.tags);
+			if (!Object.keys(patch).length) tx.update(ticket).set({ updatedAt: new Date() }).where(eq(ticket.id, t.id)).run();
+		}
 
 		const colRef = input.column ?? input.columnId;
 		if (colRef !== undefined || input.position !== undefined) {

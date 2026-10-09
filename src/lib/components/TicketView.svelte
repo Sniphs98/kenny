@@ -5,6 +5,7 @@
 	import { api, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import * as Alert from '$lib/components/ui/alert';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
@@ -279,6 +280,10 @@
 						{/each}
 					</Select.Content>
 				</Select.Root>
+			</div>
+			<div class="grid gap-2">
+				<Label>Tags</Label>
+				<TagPicker tags={data.tags} value={t.tags.map((g) => g.id)} onchange={(tags) => patch({ tags })} />
 			</div>
 			<div class="grid gap-2">
 				<Label>Zuständig</Label>

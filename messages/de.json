@@ -407,5 +407,11 @@
 	"um_error_existing_member": "Benutzer ist bereits Projektmitglied.",
 	"um_error_member": "Projektmitglied nicht gefunden.",
 	"um_error_last_project_admin": "Der letzte Projektadministrator kann nicht entfernt werden.",
-	"um_error_assignee": "Zuständige müssen aktive Projektmitglieder sein."
+	"um_error_assignee": "Zuständige müssen aktive Projektmitglieder sein.",
+	"mobile_navigation": "Hauptnavigation",
+	"mobile_project_navigation": "Projektnavigation",
+	"mobile_account_menu": "Benutzermenü",
+	"mobile_move_ticket": "Ticket verschieben",
+	"mobile_move_up": "{name} nach oben verschieben",
+	"mobile_move_down": "{name} nach unten verschieben"
 }

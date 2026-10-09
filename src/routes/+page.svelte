@@ -39,9 +39,9 @@
 <LiveUpdates />
 
 <div class="mx-auto max-w-6xl px-5 py-8">
-	<div class="mb-6 flex items-end gap-4">
+	<div class="mb-6 flex flex-wrap items-end gap-4">
 		<div class="grow">
-			<h1 class="text-2xl font-semibold tracking-tight">{m.projects()}</h1>
+			<h1 class="text-2xl font-semibold max-sm:text-xl tracking-tight">{m.projects()}</h1>
 			<p class="text-muted-foreground mt-1 text-sm">{m.all_projects_and_their_current_progress()}</p>
 		</div>
 		<Button onclick={openDialog}><Plus /> {m.new_project()}</Button>
@@ -59,7 +59,7 @@
 			<Button onclick={openDialog}><Plus /> {m.create_project()}</Button>
 		</Card.Root>
 	{:else}
-		<div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+		<div class="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4">
 			{#each data.projects as p (p.id)}
 				{@const done = p.total - p.open}
 				<a href="/projects/{p.key}/board" class="group" style="--c: {p.color}">

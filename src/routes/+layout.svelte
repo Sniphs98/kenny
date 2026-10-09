@@ -72,24 +72,29 @@
 <Tooltip.Provider delayDuration={400} disableHoverableContent ignoreNonKeyboardFocus>
 	<div class="contents" style={accentStyle(projectColor)}>
 		{#if data.user}
-			<header class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur">
-				<a href="/" class="mr-3 flex items-center gap-2 font-semibold tracking-tight">
+			<header
+				class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur max-sm:h-auto max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-1 max-sm:px-3 max-sm:py-2"
+			>
+				<a href="/" class="mr-3 flex shrink-0 items-center gap-2 font-semibold tracking-tight max-sm:mr-0">
 					<span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
 						<SquareKanban class="size-4" strokeWidth={2.25} />
 					</span>
 					Kenny
 				</a>
-				<nav class="flex gap-1">
+				<nav
+					aria-label={m.mobile_navigation()}
+					class="flex gap-1 max-sm:order-last max-sm:basis-full max-sm:justify-between"
+				>
 					{#each links as l (l.href)}
 						<a
 							href={l.href}
 							class={cn(
-								'text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+								'text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 max-sm:justify-center',
 								l.match(page.url.pathname) && 'bg-muted text-foreground'
 							)}
 						>
 							<l.icon class="size-4" />
-							<span class="max-sm:hidden">{l.label}</span>
+							<span>{l.label}</span>
 						</a>
 					{/each}
 				</nav>
@@ -97,6 +102,7 @@
 				<ThemeToggle />
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger
+						aria-label={`${data.user.name}: ${m.mobile_account_menu()}`}
 						class="hover:bg-muted flex items-center gap-2 rounded-md py-1 pr-2 pl-1 text-sm font-medium outline-none"
 					>
 						<UserAvatar name={data.user.name} size="sm" />

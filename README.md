@@ -7,6 +7,7 @@ Project and ticket management with Kanban boards and Gantt charts.
 - **Gantt charts** with start and due dates, draggable and resizable bars, and dependency arrows (red when a ticket starts before its prerequisite)
 - **Tickets** with priority, assignee, description, **subtasks**, and **links** (`depends on`, `blocks`, `related to`), with cycle prevention
 - **REST API** for creating, updating, and completing tickets using personal API tokens
+- **Mobile support** with responsive navigation, full-screen ticket editing, native date inputs, and touch controls for moving tickets and reordering columns. Boards, timelines, and wide tables scroll within their own areas.
 - **User accounts** with [Better Auth](https://better-auth.com) (email/password authentication and optional Microsoft sign-in)
 
 ## Screenshots

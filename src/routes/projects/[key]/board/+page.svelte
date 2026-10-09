@@ -66,7 +66,9 @@
 	const scheduled = $derived(data.tickets.filter((t) => t.startDate || t.dueDate).length);
 	onMount(() => {
 		try {
-			showTimeline = localStorage.getItem('board-timeline') !== 'closed';
+			showTimeline =
+				(localStorage.getItem('board-timeline') ?? (matchMedia('(max-width: 639px)').matches ? 'closed' : 'open')) !==
+				'closed';
 			const h = Number(localStorage.getItem('board-timeline-height'));
 			if (h >= 120) timelineHeight = h;
 		} catch {
@@ -372,6 +374,15 @@
 		dropTarget = null;
 	}
 
+	async function moveTicket(t: Item, columnId: number) {
+		try {
+			playIfCompleted(t.closed, await updateTicket(t.id, { columnId }));
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await invalidateAll();
+	}
+
 	async function assign(t: Item, assigneeId: string | null) {
 		t.assigneeId = assigneeId;
 		t.assigneeName = data.users.find((u) => u.id === assigneeId)?.name ?? null;
@@ -498,6 +509,8 @@
 					dragging={drag?.id === t.id}
 					onToggleSubtasks={() => toggleSubtasks(t.id)}
 					onAssign={(id) => assign(t, id)}
+					columns={data.columns}
+					onMove={(id) => moveTicket(t, id)}
 					ondragstart={(e) => onDragStart(e, t, lane.key)}
 					ondragend={onDragEnd}
 				/>
@@ -537,12 +550,12 @@
 
 {#if !data.canEdit}<p class="text-muted-foreground px-5 pt-3 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
-	<InputGroup.Root class="w-60">
+	<InputGroup.Root class="w-60 max-sm:w-full">
 		<InputGroup.Addon><Search /></InputGroup.Addon>
 		<InputGroup.Input placeholder={m.search_tickets()} bind:value={search} />
 	</InputGroup.Root>
 	<Select.Root type="single" bind:value={assigneeFilter}>
-		<Select.Trigger class="w-48">
+		<Select.Trigger class="w-48 max-sm:w-full">
 			<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
 		</Select.Trigger>
 		<Select.Content>
@@ -556,7 +569,7 @@
 		</Select.Content>
 	</Select.Root>
 	<Select.Root type="single" bind:value={tagFilter}>
-		<Select.Trigger class="w-40">
+		<Select.Trigger class="w-40 max-sm:w-full">
 			<span class="flex items-center gap-2 truncate"><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span>
 		</Select.Trigger>
 		<Select.Content>
@@ -572,7 +585,7 @@
 	<Select.Root type="single" value={groupBy} onValueChange={(v) => (groupBy = v as Group)}>
 		<Hint text={m.group_swimlanes()}>
 			{#snippet children(props)}
-				<Select.Trigger {...props} class="w-44">
+				<Select.Trigger {...props} class="w-44 max-sm:w-full">
 					<span class="flex items-center gap-2"
 						><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">{m.group()}</span>{GROUPS[
 							groupBy
@@ -588,7 +601,7 @@
 	<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
 		<Hint text={m.sort_all_columns()}>
 			{#snippet children(props)}
-				<Select.Trigger {...props} class="w-72">
+				<Select.Trigger {...props} class="w-72 max-sm:w-full">
 					<span class="flex items-center gap-2"
 						><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">{m.sort()}</span>{SORTS[
 							sortBy

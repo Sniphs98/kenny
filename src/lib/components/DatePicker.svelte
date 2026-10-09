@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MediaQuery } from 'svelte/reactivity';
 	import { intlLocale } from '$lib/i18n';
 	import { m } from '$lib/paraglide/messages.js';
 	import { buttonVariants, Button } from '$lib/components/ui/button';
@@ -29,6 +30,7 @@
 	} = $props();
 
 	let open = $state(false);
+	const mobile = new MediaQuery('(max-width: 639px)');
 
 	const parse = (s: string | null | undefined) => {
 		try {
@@ -54,38 +56,58 @@
 	}
 </script>
 
-<Popover.Root bind:open>
-	<Popover.Trigger
-		{disabled}
+{#if mobile.current}
+	<input
+		type="date"
 		{id}
-		class={cn(
-			buttonVariants({ variant: 'outline' }),
-			'w-full justify-start px-2.5 font-normal',
-			!current && 'text-muted-foreground',
-			className
-		)}
-	>
-		<CalendarIcon class="text-muted-foreground" />
-		<span class="truncate">{label}</span>
-	</Popover.Trigger>
-	<Popover.Content class="w-auto p-0" align="start">
-		<Calendar
-			type="single"
-			value={current}
-			onValueChange={(v) => pick(v as DateValue | undefined)}
-			locale={intlLocale()}
-			weekStartsOn={1}
-			captionLayout="dropdown"
-			{minValue}
-			initialFocus
-		/>
-		<div class="flex justify-between gap-2 border-t p-2">
-			<Button variant="ghost" size="sm" onclick={() => pick(today(getLocalTimeZone()))}>{m.today()}</Button>
-			{#if current}
-				<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => pick(undefined)}
-					>{m.remove()}</Button
-				>
-			{/if}
-		</div>
-	</Popover.Content>
-</Popover.Root>
+		{disabled}
+		value={value ?? ''}
+		min={min ?? undefined}
+		aria-label={placeholder}
+		class={cn('bg-background border-input h-11 w-full min-w-0 rounded-md border px-2.5', className)}
+		onchange={(e) => {
+			if (!e.currentTarget.validity.valid) {
+				e.currentTarget.reportValidity();
+				e.currentTarget.value = value ?? '';
+				return;
+			}
+			onchange(e.currentTarget.value || null);
+		}}
+	/>
+{:else}
+	<Popover.Root bind:open>
+		<Popover.Trigger
+			{disabled}
+			{id}
+			class={cn(
+				buttonVariants({ variant: 'outline' }),
+				'w-full justify-start px-2.5 font-normal',
+				!current && 'text-muted-foreground',
+				className
+			)}
+		>
+			<CalendarIcon class="text-muted-foreground" />
+			<span class="truncate">{label}</span>
+		</Popover.Trigger>
+		<Popover.Content class="w-auto p-0" align="start">
+			<Calendar
+				type="single"
+				value={current}
+				onValueChange={(v) => pick(v as DateValue | undefined)}
+				locale={intlLocale()}
+				weekStartsOn={1}
+				captionLayout="dropdown"
+				{minValue}
+				initialFocus
+			/>
+			<div class="flex justify-between gap-2 border-t p-2">
+				<Button variant="ghost" size="sm" onclick={() => pick(today(getLocalTimeZone()))}>{m.today()}</Button>
+				{#if current}
+					<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => pick(undefined)}
+						>{m.remove()}</Button
+					>
+				{/if}
+			</div>
+		</Popover.Content>
+	</Popover.Root>
+{/if}

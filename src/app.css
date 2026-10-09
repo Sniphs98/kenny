@@ -149,3 +149,33 @@
 		background: var(--prio-urgent);
 	}
 }
+
+/* Keep form controls and touch targets comfortable on small screens. */
+@media (max-width: 639px) {
+	main {
+		min-width: 0;
+	}
+	:where([data-slot='card'], [data-slot='card-content'], [data-slot='card-header']) {
+		min-width: 0;
+	}
+	:where(input:not([type='checkbox']):not([type='radio']), textarea, select) {
+		font-size: 16px;
+	}
+	:where(
+		[data-slot='button'],
+		[data-slot='toggle-group-item'],
+		[data-slot='dropdown-menu-trigger'],
+		[data-slot='select-trigger'],
+		[data-slot='input'],
+		[data-slot='input-group'],
+		select
+	) {
+		min-height: 44px;
+	}
+	:where([data-slot='button'][data-size^='icon'], [data-slot='toggle-group-item']) {
+		min-width: 44px;
+	}
+	:where([data-slot='dropdown-menu-item'], [data-slot='select-item']) {
+		min-height: 44px;
+	}
+}

@@ -61,7 +61,9 @@
 	} = $props();
 
 	const DAY = 86_400_000;
-	const ROW = 34;
+	let width = $state(1000);
+	const labelWidth = $derived(width < 600 ? 176 : 280);
+	const ROW = $derived(width < 600 ? 44 : 34);
 	const ZOOMS = { day: 36, week: 16, month: 6 } as const;
 
 	let zoom = $state<keyof typeof ZOOMS>('week');
@@ -160,7 +162,7 @@
 			max = Math.max(max, s.end + 14);
 		}
 		// Breite auffüllen, aber abrunden: sonst ist das Diagramm immer etwas zu breit und zeigt eine Scrollleiste
-		const minDays = Math.floor((width - 280) / px);
+		const minDays = Math.floor((width - labelWidth) / px);
 		return { start: min, days: Math.max(max - min + 1, minDays) };
 	});
 
@@ -444,7 +446,6 @@
 	}
 
 	let scroller: HTMLDivElement;
-	let width = $state(1000);
 	function scrollToToday() {
 		scroller?.scrollTo({ left: Math.max(0, x(today) - 200), behavior: 'smooth' });
 	}
@@ -500,13 +501,14 @@
 
 <div
 	class="gantt bg-card rounded-xl border shadow-xs"
+	class:compact={width < 600}
 	bind:this={scroller}
 	bind:clientWidth={width}
-	style="--px: {px}px; --row: {ROW}px; --c: var(--primary, {color}); max-height: {resizable
+	style="--px: {px}px; --row: {ROW}px; --label-width: {labelWidth}px; --c: var(--primary, {color}); max-height: {resizable
 		? `${height}px`
 		: maxHeight}"
 >
-	<div class="grid" style="width: {280 + range.days * px}px">
+	<div class="grid" style="width: {labelWidth + range.days * px}px">
 		<!-- Kopfzeile -->
 		<div class="corner">{m.ticket()}</div>
 		<div class="timehead" style="width: {range.days * px}px">
@@ -549,7 +551,7 @@
 						{#snippet children(props)}
 							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
 								<span class="prio prio-{t.priority}"></span>
-								<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
+								<span class="ticket-key text-muted-foreground font-mono text-xs">{t.key}</span>
 								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
 							</a>
 						{/snippet}
@@ -597,7 +599,7 @@
 			</button>
 			<Popover.Root bind:open={planOpen}>
 				<Popover.Content
-					class="w-96 p-0"
+					class="w-96 max-w-[calc(100vw-2rem)] p-0"
 					align="start"
 					side="top"
 					customAnchor={planDay !== null && planCell ? planCell : planAnchor}
@@ -817,7 +819,7 @@
 	}
 	.grid {
 		display: grid;
-		grid-template-columns: 280px 1fr;
+		grid-template-columns: var(--label-width) 1fr;
 		position: relative;
 	}
 	.corner,
@@ -935,6 +937,28 @@
 	}
 	.toggle.open :global(svg) {
 		transform: rotate(90deg);
+	}
+	.compact .link {
+		position: relative;
+		flex-direction: column;
+		align-items: stretch;
+		justify-content: center;
+		gap: 1px;
+		padding-left: 10px;
+	}
+	.compact .link .prio {
+		position: absolute;
+		left: 0;
+		top: 50%;
+		transform: translateY(-50%);
+	}
+	.compact .ticket-key {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 10px;
+	}
+	.compact .ttl {
+		font-size: 12px;
 	}
 	.ttl {
 		overflow: hidden;

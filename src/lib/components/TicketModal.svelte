@@ -54,9 +54,12 @@
 </script>
 
 <Dialog.Root open={!!data} onOpenChange={(open) => !open && close()}>
-	<Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-5xl" {onclick}>
+	<Dialog.Content
+		class="max-h-[90dvh] overflow-y-auto max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none sm:max-w-5xl"
+		{onclick}
+	>
 		{#if data}
-			<Dialog.Header class="flex-row items-center gap-3 pr-8">
+			<Dialog.Header class="flex-row items-center gap-3 pr-12">
 				<Dialog.Title class="text-muted-foreground font-mono text-sm font-normal">
 					{data.project.key} / {#if data.parent}{data.parent.key} /
 					{/if}{data.ticket.key}
@@ -75,7 +78,7 @@
 							}}
 						>
 							<Maximize2 />
-							{m.open_as_page()}
+							<span class="max-sm:sr-only">{m.open_as_page()}</span>
 						</a>
 					{/snippet}
 				</Hint>

@@ -24,11 +24,18 @@ export default defineConfig({
 		{ name: 'setup', testMatch: /auth\.setup\.ts/ },
 		{
 			name: 'chromium',
+			testIgnore: /mobile\.spec\.ts/,
 			use: {
 				...devices['Desktop Chrome'],
 				viewport: { width: 1600, height: 1000 },
 				storageState: 'playwright/.auth/user.json'
 			},
+			dependencies: ['setup']
+		},
+		{
+			name: 'mobile-chromium',
+			testMatch: /mobile\.spec\.ts/,
+			use: { ...devices['Pixel 7'], viewport: { width: 375, height: 812 }, storageState: 'playwright/.auth/user.json' },
 			dependencies: ['setup']
 		}
 	],

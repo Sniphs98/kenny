@@ -2,10 +2,13 @@
 	import { intlLocale } from '$lib/i18n';
 	import { m } from '$lib/paraglide/messages.js';
 	import { PRIORITY_LABELS } from '$lib/api';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { buttonVariants } from '$lib/components/ui/button';
+	import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import Hint from '$lib/components/Hint.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
-	import type { TicketListItem } from '$lib/contracts';
+	import type { TicketListItem, BoardColumnDto } from '$lib/contracts';
 	import { openTicket } from '$lib/ticket-modal';
 	import { cn } from '$lib/utils';
 	import Ban from '@lucide/svelte/icons/ban';
@@ -28,6 +31,8 @@
 		dragging,
 		onToggleSubtasks,
 		onAssign,
+		columns,
+		onMove,
 		ondragstart,
 		ondragend
 	}: {
@@ -42,6 +47,8 @@
 		dragging: boolean;
 		onToggleSubtasks: () => void;
 		onAssign: (id: string | null) => void;
+		columns: BoardColumnDto[];
+		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
 		ondragend: (e: DragEvent) => void;
 	} = $props();
@@ -165,6 +172,22 @@
 			/>
 		</span>
 	</div>
+	{#if !readOnly}
+		<div class="sm:hidden">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger
+					class={buttonVariants({ variant: 'outline', class: 'w-full' })}
+					onclick={(e) => e.stopPropagation()}><ArrowRightLeft />{m.mobile_move_ticket()}</DropdownMenu.Trigger
+				>
+				<DropdownMenu.Content align="start">
+					{#each columns as column (column.id)}<DropdownMenu.Item
+							disabled={column.id === t.columnId}
+							onSelect={() => onMove(column.id)}>{column.name}</DropdownMenu.Item
+						>{/each}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</div>
+	{/if}
 	{#if t.subtaskCount > 0}
 		<div class="-mx-3 -mb-2.5 border-t">
 			<Hint text={expanded ? m.collapse_subtasks() : m.expand_subtasks()}>

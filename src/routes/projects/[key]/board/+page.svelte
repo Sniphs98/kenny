@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import type { UpdateTicketInput } from '$lib/contracts';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -42,17 +44,17 @@
 	let assigneeFilter = $state('all');
 	/** Filter nach Tag: 'all' oder eine Tag-ID */
 	let tagFilter = $state('all');
-	const tagFilterLabel = $derived(data.tags.find((g) => String(g.id) === tagFilter)?.name ?? 'Alle Tags');
+	const tagFilterLabel = $derived(data.tags.find((g) => String(g.id) === tagFilter)?.name ?? m.all_tags());
 	let dialog: TicketDialog;
 
 	const filterLabel = $derived(
 		assigneeFilter === 'all'
-			? 'Alle Zuständigen'
+			? m.all_assignees()
 			: assigneeFilter === 'me'
-				? 'Mir zugewiesen'
+				? m.assigned_to_me()
 				: assigneeFilter === 'none'
-					? 'Nicht zugewiesen'
-					: (data.users.find((u) => u.id === assigneeFilter)?.name ?? 'Alle Zuständigen')
+					? m.unassigned()
+					: (data.users.find((u) => u.id === assigneeFilter)?.name ?? m.all_assignees())
 	);
 
 	// Zeitplan über dem Board, auf-/zuklappbar; Zustand wird im Browser gemerkt
@@ -80,18 +82,18 @@
 
 	// --- Sortierung und Gruppierung ---
 	const SORTS = {
-		manual: 'Manuell',
-		created_desc: 'Neueste zuerst',
-		created_asc: 'Älteste zuerst',
-		updated_desc: 'Zuletzt geändert',
-		due_asc: 'Fälligkeit',
-		priority_desc: 'Priorität: hoch → niedrig',
-		priority_asc: 'Priorität: niedrig → hoch',
-		title_asc: 'Titel A–Z'
+		manual: m.manual(),
+		created_desc: m.newest_first(),
+		created_asc: m.oldest_first(),
+		updated_desc: m.recently_updated(),
+		due_asc: m.due_date(),
+		priority_desc: m.priority_high_low(),
+		priority_asc: m.priority_low_high(),
+		title_asc: m.title_a_z()
 	} as const;
 	type Sort = keyof typeof SORTS;
 
-	const GROUPS = { none: 'Keine', tag: 'Tag', assignee: 'Zuständig', priority: 'Priorität' } as const;
+	const GROUPS = { none: m.none(), tag: m.tag(), assignee: m.assignee(), priority: m.priority_2() } as const;
 	type Group = keyof typeof GROUPS;
 
 	let sortBy = $state<Sort>('manual');
@@ -153,7 +155,7 @@
 		due_asc: (a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || manual(a, b),
 		priority_desc: (a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority] || manual(a, b),
 		priority_asc: (a, b) => PRIO_RANK[b.priority] - PRIO_RANK[a.priority] || manual(a, b),
-		title_asc: (a, b) => a.title.localeCompare(b.title, 'de') || manual(a, b)
+		title_asc: (a, b) => a.title.localeCompare(b.title, intlLocale()) || manual(a, b)
 	};
 
 	// Lokale Kopie, damit Drag & Drop sofort sichtbar ist
@@ -228,7 +230,7 @@
 					match: (t: Item) => t.tags.some((x) => x.id === g.id),
 					preset: { tags: [g.id] }
 				})),
-				{ key: 'tag:none', label: 'Ohne Tag', kind: 'tag', match: (t) => !t.tags.length, preset: { tags: [] } }
+				{ key: 'tag:none', label: m.no_tag(), kind: 'tag', match: (t) => !t.tags.length, preset: { tags: [] } }
 			];
 		}
 		if (groupBy === 'assignee') {
@@ -238,7 +240,7 @@
 			return [
 				...users.map((u) => ({
 					key: `user:${u.id}`,
-					label: u.id === me ? `${u.name} (ich)` : u.name,
+					label: u.id === me ? m.me_2({ value1: u.name }) : u.name,
 					kind: 'assignee' as const,
 					userName: u.name,
 					match: (t: Item) => t.assigneeId === u.id,
@@ -246,7 +248,7 @@
 				})),
 				{
 					key: 'user:none',
-					label: 'Nicht zugewiesen',
+					label: m.unassigned(),
 					kind: 'assignee',
 					userName: null,
 					match: (t) => !t.assigneeId,
@@ -371,7 +373,9 @@
 		t.assigneeName = data.users.find((u) => u.id === assigneeId)?.name ?? null;
 		try {
 			await updateTicket(t.id, { assigneeId });
-			toast.success(assigneeId ? `${t.key} an ${t.assigneeName} zugewiesen` : `Zuweisung von ${t.key} entfernt`);
+			toast.success(
+				assigneeId ? m.assigned_to({ value1: t.key, value2: t.assigneeName ?? '' }) : m.unassigned_2({ value1: t.key })
+			);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -413,19 +417,19 @@
 					'hover:bg-muted text-muted-foreground hover:text-foreground flex h-6 items-center gap-1 rounded-md px-1.5 text-xs',
 					columnSort[col.id] && 'text-primary bg-primary/10'
 				)}
-				title="Spalte sortieren: {SORTS[sort]}"
-				aria-label="Spalte {col.name} sortieren"
+				title={m.sort_column({ value1: SORTS[sort] })}
+				aria-label={m.sort_column_2({ value1: col.name })}
 			>
 				<ArrowDownUp class="size-3.5" />
 				{#if columnSort[col.id]}<span class="max-w-20 truncate">{SORTS[sort]}</span>{/if}
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content align="end" class="w-52">
-				<DropdownMenu.Label>Spalte „{col.name}“ sortieren</DropdownMenu.Label>
+				<DropdownMenu.Label>{m.sort_column_3({ value1: col.name })}</DropdownMenu.Label>
 				<DropdownMenu.RadioGroup
 					value={columnSort[col.id] ?? 'board'}
 					onValueChange={(v) => setColumnSort(col.id, v as Sort | 'board')}
 				>
-					<DropdownMenu.RadioItem value="board">Wie Board ({SORTS[sortBy]})</DropdownMenu.RadioItem>
+					<DropdownMenu.RadioItem value="board">{m.same_as_board({ value1: SORTS[sortBy] })}</DropdownMenu.RadioItem>
 					<DropdownMenu.Separator />
 					{#each Object.entries(SORTS) as [v, l] (v)}
 						<DropdownMenu.RadioItem value={v}>{l}</DropdownMenu.RadioItem>
@@ -437,8 +441,8 @@
 			<Button
 				variant="ghost"
 				size="icon-xs"
-				title="Ticket hinzufügen"
-				aria-label="Ticket hinzufügen"
+				title={m.add_ticket()}
+				aria-label={m.add_ticket()}
 				onclick={() => ((quickCell = `${lane.key}|${col.id}`), (quickTitle = ''))}
 			>
 				<Plus />
@@ -495,7 +499,7 @@
 				<Input
 					autofocus
 					class="bg-card"
-					placeholder="Titel, Enter zum Anlegen"
+					placeholder={m.title_enter_to_create()}
 					bind:value={quickTitle}
 					onblur={() => !quickTitle && (quickCell = null)}
 					onkeydown={(e) => e.key === 'Escape' && (quickCell = null)}
@@ -511,7 +515,8 @@
 				)}
 				onclick={() => ((quickCell = cellKey), (quickTitle = ''))}
 			>
-				<Plus /> Ticket hinzufügen
+				<Plus />
+				{m.add_ticket()}
 			</Button>
 		{/if}
 	</section>
@@ -520,16 +525,16 @@
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
 	<InputGroup.Root class="w-60">
 		<InputGroup.Addon><Search /></InputGroup.Addon>
-		<InputGroup.Input placeholder="Tickets suchen…" bind:value={search} />
+		<InputGroup.Input placeholder={m.search_tickets()} bind:value={search} />
 	</InputGroup.Root>
 	<Select.Root type="single" bind:value={assigneeFilter}>
 		<Select.Trigger class="w-48">
 			<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
 		</Select.Trigger>
 		<Select.Content>
-			<Select.Item value="all">Alle Zuständigen</Select.Item>
-			<Select.Item value="me">Mir zugewiesen</Select.Item>
-			<Select.Item value="none">Nicht zugewiesen</Select.Item>
+			<Select.Item value="all">{m.all_assignees()}</Select.Item>
+			<Select.Item value="me">{m.assigned_to_me()}</Select.Item>
+			<Select.Item value="none">{m.unassigned()}</Select.Item>
 			<Select.Separator />
 			{#each data.users as u (u.id)}
 				<Select.Item value={u.id}>{u.name}</Select.Item>
@@ -541,19 +546,19 @@
 			<span class="flex items-center gap-2 truncate"><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span>
 		</Select.Trigger>
 		<Select.Content>
-			<Select.Item value="all">Alle Tags</Select.Item>
+			<Select.Item value="all">{m.all_tags()}</Select.Item>
 			{#if data.tags.length}<Select.Separator />{/if}
 			{#each data.tags as g (g.id)}
 				<Select.Item value={String(g.id)}><TagBadge name={g.name} color={g.color} /></Select.Item>
 			{/each}
 		</Select.Content>
 	</Select.Root>
-	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> Unteraufgaben anzeigen</Label>
+	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> {m.show_subtasks()}</Label>
 	<span class="grow"></span>
 	<Select.Root type="single" value={groupBy} onValueChange={(v) => (groupBy = v as Group)}>
-		<Select.Trigger class="w-44" title="Gruppieren (Swimlanes)">
+		<Select.Trigger class="w-44" title={m.group_swimlanes()}>
 			<span class="flex items-center gap-2"
-				><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">Gruppe:</span>{GROUPS[
+				><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">{m.group()}</span>{GROUPS[
 					groupBy
 				]}</span
 			>
@@ -563,9 +568,9 @@
 		</Select.Content>
 	</Select.Root>
 	<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
-		<Select.Trigger class="w-72" title="Sortierung für alle Spalten">
+		<Select.Trigger class="w-72" title={m.sort_all_columns()}>
 			<span class="flex items-center gap-2"
-				><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">Sortierung:</span>{SORTS[
+				><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">{m.sort()}</span>{SORTS[
 					sortBy
 				]}</span
 			>
@@ -574,7 +579,7 @@
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>
 	</Select.Root>
-	<Button onclick={() => dialog.open()}><Plus /> Ticket</Button>
+	<Button onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
 </div>
 
 <Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">
@@ -583,8 +588,7 @@
 	>
 		<ChevronRight class="text-muted-foreground size-4 transition-transform group-data-[state=open]:rotate-90" />
 		<ChartGantt class="size-4" />
-		Zeitplan
-		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
+		{m.schedule()} <span class="text-muted-foreground text-xs font-medium">{m.scheduled({ value1: scheduled })}</span>
 	</Collapsible.Trigger>
 	<Collapsible.Content>
 		<Gantt
@@ -645,7 +649,7 @@
 					{/if}
 				</div>
 			{:else}
-				<p class="text-muted-foreground px-2 py-6 text-sm">Keine Tickets für diese Filter.</p>
+				<p class="text-muted-foreground px-2 py-6 text-sm">{m.no_tickets_match_these_filters()}</p>
 			{/each}
 		</div>
 	</div>

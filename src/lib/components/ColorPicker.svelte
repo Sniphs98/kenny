@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils';
 	import Check from '@lucide/svelte/icons/check';
 	import Pipette from '@lucide/svelte/icons/pipette';
@@ -28,7 +29,7 @@
 			class="focus-visible:ring-ring/50 grid size-7 place-items-center rounded-full text-white outline-none focus-visible:ring-3"
 			style="background: {c}"
 			title={c}
-			aria-label="Farbe {c}"
+			aria-label={m.color_2({ value1: c })}
 			onclick={() => (value = c)}
 		>
 			{#if value.toLowerCase() === c}<Check class="size-4" />{/if}
@@ -40,9 +41,9 @@
 			!isPreset && 'border-solid text-white'
 		)}
 		style={isPreset ? '' : `background: ${value}`}
-		title="Eigene Farbe"
+		title={m.custom_color()}
 	>
 		<Pipette class="size-3.5" />
-		<input type="color" bind:value class="absolute inset-0 cursor-pointer opacity-0" aria-label="Eigene Farbe" />
+		<input type="color" bind:value class="absolute inset-0 cursor-pointer opacity-0" aria-label={m.custom_color()} />
 	</label>
 </div>

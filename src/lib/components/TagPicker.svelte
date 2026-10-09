@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import * as Command from '$lib/components/ui/command';
 	import * as Popover from '$lib/components/ui/popover';
@@ -63,14 +64,14 @@
 			<TagBadge name={t.name} color={t.color} />
 		{:else}
 			<TagIcon class="text-muted-foreground" />
-			<span class="text-muted-foreground">Keine Tags</span>
+			<span class="text-muted-foreground">{m.no_tags()}</span>
 		{/each}
 	</Popover.Trigger>
 	<Popover.Content class="w-64 p-0" align="start" onclick={(e) => e.stopPropagation()}>
 		<Command.Root>
-			<Command.Input placeholder="Tag suchen oder anlegen…" bind:value={query} />
+			<Command.Input placeholder={m.search_or_create_a_tag()} bind:value={query} />
 			<Command.List>
-				{#if !canCreate}<Command.Empty>Kein Tag gefunden.</Command.Empty>{/if}
+				{#if !canCreate}<Command.Empty>{m.no_tags_found()}</Command.Empty>{/if}
 				<Command.Group>
 					{#each tags as t (t.id)}
 						<Command.Item
@@ -85,7 +86,7 @@
 					{#each value.filter((r) => typeof r === 'string') as name (name)}
 						<Command.Item value="new:{name}" keywords={[name]} data-checked onSelect={() => toggle(name)}>
 							<TagBadge {name} color="#71717a" />
-							<span class="text-muted-foreground text-xs">neu</span>
+							<span class="text-muted-foreground text-xs">{m.new()}</span>
 						</Command.Item>
 					{/each}
 				</Command.Group>
@@ -93,7 +94,7 @@
 				{#if canCreate}
 					<Command.Item value="__create" keywords={[query]} forceMount onSelect={create}>
 						<Plus />
-						<span class="truncate">„{query.trim()}“ anlegen</span>
+						<span class="truncate">{m.create_2({ value1: query.trim() })}</span>
 					</Command.Item>
 				{/if}
 			</Command.List>

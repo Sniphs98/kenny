@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { goto, invalidateAll, preloadData, refreshAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import TicketView from '$lib/components/TicketView.svelte';
@@ -46,14 +47,15 @@
 					href="/tickets/{data.ticket.key}"
 					data-full
 					class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'text-muted-foreground ml-auto' })}
-					title="Als eigene Seite öffnen"
+					title={m.open_as_separate_page()}
 					onclick={(e) => {
 						if (e.metaKey || e.ctrlKey) return;
 						e.preventDefault();
 						goto(`/tickets/${data.ticket.key}`);
 					}}
 				>
-					<Maximize2 /> Als Seite öffnen
+					<Maximize2 />
+					{m.open_as_page()}
 				</a>
 			</Dialog.Header>
 			<TicketView

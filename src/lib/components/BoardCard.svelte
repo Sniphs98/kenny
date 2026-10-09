@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
@@ -48,7 +50,7 @@
 	function shortDate(d: string) {
 		const date = new Date(d);
 		const sameYear = date.getFullYear() === new Date().getFullYear();
-		return date.toLocaleDateString('de-DE', sameYear ? { day: '2-digit', month: '2-digit' } : undefined);
+		return date.toLocaleDateString(intlLocale(), sameYear ? { day: '2-digit', month: '2-digit' } : undefined);
 	}
 </script>
 
@@ -80,7 +82,7 @@
 		<div class="-mb-0.5 flex items-start gap-2">
 			<div
 				class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs"
-				title="Unteraufgabe von {parent.key} {parent.title}"
+				title={m.subtask_of({ value1: parent.key, value2: parent.title })}
 			>
 				<CornerDownRight class="size-3 shrink-0" />
 				<span class="shrink-0 font-mono">{parent.key}</span>
@@ -102,27 +104,33 @@
 		{#if !parent}{@render tagList()}{/if}
 	</div>
 	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
-		<span class="flex items-center gap-1.5" title="Priorität: {PRIORITY_LABELS[t.priority]}">
+		<span class="flex items-center gap-1.5" title={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
 			<span class="prio prio-{t.priority}"></span>
 			<span class="font-mono">{t.key}</span>
 		</span>
 		{#if t.dueDate}
 			<span
 				class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}
-				title="Fällig am {new Date(t.dueDate).toLocaleDateString('de-DE')}{overdue ? ' (überfällig)' : ''}"
+				title={m.due_on({
+					value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
+					value2: overdue ? m.overdue_suffix() : ''
+				})}
 			>
 				<Calendar />
 				{shortDate(t.dueDate)}
 			</span>
 		{/if}
 		{#if blocked}
-			<span class="text-warning flex items-center gap-1" title="Wartet auf {t.openBlockers} offene(s) Ticket(s)">
+			<span
+				class="text-warning flex items-center gap-1"
+				title={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}
+			>
 				<Ban />
 				{t.openBlockers}
 			</span>
 		{/if}
 		{#if t.attachmentCount > 0}
-			<span class="flex items-center gap-1" title="{t.attachmentCount} Anhang/Anhänge">
+			<span class="flex items-center gap-1" title={m.attachment_s({ value1: t.attachmentCount })}>
 				<Paperclip />
 				{t.attachmentCount}
 			</span>
@@ -137,12 +145,12 @@
 				type="button"
 				class="text-muted-foreground hover:bg-muted/60 hover:text-foreground flex w-full items-center gap-1.5 px-3 py-1.5 text-xs"
 				aria-expanded={expanded}
-				title={expanded ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'}
+				title={expanded ? m.collapse_subtasks() : m.expand_subtasks()}
 				onclick={(e) => (e.stopPropagation(), onToggleSubtasks())}
 			>
 				<ChevronRight class={cn('size-3.5 transition-transform', expanded && 'rotate-90')} />
 				<ListChecks class="size-3.5" />
-				<span>Unteraufgaben</span>
+				<span>{m.subtasks()}</span>
 				<span class="bg-muted ml-auto h-1 w-12 overflow-hidden rounded-full">
 					<span
 						class={cn('block h-full rounded-full', t.subtaskDone === t.subtaskCount ? 'bg-success' : 'bg-primary')}

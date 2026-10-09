@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from "$lib/paraglide/messages.js";
 	import { Calendar as CalendarPrimitive } from "bits-ui";
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { buttonVariants, type ButtonVariant } from "$lib/components/ui/button/index.js";
@@ -27,6 +28,7 @@
 		"rtl:rotate-180",
 		className
 	)}
+	aria-label={m.next_month()}
 	{...restProps}
 >
 	{#if children}

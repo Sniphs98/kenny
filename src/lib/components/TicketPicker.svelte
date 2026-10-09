@@ -2,6 +2,7 @@
 	import * as Command from '$lib/components/ui/command';
 	import * as Popover from '$lib/components/ui/popover';
 	import { buttonVariants } from '$lib/components/ui/button';
+	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
@@ -11,7 +12,7 @@
 	let {
 		tickets,
 		value = $bindable(''),
-		placeholder = 'Ticket wählen…',
+		placeholder = m.choose_ticket(),
 		class: className
 	}: {
 		tickets: Option[];
@@ -28,7 +29,7 @@
 <Popover.Root bind:open>
 	<Popover.Trigger
 		class={cn(buttonVariants({ variant: 'outline' }), 'min-w-0 justify-between px-2.5 font-normal', className)}
-		aria-label="Ticket wählen"
+		aria-label={m.choose_ticket()}
 	>
 		{#if current}
 			<span class="flex min-w-0 items-center gap-2">
@@ -42,9 +43,9 @@
 	</Popover.Trigger>
 	<Popover.Content class="w-80 p-0" align="start">
 		<Command.Root>
-			<Command.Input placeholder="Nummer oder Titel suchen…" />
+			<Command.Input placeholder={m.search_ticket_number_or_title()} />
 			<Command.List class="max-h-72">
-				<Command.Empty>Kein Ticket gefunden.</Command.Empty>
+				<Command.Empty>{m.no_ticket_found()}</Command.Empty>
 				<Command.Group>
 					{#each tickets as o (o.id)}
 						<Command.Item

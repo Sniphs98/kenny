@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { localizeError } from '$lib/i18n';
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import * as Alert from '$lib/components/ui/alert';
@@ -18,64 +21,57 @@
 	let { data, form } = $props();
 
 	const origin = $derived(page.url.origin);
-	const fmt = (d: Date | null) => (d ? new Date(d).toLocaleString('de-DE') : 'nie');
+	const fmt = (d: Date | null) => (d ? new Date(d).toLocaleString(intlLocale()) : m.never());
 
 	let copied = $state(false);
 	async function copy(text: string) {
 		await navigator.clipboard.writeText(text);
 		copied = true;
-		toast.success('Token kopiert');
+		toast.success(m.token_copied());
 		setTimeout(() => (copied = false), 1500);
 	}
 
 	const endpoints = [
-		['GET', '/projects', 'Projekte auflisten'],
-		['POST', '/projects', 'Projekt anlegen {name, key?, description?, color?}'],
-		['GET', '/projects/:projekt/tickets?closed=false', 'Tickets auflisten'],
-		['POST', '/projects/:projekt/tickets', 'Ticket anlegen (tags: Liste aus IDs oder Namen)'],
-		['GET', '/projects/:projekt/tags', 'Tags des Projekts auflisten'],
-		['POST', '/projects/:projekt/tags', 'Tag anlegen {name, color?}'],
-		['PATCH', '/projects/:projekt/tags/:id', 'Tag ändern {name?, color?}'],
-		['DELETE', '/projects/:projekt/tags/:id', 'Tag löschen'],
-		['GET', '/tickets/:ticket', 'Ticket mit Unteraufgaben und Verknüpfungen'],
-		[
-			'PATCH',
-			'/tickets/:ticket',
-			'Ticket ändern (auch column zum Verschieben, assignee zum Zuweisen, tags ersetzt alle Tags)'
-		],
-		['POST', '/tickets/:ticket/close', 'Ticket abschließen'],
-		['POST', '/tickets/:ticket/reopen', 'Ticket wieder öffnen'],
-		['POST', '/tickets/:ticket/subtasks', 'Unteraufgabe anlegen'],
-		['GET', '/tickets/:ticket/attachments', 'Anhänge auflisten'],
-		['POST', '/tickets/:ticket/attachments?filename=bild.png', 'Anhang hochladen (Datei als Body)'],
-		['GET', '/attachments/:id', 'Anhang herunterladen (?download erzwingt Download)'],
-		['DELETE', '/attachments/:id', 'Anhang löschen'],
-		['POST', '/tickets/:ticket/links', 'Verknüpfen {target, type: depends_on|blocks|relates}'],
-		['DELETE', '/tickets/:ticket/links/:id', 'Verknüpfung entfernen'],
-		['DELETE', '/tickets/:ticket', 'Ticket löschen'],
-		['GET', '/users', 'Benutzer (für assignee)']
+		['GET', '/projects', m.list_projects()],
+		['POST', '/projects', m.endpoint_create_project() + ' {name, key?, description?, color?}'],
+		['GET', '/projects/:projekt/tickets?closed=false', m.list_tickets()],
+		['POST', '/projects/:projekt/tickets', m.create_ticket_tags_list_of_ids_or_names()],
+		['GET', '/projects/:projekt/tags', m.list_project_tags()],
+		['POST', '/projects/:projekt/tags', m.endpoint_create_tag() + ' {name, color?}'],
+		['PATCH', '/projects/:projekt/tags/:id', m.endpoint_update_tag() + ' {name?, color?}'],
+		['DELETE', '/projects/:projekt/tags/:id', m.delete_tag()],
+		['GET', '/tickets/:ticket', m.ticket_with_subtasks_and_links()],
+		['PATCH', '/tickets/:ticket', m.update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta()],
+		['POST', '/tickets/:ticket/close', m.complete_ticket()],
+		['POST', '/tickets/:ticket/reopen', m.reopen_ticket()],
+		['POST', '/tickets/:ticket/subtasks', m.create_subtask()],
+		['GET', '/tickets/:ticket/attachments', m.list_attachments()],
+		['POST', '/tickets/:ticket/attachments?filename=bild.png', m.upload_attachment_file_as_body()],
+		['GET', '/attachments/:id', m.download_attachment_download_forces_download()],
+		['DELETE', '/attachments/:id', m.delete_attachment()],
+		['POST', '/tickets/:ticket/links', m.endpoint_link() + ' {target, type: depends_on|blocks|relates}'],
+		['DELETE', '/tickets/:ticket/links/:id', m.remove_link()],
+		['DELETE', '/tickets/:ticket', m.delete_ticket()],
+		['GET', '/users', m.users_for_assignee()]
 	];
 </script>
 
 <div class="mx-auto flex max-w-4xl flex-col gap-5 px-5 py-8">
 	<div>
 		<h1 class="text-2xl font-semibold tracking-tight">API</h1>
-		<p class="text-muted-foreground mt-1 text-sm">Tokens für Skripte und andere Programme verwalten.</p>
+		<p class="text-muted-foreground mt-1 text-sm">{m.manage_tokens_for_scripts_and_other_applications()}</p>
 	</div>
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>API-Tokens</Card.Title>
-			<Card.Description>
-				Mit einem Token können andere Programme Tickets anlegen, ändern und abschließen. Das Token wird nur einmal
-				angezeigt.
-			</Card.Description>
+			<Card.Title>{m.api_tokens()}</Card.Title>
+			<Card.Description>{m.tokens_let_other_applications_create_update_and_complete_tickets_each_()}</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
 			{#if form?.token}
 				<Alert.Root class="text-success border-success/30 bg-success/5">
 					<CircleCheck />
-					<Alert.Title>Neues Token erstellt</Alert.Title>
+					<Alert.Title>{m.new_token_created()}</Alert.Title>
 					<Alert.Description>
 						<div class="mt-1 flex w-full items-center gap-2">
 							<code
@@ -85,35 +81,35 @@
 							<Button
 								variant="outline"
 								size="icon-sm"
-								title="Kopieren"
-								aria-label="Token kopieren"
+								title={m.copy()}
+								aria-label={m.copy_token()}
 								onclick={() => copy(form.token!)}
 							>
 								{#if copied}<Check />{:else}<Copy />{/if}
 							</Button>
 						</div>
-						<span class="text-muted-foreground text-xs">Jetzt kopieren, es wird nicht noch einmal angezeigt.</span>
+						<span class="text-muted-foreground text-xs">{m.copy_it_now_it_won_t_be_shown_again()}</span>
 					</Alert.Description>
 				</Alert.Root>
 			{/if}
-			{#if form?.error}<p class="text-destructive text-sm">{form.error}</p>{/if}
+			{#if form?.error}<p class="text-destructive text-sm">{localizeError(form.error)}</p>{/if}
 
 			<form method="POST" action="?/create" class="flex gap-2" use:enhance>
 				<InputGroup.Root>
 					<InputGroup.Addon><KeyRound /></InputGroup.Addon>
-					<InputGroup.Input name="name" placeholder="Name, z.B. CI-Pipeline" required />
+					<InputGroup.Input name="name" placeholder={m.name_e_g_ci_pipeline()} required />
 				</InputGroup.Root>
-				<Button type="submit"><Plus /> Token erstellen</Button>
+				<Button type="submit"><Plus /> {m.create_token()}</Button>
 			</form>
 
 			{#if data.tokens.length}
 				<Table.Root>
 					<Table.Header>
 						<Table.Row>
-							<Table.Head>Name</Table.Head>
-							<Table.Head>Token</Table.Head>
-							<Table.Head>Erstellt</Table.Head>
-							<Table.Head>Zuletzt benutzt</Table.Head>
+							<Table.Head>{m.name()}</Table.Head>
+							<Table.Head>{m.token()}</Table.Head>
+							<Table.Head>{m.created_2()}</Table.Head>
+							<Table.Head>{m.last_used()}</Table.Head>
 							<Table.Head></Table.Head>
 						</Table.Row>
 					</Table.Header>
@@ -128,7 +124,7 @@
 									<form method="POST" action="?/delete" use:enhance>
 										<input type="hidden" name="id" value={t.id} />
 										<Button type="submit" variant="ghost" size="sm" class="hover:text-destructive"
-											><Trash2 /> Widerrufen</Button
+											><Trash2 /> {m.revoke()}</Button
 										>
 									</form>
 								</Table.Cell>
@@ -142,12 +138,13 @@
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Kurzreferenz</Card.Title>
+			<Card.Title>{m.quick_reference()}</Card.Title>
 			<Card.Description>
-				Alle Endpunkte liegen unter <code class="font-mono">{origin}/api/v1</code> und erwarten
-				<code class="font-mono">Authorization: Bearer &lt;token&gt;</code>. Tickets können per ID (<code
+				{m.all_endpoints_are_under()} <code class="font-mono">{origin}/api/v1</code>
+				{m.and_require()}
+				<code class="font-mono">Authorization: Bearer &lt;token&gt;</code>{m.tickets_can_be_addressed_by_id()}<code
 					class="font-mono">42</code
-				>) oder Schlüssel (<code class="font-mono">WEB-12</code>) angesprochen werden, Projekte per ID oder Kürzel.
+				>{m.or_key()}<code class="font-mono">WEB-12</code>{m.projects_by_id_or_key()}
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
@@ -163,13 +160,13 @@
 				</Table.Body>
 			</Table.Root>
 
-			<h3 class="mt-2 text-sm font-semibold">Beispiel: Ticket anlegen</h3>
+			<h3 class="mt-2 text-sm font-semibold">{m.example_create_a_ticket()}</h3>
 			<pre
 				class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/projects/WEB/tickets \\
   -H "Authorization: Bearer $KENNY_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "title": "Login-Seite überarbeiten",
+    "title": "${m.example_ticket_title()}",
     "description": "Optional",
     "priority": "high",
     "column": "In Arbeit",
@@ -180,7 +177,7 @@
     "dependsOn": ["WEB-1", "WEB-2"]
   }'`}</pre>
 
-			<h3 class="mt-2 text-sm font-semibold">Beispiel: Ticket abschließen</h3>
+			<h3 class="mt-2 text-sm font-semibold">{m.example_complete_a_ticket()}</h3>
 			<pre
 				class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/tickets/WEB-12/close \\
   -H "Authorization: Bearer $KENNY_TOKEN"`}</pre>

@@ -8,6 +8,8 @@ export default ts.config(
 	{ linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' } },
 	{
 		ignores: [
+			'src/lib/paraglide/**',
+			'project.inlang/cache/**',
 			'.svelte-kit/**',
 			'build/**',
 			'data/**',

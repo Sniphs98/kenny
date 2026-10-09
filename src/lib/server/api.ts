@@ -1,4 +1,5 @@
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
+import type { ZodType } from 'zod';
 import { ApiError } from './errors';
 import { requireApiUser } from './api-auth';
 
@@ -7,14 +8,15 @@ type ApiUser = Awaited<ReturnType<typeof requireApiUser>>;
 /** Wrapper für API-Routen: Authentifizierung, JSON-Antwort und einheitliche Fehler */
 export function apiHandler(
 	fn: (event: RequestEvent, user: ApiUser) => unknown,
-	opts: { status?: number } = {}
+	opts: { status?: number; responseSchema?: ZodType } = {}
 ): RequestHandler {
 	return async (event) => {
 		try {
 			const user = await requireApiUser(event);
 			const result = await fn(event, user);
 			if (result instanceof Response) return result;
-			return json(result ?? { ok: true }, { status: opts.status ?? 200 });
+			const body = opts.responseSchema ? opts.responseSchema.parse(result) : result;
+			return json(body ?? { ok: true }, { status: opts.status ?? 200 });
 		} catch (e) {
 			if (e instanceof ApiError) return json({ error: e.message }, { status: e.status });
 			console.error(e);

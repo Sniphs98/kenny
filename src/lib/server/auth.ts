@@ -2,6 +2,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
+import { building } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { db, schema } from './db';
 
@@ -18,8 +19,9 @@ if (env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
 export const microsoftEnabled = !!socialProviders.microsoft;
 
 export const auth = betterAuth({
-	baseURL: env.BETTER_AUTH_URL,
-	secret: env.BETTER_AUTH_SECRET,
+	baseURL: building ? 'http://localhost:3000' : env.BETTER_AUTH_URL,
+	// Build analysis needs an auth instance, but must never need a production secret.
+	secret: building ? 'build-only-placeholder-never-used-at-runtime-0123456789' : env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'sqlite', schema }),
 	emailAndPassword: { enabled: true },
 	socialProviders,

@@ -17,7 +17,9 @@ test('Tag am Ticket vergeben und neuen Tag anlegen', async ({ page, request }) =
 	await page.getByPlaceholder('Tag suchen oder anlegen…').fill('Frontend');
 	await page.getByRole('option', { name: '„Frontend“ anlegen' }).click();
 
-	await expect.poll(async () => (await getTicket(request, t.key)).tags.map((g: { name: string }) => g.name)).toEqual(['Bug', 'Frontend']);
+	await expect
+		.poll(async () => (await getTicket(request, t.key)).tags.map((g: { name: string }) => g.name))
+		.toEqual(['Bug', 'Frontend']);
 	await page.keyboard.press('Escape');
 
 	// Tags erscheinen auf der Board-Karte
@@ -45,7 +47,9 @@ test('Tags in den Projekteinstellungen verwalten', async ({ page, request }) => 
 
 	await page.getByPlaceholder('Neuer Tag').fill('Technische Schuld');
 	await page.getByPlaceholder('Neuer Tag').press('Enter');
-	await expect.poll(async () => (await api<{ name: string }[]>(request, 'GET', `/projects/${p.key}/tags`)).map((t) => t.name)).toContain('Technische Schuld');
+	await expect
+		.poll(async () => (await api<{ name: string }[]>(request, 'GET', `/projects/${p.key}/tags`)).map((t) => t.name))
+		.toContain('Technische Schuld');
 
 	// Doppelte Namen (ohne Beachtung der Groß-/Kleinschreibung) werden abgelehnt
 	const res = await request.post(`/api/v1/projects/${p.key}/tags`, { data: { name: 'bug' } });

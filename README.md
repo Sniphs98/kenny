@@ -16,14 +16,34 @@ SvelteKit 2 (Svelte 5), TypeScript, SQLite über `better-sqlite3`, Drizzle ORM, 
 ## Loslegen
 
 ```bash
-npm install
+npm ci
 cp .env.example .env   # BETTER_AUTH_SECRET setzen: openssl rand -base64 32
 npm run dev
 ```
 
 Dann <http://localhost:5173> öffnen und ein Konto registrieren. Die Datenbank liegt unter `data/kenny.db`, Migrationen werden beim Start automatisch ausgeführt.
 
-### Produktion
+### Docker und Produktion
+
+Kenny wird als Docker-Container ausgeliefert. Das Image enthält den Node-Produktionsserver und die Migrationen. Es läuft als Benutzer `node`; Datenbank und Anhänge liegen gemeinsam im persistenten Volume unter `/app/data`.
+
+```bash
+cp .env.example .env
+# BETTER_AUTH_SECRET durch einen eigenen Wert ersetzen: openssl rand -base64 32
+# KENNY_ORIGIN auf die öffentlich erreichbare URL setzen
+# KENNY_VERSION auf eine veröffentlichte Version setzen
+
+docker compose pull
+docker compose up -d
+```
+
+Für einen lokalen Build ohne veröffentlichtes Image: `docker compose up -d --build`. Die Anwendung ist dann unter <http://localhost:3000> erreichbar. Der Port wird standardmäßig nur an `127.0.0.1` gebunden; für Zugriff von außen einen Reverse Proxy verwenden. `KENNY_ORIGIN` setzt sowohl `ORIGIN` als auch die Auth-URL.
+
+Releases erscheinen unter `ghcr.io/sniphs98/kenny:<version>`. Ein Tag wie `v0.1.0` auf einem Commit in `main` startet alle CI-Prüfungen und veröffentlicht erst nach deren Erfolg den Container. Ein manuell gestarteter Release-Workflow veröffentlicht nichts. Details stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+`BODY_SIZE_LIMIT` muss über der maximalen Anhanggröße liegen (Standard 25 MB, `ATTACHMENT_MAX_MB`); im Container sind 30 MB voreingestellt. Datenbank und Anhänge gemeinsam sichern. Für ein Update eine konkrete Container-Version wählen, dann erneut `docker compose pull && docker compose up -d` ausführen. Migrationen laufen beim Start automatisch; sie werden bei einem Image-Rollback nicht rückgängig gemacht.
+
+Für Betrieb ohne Docker:
 
 ```bash
 npm run build
@@ -31,73 +51,74 @@ DATABASE_URL=/pfad/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny
   ORIGIN=https://kenny.example.com PORT=3000 BODY_SIZE_LIMIT=30M node build
 ```
 
-`BODY_SIZE_LIMIT` muss über der maximalen Anhanggröße liegen (Standard 25 MB, `ATTACHMENT_MAX_MB`), sonst lehnt der Server größere Uploads ab. Anhänge liegen unter `data/attachments` (`ATTACHMENTS_DIR`) und gehören mit ins Backup.
-
-Der Ordner `drizzle/` (Migrationen) muss neben dem Build liegen bzw. per `MIGRATIONS_DIR` angegeben werden.
+Der Ordner `drizzle/` muss neben dem Build liegen oder per `MIGRATIONS_DIR` angegeben werden. `/api/health` prüft, ob der Server auf die migrierte Datenbank zugreifen kann.
 
 ### Datenbankschema ändern
 
 Schema in `src/lib/server/db/schema.ts` anpassen, dann `npm run db:generate`. Die neue Migration wird beim nächsten Start angewendet.
 
-### Tests
-
-End-to-End-Tests mit Playwright liegen unter `tests/e2e`:
+### Qualität und Tests
 
 ```bash
-npx playwright install chromium   # einmalig
-npm run test:e2e                  # alle Tests
-npm run test:e2e:ui               # interaktiv mit Playwright-UI
+npm run verify                   # Guard, Format, Lint, Typen, Unit-/Integrationstests, Build
+npx playwright install chromium  # einmalig
+npm run test:e2e:production       # Build und Browser-/HTTP-Tests
+npm run test:coverage             # Coverage für Verträge und Services
+npm run docker:build
+npm run docker:test               # Container, API, Upload und Persistenz nach Neustart
 ```
 
-Die Tests starten einen eigenen Dev-Server auf Port 4174 mit einer frischen Datenbank unter `data/test`; die Entwicklungsdaten bleiben unberührt. Jeder Test legt sein eigenes Projekt an, daher laufen sie parallel.
+Unit-Tests liegen unter `tests/unit`, Service- und Migrationstests unter `tests/integration`, Browser- und HTTP-Tests unter `tests/e2e`. Die Service-Tests verwenden SQLite im Speicher. Playwright startet einen eigenen gebauten Node-Server auf Port 4174 mit einer frischen Datenbank unter `data/test`; Entwicklungsdaten bleiben unberührt. Jeder Test legt sein eigenes Projekt an.
+
+GitHub Actions prüft Pull Requests und `main` automatisch. Gemeinsame Zod-Verträge stehen in `src/lib/contracts`; Formulare verwenden Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) beschreibt den Issue-/PR-Ablauf, [AGENTS.md](AGENTS.md) die Regeln für KI-Änderungen. Mehrsprachigkeit mit Paraglide ist als späteres Feature vorgesehen.
 
 ## REST-API
 
-Basis-URL: `/api/v1`. Authentifizierung über `Authorization: Bearer <token>`; Tokens werden in der App unter **API** erstellt. Im Browser funktioniert die API auch mit der normalen Anmeldung.
+Basis-URL: `/api/v1`. Schreibende JSON-Endpunkte validieren Eingaben mit Zod; unbekannte Felder werden mit HTTP 400 abgelehnt. Bei `PATCH` bleiben ausgelassene Felder unverändert, `null` leert ausdrücklich löschbare Werte. Authentifizierung über `Authorization: Bearer <token>`; Tokens werden in der App unter **API** erstellt. Im Browser funktioniert die API auch mit der normalen Anmeldung.
 
 Tickets können per ID (`42`) oder Schlüssel (`WEB-12`) angesprochen werden, Projekte per ID oder Kürzel.
 
-| Methode | Pfad | Beschreibung |
-| --- | --- | --- |
-| GET | `/me` | Eigener Benutzer |
-| GET | `/users` | Alle Benutzer |
-| GET | `/projects` | Projekte mit Ticketzählern |
-| POST | `/projects` | Projekt anlegen: `{name, key?, description?, color?}` |
-| GET/PATCH/DELETE | `/projects/:projekt` | Projekt lesen (inkl. Spalten), ändern, löschen |
-| GET/POST | `/projects/:projekt/columns` | Spalten lesen / anlegen `{name, isDone?, isBacklog?}` |
-| PATCH/DELETE | `/projects/:projekt/columns/:id` | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen |
-| GET/POST | `/projects/:projekt/tags` | Tags lesen / anlegen `{name, color?}` |
-| PATCH/DELETE | `/projects/:projekt/tags/:id` | Tag ändern `{name?, color?}` / löschen |
-| GET | `/projects/:projekt/tickets?closed=false` | Tickets auflisten |
-| POST | `/projects/:projekt/tickets` | Ticket anlegen |
-| GET | `/tickets/:ticket` | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen |
-| PATCH | `/tickets/:ticket` | Ticket ändern |
-| DELETE | `/tickets/:ticket` | Ticket löschen (inkl. Unteraufgaben) |
-| POST | `/tickets/:ticket/close` | Abschließen (verschiebt in die erste „Erledigt“-Spalte) |
-| POST | `/tickets/:ticket/reopen` | Wieder öffnen |
-| POST | `/tickets/:ticket/subtasks` | Unteraufgabe anlegen (Body wie Ticket anlegen) |
-| POST | `/tickets/:ticket/links` | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}` |
-| DELETE | `/tickets/:ticket/links/:id` | Verknüpfung entfernen |
-| GET | `/tickets/:ticket/attachments` | Anhänge auflisten |
-| POST | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`) |
-| GET | `/attachments/:id` | Anhang herunterladen (`?download` erzwingt Download) |
-| DELETE | `/attachments/:id` | Anhang löschen |
+| Methode          | Pfad                                          | Beschreibung                                                                  |
+| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| GET              | `/me`                                         | Eigener Benutzer                                                              |
+| GET              | `/users`                                      | Alle Benutzer                                                                 |
+| GET              | `/projects`                                   | Projekte mit Ticketzählern                                                    |
+| POST             | `/projects`                                   | Projekt anlegen: `{name, key?, description?, color?}`                         |
+| GET/PATCH/DELETE | `/projects/:projekt`                          | Projekt lesen (inkl. Spalten), ändern, löschen                                |
+| GET/POST         | `/projects/:projekt/columns`                  | Spalten lesen / anlegen `{name, isDone?, isBacklog?}`                         |
+| PATCH/DELETE     | `/projects/:projekt/columns/:id`              | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen             |
+| GET/POST         | `/projects/:projekt/tags`                     | Tags lesen / anlegen `{name, color?}`                                         |
+| PATCH/DELETE     | `/projects/:projekt/tags/:id`                 | Tag ändern `{name?, color?}` / löschen                                        |
+| GET              | `/projects/:projekt/tickets?closed=false`     | Tickets auflisten                                                             |
+| POST             | `/projects/:projekt/tickets`                  | Ticket anlegen                                                                |
+| GET              | `/tickets/:ticket`                            | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen                      |
+| PATCH            | `/tickets/:ticket`                            | Ticket ändern                                                                 |
+| DELETE           | `/tickets/:ticket`                            | Ticket löschen (inkl. Unteraufgaben)                                          |
+| POST             | `/tickets/:ticket/close`                      | Abschließen (verschiebt in die erste „Erledigt“-Spalte)                       |
+| POST             | `/tickets/:ticket/reopen`                     | Wieder öffnen                                                                 |
+| POST             | `/tickets/:ticket/subtasks`                   | Unteraufgabe anlegen (Body wie Ticket anlegen)                                |
+| POST             | `/tickets/:ticket/links`                      | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`  |
+| DELETE           | `/tickets/:ticket/links/:id`                  | Verknüpfung entfernen                                                         |
+| GET              | `/tickets/:ticket/attachments`                | Anhänge auflisten                                                             |
+| POST             | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`) |
+| GET              | `/attachments/:id`                            | Anhang herunterladen (`?download` erzwingt Download)                          |
+| DELETE           | `/attachments/:id`                            | Anhang löschen                                                                |
 
 Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
 
 ```json
 {
-  "title": "Login-Seite überarbeiten",
-  "description": "Text",
-  "priority": "low | medium | high | urgent",
-  "column": "In Arbeit",
-  "assignee": "name@firma.de",
-  "startDate": "2026-10-10",
-  "dueDate": "2026-10-17",
-  "parent": "WEB-3",
-  "dependsOn": ["WEB-1"],
-  "relatesTo": ["WEB-7"],
-  "tags": ["Bug", "Frontend"]
+	"title": "Login-Seite überarbeiten",
+	"description": "Text",
+	"priority": "low | medium | high | urgent",
+	"column": "In Arbeit",
+	"assignee": "name@firma.de",
+	"startDate": "2026-10-10",
+	"dueDate": "2026-10-17",
+	"parent": "WEB-3",
+	"dependsOn": ["WEB-1"],
+	"relatesTo": ["WEB-7"],
+	"tags": ["Bug", "Frontend"]
 }
 ```
 

@@ -3,7 +3,12 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test';
 type Json = Record<string, unknown>;
 
 /** REST-API mit der Sitzung des Testbenutzers aufrufen */
-export async function api<T = any>(request: APIRequestContext, method: string, path: string, data?: Json): Promise<T> {
+export async function api<T = unknown>(
+	request: APIRequestContext,
+	method: string,
+	path: string,
+	data?: Json
+): Promise<T> {
 	const res = await request.fetch(`/api/v1${path}`, { method, data });
 	expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBeTruthy();
 	return res.json();
@@ -22,7 +27,11 @@ export function createTicket(request: APIRequestContext, projectKey: string, dat
 }
 
 export function getTicket(request: APIRequestContext, ref: string) {
-	return api<any>(request, 'GET', `/tickets/${ref}`);
+	return api<import('zod').output<typeof import('../../src/lib/contracts').ticketDetailSchema>>(
+		request,
+		'GET',
+		`/tickets/${ref}`
+	);
 }
 
 /** Seite öffnen und warten, bis Svelte hydriert ist (vorher reagieren Buttons noch nicht) */

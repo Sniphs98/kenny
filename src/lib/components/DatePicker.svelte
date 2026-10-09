@@ -37,7 +37,9 @@
 	const minValue = $derived(parse(min));
 	const label = $derived(
 		current
-			? current.toDate(getLocalTimeZone()).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+			? current
+					.toDate(getLocalTimeZone())
+					.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
 			: placeholder
 	);
 
@@ -51,7 +53,12 @@
 <Popover.Root bind:open>
 	<Popover.Trigger
 		{id}
-		class={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start px-2.5 font-normal', !current && 'text-muted-foreground', className)}
+		class={cn(
+			buttonVariants({ variant: 'outline' }),
+			'w-full justify-start px-2.5 font-normal',
+			!current && 'text-muted-foreground',
+			className
+		)}
 	>
 		<CalendarIcon class="text-muted-foreground" />
 		<span class="truncate">{label}</span>
@@ -70,7 +77,9 @@
 		<div class="flex justify-between gap-2 border-t p-2">
 			<Button variant="ghost" size="sm" onclick={() => pick(today(getLocalTimeZone()))}>Heute</Button>
 			{#if current}
-				<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => pick(undefined)}>Entfernen</Button>
+				<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => pick(undefined)}
+					>Entfernen</Button
+				>
 			{/if}
 		</div>
 	</Popover.Content>

@@ -1,3 +1,4 @@
+import { dateSchema } from '$lib/contracts';
 import { ApiError } from '../errors';
 
 export function str(v: unknown, field: string, opts: { max?: number } = {}): string {
@@ -16,9 +17,9 @@ export function optStr(v: unknown, field: string): string | null {
 /** Datum im Format YYYY-MM-DD oder null */
 export function optDate(v: unknown, field: string): string | null {
 	if (v === undefined || v === null || v === '') return null;
-	if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v)))
+	if (!dateSchema.safeParse(v).success)
 		throw new ApiError(400, `Feld "${field}" muss ein Datum im Format YYYY-MM-DD sein.`);
-	return v;
+	return dateSchema.parse(v);
 }
 
 export function optInt(v: unknown, field: string): number | null {

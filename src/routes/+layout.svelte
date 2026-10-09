@@ -27,7 +27,12 @@
 	});
 
 	const links = [
-		{ href: '/', label: 'Projekte', icon: FolderKanban, match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets') },
+		{
+			href: '/',
+			label: 'Projekte',
+			icon: FolderKanban,
+			match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
+		},
 		{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings') }
 	];
 
@@ -81,7 +86,9 @@
 			<span class="grow"></span>
 			<ThemeToggle />
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="hover:bg-muted flex items-center gap-2 rounded-md py-1 pr-2 pl-1 text-sm font-medium outline-none">
+				<DropdownMenu.Trigger
+					class="hover:bg-muted flex items-center gap-2 rounded-md py-1 pr-2 pl-1 text-sm font-medium outline-none"
+				>
 					<UserAvatar name={data.user.name} size="sm" />
 					<span class="max-sm:hidden">{data.user.name}</span>
 					<ChevronDown class="text-muted-foreground size-3.5" />

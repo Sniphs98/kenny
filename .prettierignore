@@ -1,0 +1,12 @@
+node_modules/
+.svelte-kit/
+build/
+data/
+coverage/
+playwright/.auth/
+playwright-report/
+test-results/
+package-lock.json
+drizzle/meta/
+src/lib/components/ui/
+todo/

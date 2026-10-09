@@ -1,4 +1,12 @@
-import { sqliteTable, text, integer, index, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
+import {
+	sqliteTable,
+	text,
+	integer,
+	index,
+	uniqueIndex,
+	primaryKey,
+	type AnySQLiteColumn
+} from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth-schema';
 
@@ -37,8 +45,8 @@ export const boardColumn = sqliteTable(
 	(t) => [index('board_column_project_idx').on(t.projectId)]
 );
 
-export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
-export type Priority = (typeof PRIORITIES)[number];
+export { PRIORITIES, type Priority } from '$lib/contracts';
+import { PRIORITIES, LINK_TYPES } from '$lib/contracts';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -56,7 +64,7 @@ export const ticket = sqliteTable(
 		position: integer('position').notNull().default(0),
 		priority: text('priority', { enum: PRIORITIES }).notNull().default('medium'),
 		/** Übergeordnetes Ticket, wenn dieses Ticket eine Unteraufgabe ist */
-		parentId: integer('parent_id').references((): any => ticket.id, { onDelete: 'cascade' }),
+		parentId: integer('parent_id').references((): AnySQLiteColumn => ticket.id, { onDelete: 'cascade' }),
 		assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
 		/** Start und Ende als YYYY-MM-DD für das Gantt-Chart */
 		startDate: text('start_date'),
@@ -81,8 +89,7 @@ export const ticket = sqliteTable(
  * - depends_on: source setzt target voraus (target muss zuerst erledigt sein)
  * - relates: einfache Verlinkung
  */
-export const LINK_TYPES = ['depends_on', 'relates'] as const;
-export type LinkType = (typeof LINK_TYPES)[number];
+export { LINK_TYPES, type LinkType } from '$lib/contracts';
 
 export const ticketLink = sqliteTable(
 	'ticket_link',

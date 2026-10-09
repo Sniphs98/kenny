@@ -31,7 +31,9 @@
 	let open = $state(false);
 	const current = $derived(users.find((u) => u.id === value) ?? null);
 	// Angemeldeten Benutzer zuerst
-	const sorted = $derived([...users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name)));
+	const sorted = $derived(
+		[...users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name))
+	);
 
 	function pick(id: string | null) {
 		open = false;
@@ -74,7 +76,9 @@
 					{#each sorted as u (u.id)}
 						<Command.Item value={u.id} keywords={[u.name, u.email ?? '']} onSelect={() => pick(u.id)}>
 							<UserAvatar name={u.name} size="sm" />
-							<span class="grow truncate">{u.name}{#if u.id === me}<span class="text-muted-foreground"> (ich)</span>{/if}</span>
+							<span class="grow truncate"
+								>{u.name}{#if u.id === me}<span class="text-muted-foreground"> (ich)</span>{/if}</span
+							>
 							{#if u.id === value}<Check />{/if}
 						</Command.Item>
 					{/each}

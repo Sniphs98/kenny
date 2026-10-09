@@ -31,7 +31,8 @@ function present(a: Attachment, uploadedBy: string | null = null) {
 		createdAt: a.createdAt
 	};
 }
-export type AttachmentDto = ReturnType<typeof present>;
+export type { AttachmentDto } from '$lib/contracts';
+import type { AttachmentDto } from '$lib/contracts';
 
 export function listAttachments(ticketId: number): AttachmentDto[] {
 	return db
@@ -58,7 +59,10 @@ export function countAttachments(projectId: number) {
 
 /** Dateinamen säubern: keine Pfade, keine Steuerzeichen */
 function cleanName(name: string) {
-	const base = name.split(/[\\/]/).pop()!.replace(/[\x00-\x1f\x7f"]/g, '').trim();
+	const base = [...name.split(/[\\/]/).pop()!]
+		.filter((char) => char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127 && char !== '"')
+		.join('')
+		.trim();
 	return base.slice(0, 200) || 'datei';
 }
 
@@ -69,7 +73,9 @@ export async function addAttachments(ref: string | number, files: File[], userId
 		if (f.size > MAX_MB * 1024 * 1024) throw new ApiError(413, `"${f.name}" ist größer als ${MAX_MB} MB.`);
 	}
 	mkdirSync(DIR, { recursive: true });
-	const uploadedBy = userId ? (db.select({ name: user.name }).from(user).where(eq(user.id, userId)).get()?.name ?? null) : null;
+	const uploadedBy = userId
+		? (db.select({ name: user.name }).from(user).where(eq(user.id, userId)).get()?.name ?? null)
+		: null;
 
 	const created: AttachmentDto[] = [];
 	for (const f of files) {
@@ -139,7 +145,7 @@ export async function deleteAttachment(id: number) {
  */
 export function storageKeysForTickets(ticketIds: number[]) {
 	const all = new Set(ticketIds);
-	for (let level = ticketIds; level.length; ) {
+	for (let level = ticketIds; level.length;) {
 		level = db
 			.select({ id: ticket.id })
 			.from(ticket)

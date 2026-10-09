@@ -1,7 +1,8 @@
 <script lang="ts">
+	import type { UpdateTicketInput } from '$lib/contracts';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { api, PRIORITY_LABELS } from '$lib/api';
+	import { createTicket, updateTicket, PRIORITY_LABELS } from '$lib/api';
 	import BoardCard from '$lib/components/BoardCard.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import Gantt from '$lib/components/Gantt.svelte';
@@ -64,13 +65,17 @@
 			showTimeline = localStorage.getItem('board-timeline') !== 'closed';
 			const h = Number(localStorage.getItem('board-timeline-height'));
 			if (h >= 120) timelineHeight = h;
-		} catch {}
+		} catch {
+			/* Storage may be unavailable in private browsing. */
+		}
 	});
 	$effect(() => {
 		try {
 			localStorage.setItem('board-timeline', showTimeline ? 'open' : 'closed');
 			localStorage.setItem('board-timeline-height', String(timelineHeight));
-		} catch {}
+		} catch {
+			/* Storage may be unavailable in private browsing. */
+		}
 	});
 
 	// --- Sortierung und Gruppierung ---
@@ -110,7 +115,9 @@
 				columnSort = v.columnSort && typeof v.columnSort === 'object' ? v.columnSort : {};
 				collapsedLanes.clear();
 				for (const l of Array.isArray(v.collapsed) ? v.collapsed : []) collapsedLanes.add(String(l));
-			} catch {}
+			} catch {
+				/* Storage may be unavailable in private browsing. */
+			}
 			viewLoaded = true;
 		});
 	});
@@ -119,7 +126,9 @@
 		if (!viewLoaded) return;
 		try {
 			localStorage.setItem(viewKey, JSON.stringify(v));
-		} catch {}
+		} catch {
+			/* Storage may be unavailable in private browsing. */
+		}
 	});
 
 	const sortOf = (columnId: number): Sort => columnSort[columnId] ?? sortBy;
@@ -205,7 +214,7 @@
 		userName?: string | null;
 		priority?: string;
 		match: (t: Item) => boolean;
-		preset: Record<string, unknown>;
+		preset: UpdateTicketInput;
 	};
 
 	const lanes = $derived.by((): Lane[] => {
@@ -223,7 +232,9 @@
 			];
 		}
 		if (groupBy === 'assignee') {
-			const users = [...data.users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name));
+			const users = [...data.users].sort(
+				(a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name)
+			);
 			return [
 				...users.map((u) => ({
 					key: `user:${u.id}`,
@@ -233,7 +244,14 @@
 					match: (t: Item) => t.assigneeId === u.id,
 					preset: { assigneeId: u.id }
 				})),
-				{ key: 'user:none', label: 'Nicht zugewiesen', kind: 'assignee', userName: null, match: (t) => !t.assigneeId, preset: { assigneeId: null } }
+				{
+					key: 'user:none',
+					label: 'Nicht zugewiesen',
+					kind: 'assignee',
+					userName: null,
+					match: (t) => !t.assigneeId,
+					preset: { assigneeId: null }
+				}
 			];
 		}
 		if (groupBy === 'priority') {
@@ -279,7 +297,9 @@
 	function onDragOver(e: DragEvent, lane: string, columnId: number, list: HTMLElement) {
 		if (!drag) return;
 		e.preventDefault();
-		const cards = [...list.querySelectorAll<HTMLElement>('[data-card]')].filter((c) => Number(c.dataset.card) !== drag!.id);
+		const cards = [...list.querySelectorAll<HTMLElement>('[data-card]')].filter(
+			(c) => Number(c.dataset.card) !== drag!.id
+		);
 		let index = cards.length;
 		for (let i = 0; i < cards.length; i++) {
 			const r = cards[i].getBoundingClientRect();
@@ -292,7 +312,7 @@
 	}
 
 	/** Felder, die sich beim Wechsel der Bahn ändern */
-	function laneChange(t: Item, from: Lane, to: Lane): Record<string, unknown> {
+	function laneChange(t: Item, from: Lane, to: Lane): UpdateTicketInput {
 		if (from.key === to.key) return {};
 		if (to.kind === 'tag') {
 			// Tag der alten Bahn durch den der neuen ersetzen, andere Tags bleiben
@@ -315,7 +335,7 @@
 		const moved = tickets.find((t) => t.id === id)!;
 		const from = lanes.find((l) => l.key === fromLane)!;
 		const to = lanes.find((l) => l.key === toLane)!;
-		const body: Record<string, unknown> = laneChange(moved, from, to);
+		const body: UpdateTicketInput = laneChange(moved, from, to);
 
 		if (sortOf(columnId) === 'manual') {
 			// Position bezieht sich auf alle Tickets der Spalte, nicht nur die sichtbaren
@@ -334,7 +354,7 @@
 		moved.columnId = columnId;
 
 		try {
-			await api('PATCH', `/tickets/${id}`, body);
+			await updateTicket(id, body);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -350,7 +370,7 @@
 		t.assigneeId = assigneeId;
 		t.assigneeName = data.users.find((u) => u.id === assigneeId)?.name ?? null;
 		try {
-			await api('PATCH', `/tickets/${t.id}`, { assigneeId });
+			await updateTicket(t.id, { assigneeId });
 			toast.success(assigneeId ? `${t.key} an ${t.assigneeName} zugewiesen` : `Zuweisung von ${t.key} entfernt`);
 		} catch (err) {
 			toast.error((err as Error).message);
@@ -366,7 +386,7 @@
 		e.preventDefault();
 		if (!quickTitle.trim()) return;
 		try {
-			await api('POST', `/projects/${data.project.key}/tickets`, { ...lane.preset, title: quickTitle, columnId });
+			await createTicket(data.project.key, { ...lane.preset, title: quickTitle, columnId });
 			quickTitle = '';
 			await invalidateAll();
 		} catch (err) {
@@ -401,7 +421,10 @@
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content align="end" class="w-52">
 				<DropdownMenu.Label>Spalte „{col.name}“ sortieren</DropdownMenu.Label>
-				<DropdownMenu.RadioGroup value={columnSort[col.id] ?? 'board'} onValueChange={(v) => setColumnSort(col.id, v as Sort | 'board')}>
+				<DropdownMenu.RadioGroup
+					value={columnSort[col.id] ?? 'board'}
+					onValueChange={(v) => setColumnSort(col.id, v as Sort | 'board')}
+				>
 					<DropdownMenu.RadioItem value="board">Wie Board ({SORTS[sortBy]})</DropdownMenu.RadioItem>
 					<DropdownMenu.Separator />
 					{#each Object.entries(SORTS) as [v, l] (v)}
@@ -482,7 +505,10 @@
 			<Button
 				variant="ghost"
 				size="sm"
-				class={cn('text-muted-foreground justify-start', grouped && 'opacity-0 group-hover/lane:opacity-100 focus-visible:opacity-100')}
+				class={cn(
+					'text-muted-foreground justify-start',
+					grouped && 'opacity-0 group-hover/lane:opacity-100 focus-visible:opacity-100'
+				)}
 				onclick={() => ((quickCell = cellKey), (quickTitle = ''))}
 			>
 				<Plus /> Ticket hinzufügen
@@ -526,7 +552,11 @@
 	<span class="grow"></span>
 	<Select.Root type="single" value={groupBy} onValueChange={(v) => (groupBy = v as Group)}>
 		<Select.Trigger class="w-44" title="Gruppieren (Swimlanes)">
-			<span class="flex items-center gap-2"><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">Gruppe:</span>{GROUPS[groupBy]}</span>
+			<span class="flex items-center gap-2"
+				><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">Gruppe:</span>{GROUPS[
+					groupBy
+				]}</span
+			>
 		</Select.Trigger>
 		<Select.Content>
 			{#each Object.entries(GROUPS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
@@ -534,7 +564,11 @@
 	</Select.Root>
 	<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
 		<Select.Trigger class="w-72" title="Sortierung für alle Spalten">
-			<span class="flex items-center gap-2"><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">Sortierung:</span>{SORTS[sortBy]}</span>
+			<span class="flex items-center gap-2"
+				><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">Sortierung:</span>{SORTS[
+					sortBy
+				]}</span
+			>
 		</Select.Trigger>
 		<Select.Content>
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
@@ -544,14 +578,24 @@
 </div>
 
 <Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">
-	<Collapsible.Trigger class="group hover:bg-muted mx-5 mb-2 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-semibold">
+	<Collapsible.Trigger
+		class="group hover:bg-muted mx-5 mb-2 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-semibold"
+	>
 		<ChevronRight class="text-muted-foreground size-4 transition-transform group-data-[state=open]:rotate-90" />
 		<ChartGantt class="size-4" />
 		Zeitplan
 		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
 	</Collapsible.Trigger>
 	<Collapsible.Content>
-		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} projectKey={data.project.key} color={data.project.color} resizable bind:height={timelineHeight} />
+		<Gantt
+			tickets={data.tickets}
+			dependencies={data.dependencies}
+			columns={data.columns}
+			projectKey={data.project.key}
+			color={data.project.color}
+			resizable
+			bind:height={timelineHeight}
+		/>
 	</Collapsible.Content>
 </Collapsible.Root>
 

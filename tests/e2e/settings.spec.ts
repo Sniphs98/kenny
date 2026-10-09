@@ -8,7 +8,9 @@ test('Spalten per Drag & Drop am Griff sortieren', async ({ page, request }) => 
 	const p = await createProject(request);
 	await open(page, `/projects/${p.key}/settings`);
 
-	const target = page.getByRole('listitem').filter({ has: page.getByRole('button', { name: 'Spalte Review verschieben' }) });
+	const target = page
+		.getByRole('listitem')
+		.filter({ has: page.getByRole('button', { name: 'Spalte Review verschieben' }) });
 	await page.getByRole('button', { name: 'Spalte Offen verschieben' }).dragTo(target);
 
 	await expect.poll(() => columnNames(request, p.key)).toEqual(['In Arbeit', 'Review', 'Offen', 'Erledigt']);
@@ -30,9 +32,16 @@ test('Spalte als Backlog markieren', async ({ page, request }) => {
 	const p = await createProject(request);
 	await open(page, `/projects/${p.key}/settings`);
 
-	const offen = page.getByRole('listitem').filter({ has: page.getByRole('button', { name: 'Spalte Offen verschieben' }) });
+	const offen = page
+		.getByRole('listitem')
+		.filter({ has: page.getByRole('button', { name: 'Spalte Offen verschieben' }) });
 	await offen.getByRole('checkbox', { name: 'Backlog' }).click();
 	await expect
-		.poll(async () => (await api<{ name: string; isBacklog: boolean }[]>(request, 'GET', `/projects/${p.key}/columns`)).find((c) => c.name === 'Offen')?.isBacklog)
+		.poll(
+			async () =>
+				(await api<{ name: string; isBacklog: boolean }[]>(request, 'GET', `/projects/${p.key}/columns`)).find(
+					(c) => c.name === 'Offen'
+				)?.isBacklog
+		)
 		.toBe(true);
 });

@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
+	import { untrack } from 'svelte';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
+	import { projectFormSchema } from '$lib/contracts';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -15,33 +17,17 @@
 	let { data } = $props();
 
 	let open = $state(false);
-	let name = $state('');
-	let key = $state('');
-	let description = $state('');
-	let color = $state('#6366f1');
-	let error = $state('');
+	const { form, errors, message, enhance, reset, submitting } = superForm(
+		untrack(() => data.form),
+		{
+			validationMethod: 'onsubmit',
+			validators: zod4Client(projectFormSchema)
+		}
+	);
 
 	function openDialog() {
-		name = key = description = error = '';
-		color = '#6366f1';
+		reset();
 		open = true;
-	}
-
-	async function create(e: SubmitEvent) {
-		e.preventDefault();
-		error = '';
-		try {
-			const p = await api<{ key: string }>('POST', '/projects', {
-				name,
-				key: key || undefined,
-				description,
-				color
-			});
-			open = false;
-			await goto(`/projects/${p.key}/board`, { invalidateAll: true });
-		} catch (err) {
-			error = (err as Error).message;
-		}
 	}
 </script>
 
@@ -95,7 +81,10 @@
 								{#if p.total > 0}<span>{Math.round((done / p.total) * 100)}%</span>{/if}
 							</div>
 							<div class="bg-muted h-1 overflow-hidden rounded-full">
-								<div class="h-full rounded-full" style="width: {p.total ? (done / p.total) * 100 : 0}%; background: var(--c)"></div>
+								<div
+									class="h-full rounded-full"
+									style="width: {p.total ? (done / p.total) * 100 : 0}%; background: var(--c)"
+								></div>
 							</div>
 						</Card.Footer>
 					</Card.Root>
@@ -107,7 +96,7 @@
 
 <Dialog.Root bind:open>
 	<Dialog.Content class="sm:max-w-lg">
-		<form class="grid gap-4" onsubmit={create}>
+		<form class="grid gap-4" method="POST" use:enhance>
 			<Dialog.Header>
 				<Dialog.Title>Neues Projekt</Dialog.Title>
 				<Dialog.Description>Tickets im Projekt bekommen das Kürzel als Präfix, z.B. WEB-1.</Dialog.Description>
@@ -115,25 +104,32 @@
 			<div class="flex gap-3">
 				<div class="grid grow gap-2">
 					<Label for="p-name">Name</Label>
-					<Input id="p-name" bind:value={name} required maxlength={120} />
+					<Input name="name" id="p-name" bind:value={$form.name} required maxlength={120} />
 				</div>
 				<div class="grid w-28 gap-2">
 					<Label for="p-key">Kürzel</Label>
-					<Input id="p-key" bind:value={key} placeholder="auto" maxlength={10} />
+					<Input name="key" id="p-key" bind:value={$form.key} placeholder="auto" maxlength={10} />
 				</div>
 			</div>
 			<div class="grid gap-2">
 				<Label>Farbe</Label>
-				<ColorPicker bind:value={color} />
+				<ColorPicker bind:value={$form.color} />
+				<input type="hidden" name="color" value={$form.color} />
 			</div>
 			<div class="grid gap-2">
 				<Label for="p-desc">Beschreibung</Label>
-				<Textarea id="p-desc" bind:value={description} rows={3} />
+				<Textarea name="description" id="p-desc" bind:value={$form.description} rows={3} />
 			</div>
-			{#if error}<p class="text-destructive text-sm">{error}</p>{/if}
+			{#each Object.values($errors).flat().filter(Boolean) as error, i (i)}<p
+					class="text-destructive text-sm"
+					role="alert"
+				>
+					{error}
+				</p>{/each}
+			{#if $message}<p class="text-destructive text-sm" role="alert">{$message}</p>{/if}
 			<Dialog.Footer>
 				<Button variant="outline" onclick={() => (open = false)}>Abbrechen</Button>
-				<Button type="submit">Anlegen</Button>
+				<Button type="submit" disabled={$submitting}>Anlegen</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

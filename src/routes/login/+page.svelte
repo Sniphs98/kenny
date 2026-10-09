@@ -45,15 +45,21 @@
 	}
 </script>
 
-<div class="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4">
+<div
+	class="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4"
+>
 	<div class="w-full max-w-sm">
 		<div class="mb-6 text-center">
 			<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
 				<SquareKanban class="size-5" strokeWidth={2.25} />
 			</span>
-			<h1 class="mt-4 text-2xl font-semibold tracking-tight">{mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}</h1>
+			<h1 class="mt-4 text-2xl font-semibold tracking-tight">
+				{mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}
+			</h1>
 			<p class="text-muted-foreground mt-1 text-sm">
-				{mode === 'login' ? 'Melde dich bei Kenny an, um deine Projekte zu sehen.' : 'Lege ein neues Konto für Kenny an.'}
+				{mode === 'login'
+					? 'Melde dich bei Kenny an, um deine Projekte zu sehen.'
+					: 'Lege ein neues Konto für Kenny an.'}
 			</p>
 		</div>
 
@@ -98,7 +104,9 @@
 					{/if}
 					<Button type="submit" disabled={busy}>{mode === 'login' ? 'Anmelden' : 'Registrieren'}</Button>
 					{#if data.microsoftEnabled}
-						<div class="text-muted-foreground flex items-center gap-3 text-xs before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+						<div
+							class="text-muted-foreground flex items-center gap-3 text-xs before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border"
+						>
 							oder
 						</div>
 						<Button variant="outline" onclick={microsoft}>Mit Microsoft anmelden</Button>
@@ -109,9 +117,17 @@
 
 		<p class="text-muted-foreground mt-5 text-center text-sm">
 			{#if mode === 'login'}
-				Noch kein Konto? <a class="text-primary font-medium hover:underline" href="#register" onclick={() => (mode = 'register')}>Registrieren</a>
+				Noch kein Konto? <a
+					class="text-primary font-medium hover:underline"
+					href="#register"
+					onclick={() => (mode = 'register')}>Registrieren</a
+				>
 			{:else}
-				Schon registriert? <a class="text-primary font-medium hover:underline" href="#login" onclick={() => (mode = 'login')}>Anmelden</a>
+				Schon registriert? <a
+					class="text-primary font-medium hover:underline"
+					href="#login"
+					onclick={() => (mode = 'login')}>Anmelden</a
+				>
 			{/if}
 		</p>
 	</div>

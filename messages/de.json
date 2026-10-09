@@ -315,6 +315,5 @@
 	"choose_ticket": "Ticket wählen…",
 	"search_ticket_number_or_title": "Nummer oder Titel suchen…",
 	"no_ticket_found": "Kein Ticket gefunden.",
-	"system_language": "Systemsprache",
-	"language_follows_system": "Folgt der Sprache deines Browsers bzw. Betriebssystems."
+	"system_language": "Systemsprache"
 }

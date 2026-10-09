@@ -8,7 +8,8 @@ export default defineConfig({
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
-			strategy: ['cookie', 'baseLocale']
+			// Eigene Wahl (src/lib/locale-choice.ts) → Systemsprache (Accept-Language/navigator) → Englisch
+			strategy: ['custom-choice', 'preferredLanguage', 'baseLocale']
 		}),
 		tailwindcss(),
 		sveltekit()

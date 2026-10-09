@@ -86,7 +86,6 @@
 				{/each}
 			</nav>
 			<span class="grow"></span>
-			<LanguageSwitcher />
 			<ThemeToggle />
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
@@ -102,6 +101,7 @@
 						<div class="text-muted-foreground truncate text-xs">{data.user.email}</div>
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
+					<LanguageSwitcher />
 					<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
 						<KeyRound />
 						{m.api_tokens()}
@@ -115,10 +115,7 @@
 			</DropdownMenu.Root>
 		</header>
 	{:else}
-		<div class="fixed top-3.5 right-5 z-30 flex items-center gap-2">
-			<LanguageSwitcher />
-			<ThemeToggle />
-		</div>
+		<div class="fixed top-3.5 right-5 z-30"><ThemeToggle /></div>
 	{/if}
 
 	<main>

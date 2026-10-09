@@ -1,3 +1,4 @@
+import '$lib/locale-choice';
 import { m } from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
 

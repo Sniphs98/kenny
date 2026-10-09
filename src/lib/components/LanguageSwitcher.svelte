@@ -1,19 +1,29 @@
 <script lang="ts">
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { chooseLocale, storedLocale } from '$lib/locale-choice';
 	import { m } from '$lib/paraglide/messages.js';
-	import { getLocale, isLocale, setLocale } from '$lib/paraglide/runtime.js';
+	import { isLocale } from '$lib/paraglide/runtime.js';
+	import Languages from '@lucide/svelte/icons/languages';
+
+	// Untermenü im Benutzermenü; wird erst beim Öffnen im Browser gerendert
+	const value = storedLocale();
+
+	function choose(next: string) {
+		if (next !== value && (next === 'system' || isLocale(next))) chooseLocale(next);
+	}
 </script>
 
-<label class="flex items-center gap-2 text-sm">
-	<span class="sr-only">{m.language()}</span>
-	<select
-		class="bg-background rounded-md border px-2 py-1.5"
-		value={getLocale()}
-		onchange={(event) => {
-			const locale = event.currentTarget.value;
-			if (isLocale(locale)) setLocale(locale);
-		}}
-	>
-		<option value="de">{m.language_de()}</option>
-		<option value="en">{m.language_en()}</option>
-	</select>
-</label>
+<DropdownMenu.Sub>
+	<DropdownMenu.SubTrigger>
+		<Languages />
+		{m.language()}
+	</DropdownMenu.SubTrigger>
+	<DropdownMenu.SubContent class="w-48">
+		<DropdownMenu.RadioGroup {value} onValueChange={choose}>
+			<DropdownMenu.RadioItem value="system">{m.system_language()}</DropdownMenu.RadioItem>
+			<DropdownMenu.Separator />
+			<DropdownMenu.RadioItem value="de">{m.language_de()}</DropdownMenu.RadioItem>
+			<DropdownMenu.RadioItem value="en">{m.language_en()}</DropdownMenu.RadioItem>
+		</DropdownMenu.RadioGroup>
+	</DropdownMenu.SubContent>
+</DropdownMenu.Sub>

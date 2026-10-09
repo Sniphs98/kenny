@@ -55,7 +55,7 @@ Der Ordner `drizzle/` muss neben dem Build liegen oder per `MIGRATIONS_DIR` ange
 
 ### Sprache und Übersetzungen
 
-Über die Sprachauswahl kann die Oberfläche zwischen Deutsch und Englisch wechseln, auch auf der Login-Seite. Deutsch ist die Standardsprache; die Auswahl wird im Cookie `PARAGLIDE_LOCALE` gespeichert und gilt auch für Server-Rendering, Kalender, Datums- und Zahlenanzeigen. Eigene Projektnamen, Board-Spalten, Tags und Ticketinhalte werden nicht übersetzt. URLs und API-Feldnamen bleiben gleich.
+Die Oberfläche gibt es auf Deutsch und Englisch. Ohne eigene Wahl folgt sie der Systemsprache (Browser bzw. `Accept-Language`); wird diese nicht unterstützt, gilt Englisch. Jeder Benutzer kann die Sprache im Benutzermenü unter **Sprache** festlegen oder mit **Systemsprache** wieder der Systemeinstellung folgen. Die Wahl wird im Cookie `PARAGLIDE_LOCALE` gespeichert (siehe `src/lib/locale-choice.ts`) und gilt auch für Server-Rendering, Kalender, Datums- und Zahlenanzeigen. Eigene Projektnamen, Board-Spalten, Tags und Ticketinhalte werden nicht übersetzt. URLs und API-Feldnamen bleiben gleich.
 
 Die Übersetzungen stehen in `messages/de.json` und `messages/en.json`, die inlang-Konfiguration in `project.inlang/settings.json`. Neue UI-Texte in beiden Katalogen ergänzen und als `m.nachricht()` aus `$lib/paraglide/messages.js` verwenden. `npm ci`, `npm run dev`, `npm run build` und `npm run check` erzeugen die typisierten Nachrichten; manuell geht das mit `npm run i18n:compile`. Generierte Dateien unter `src/lib/paraglide/` werden nicht committed. Der Nachrichten-Plugin ist als npm-Abhängigkeit installiert; der Build benötigt keinen Download von einer CDN-URL.
 

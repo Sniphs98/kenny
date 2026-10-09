@@ -1,147 +1,171 @@
 # Kenny
 
-Projekt- und Ticketverwaltung mit Kanban-Board und Gantt-Chart.
+Project and ticket management with Kanban boards and Gantt charts.
 
-- **Projekte** mit eigenem Kürzel (z.B. `WEB`), Tickets heißen dann `WEB-1`, `WEB-2`, …
-- **Kanban-Board** mit frei konfigurierbaren Spalten und Drag & Drop
-- **Gantt-Chart** mit Start-/Fälligkeitsdatum, Balken per Maus verschieben und in der Länge ändern, Pfeile für Abhängigkeiten (rot, wenn ein Ticket vor seiner Voraussetzung beginnt)
-- **Tickets** mit Priorität, Zuständigem, Beschreibung, **Unteraufgaben** und **Verknüpfungen** (`setzt voraus`, `ist Voraussetzung für`, `verknüpft mit`), Zyklen werden verhindert
-- **REST-API** zum Anlegen, Ändern und Abschließen von Tickets mit persönlichen API-Tokens
-- **Benutzerverwaltung** mit [Better Auth](https://better-auth.com) (E-Mail/Passwort, Microsoft-Login vorbereitet)
+- **Projects** with their own key (e.g. `WEB`), giving tickets identifiers such as `WEB-1`, `WEB-2`, …
+- **Kanban boards** with configurable columns and drag and drop
+- **Gantt charts** with start and due dates, draggable and resizable bars, and dependency arrows (red when a ticket starts before its prerequisite)
+- **Tickets** with priority, assignee, description, **subtasks**, and **links** (`depends on`, `blocks`, `related to`), with cycle prevention
+- **REST API** for creating, updating, and completing tickets using personal API tokens
+- **User accounts** with [Better Auth](https://better-auth.com) (email/password authentication and optional Microsoft sign-in)
 
-## Technik
+## Screenshots
 
-SvelteKit 2 (Svelte 5), TypeScript, SQLite über `better-sqlite3`, Drizzle ORM, Better Auth, `adapter-node`.
+The screenshots show the English interface with sample project data.
 
-## Loslegen
+### Project overview
+
+Track ticket counts and progress across projects.
+
+![Project overview showing three projects and their progress](docs/screenshots/projects.png)
+
+### Kanban board
+
+Organize tickets by status, with priorities, assignees, tags, and subtasks visible on each card.
+
+![Kanban board with tickets organized into To do, In progress, Review, and Done columns](docs/screenshots/kanban.png)
+
+### Gantt timeline
+
+Plan ticket schedules and see dependencies and scheduling conflicts.
+
+![Gantt timeline showing scheduled tickets, dependency arrows, and a scheduling conflict](docs/screenshots/gantt.png)
+
+## Tech stack
+
+SvelteKit 2 (Svelte 5), TypeScript, SQLite through `better-sqlite3`, Drizzle ORM, Better Auth, and `adapter-node`.
+
+## Getting started
+
+Use the Node.js version pinned in `.nvmrc`, then run:
 
 ```bash
 npm ci
-cp .env.example .env   # BETTER_AUTH_SECRET setzen: openssl rand -base64 32
+cp .env.example .env   # Set BETTER_AUTH_SECRET: openssl rand -base64 32
 npm run dev
 ```
 
-Dann <http://localhost:5173> öffnen und ein Konto registrieren. Die Datenbank liegt unter `data/kenny.db`, Migrationen werden beim Start automatisch ausgeführt.
+Open <http://localhost:5173> and register an account. The database is stored at `data/kenny.db`; migrations run automatically at startup.
 
-### Testszenarien
+### Development scenarios
 
-Statt Daten von Hand anzulegen, startet `dev:scenario` die App mit einem vorbefüllten Stand. Jedes Szenario hat eine eigene Datenbank unter `data/scenarios/<name>/`; `data/kenny.db` bleibt unberührt, und eine `.env` ist dafür nicht nötig.
+Instead of creating data manually, use `dev:scenario` to start the app with sample data. Each scenario has its own database under `data/scenarios/<name>/`; it leaves `data/kenny.db` untouched and does not require a `.env` file.
 
 ```bash
-npm run dev:scenario -- list           # verfügbare Szenarien
-npm run dev:scenario -- demo           # beim ersten Start befüllen, danach mit den vorhandenen Daten starten
-npm run dev:scenario -- demo --reset   # Szenario frisch neu erzeugen
+npm run dev:scenario -- list           # List available scenarios
+npm run dev:scenario -- demo           # Seed on first start; reuse existing data afterward
+npm run dev:scenario -- demo --reset   # Recreate the scenario from scratch
 npm run dev:scenario -- demo --port 5180
 ```
 
-| Szenario | Inhalt                                                                                      |
-| -------- | ------------------------------------------------------------------------------------------- |
-| `leer`   | Nur ein Benutzer, keine Projekte                                                            |
-| `demo`   | Zwei Projekte, drei Benutzer, ~30 Tickets mit Tags, Unteraufgaben, Abhängigkeiten, Anhängen |
-| `gantt`  | Zeitplan mit Abhängigkeitsketten, einem Terminkonflikt und Tickets ohne Termin              |
+| Scenario | Contents                                                                                      |
+| -------- | --------------------------------------------------------------------------------------------- |
+| `leer`   | One user, no projects (the scenario identifier means "empty" in German)                       |
+| `demo`   | Two projects, three users, and ~30 tickets with tags, subtasks, dependencies, and attachments |
+| `gantt`  | A schedule with dependency chains, a scheduling conflict, and unscheduled tickets             |
 
-Angemeldet wird mit dem ersten Benutzer des Szenarios, z. B. `anna@example.com` mit dem Passwort `kenny-demo`. Datumsangaben sind relativ zum heutigen Tag, damit Gantt und überfällige Tickets immer passen.
+Sign in with the scenario's first user, e.g. `anna@example.com` with the password `kenny-demo`. Dates are relative to the current day so the Gantt chart and overdue tickets remain useful.
 
-Szenarien liegen als kleine Dateien unter `scenarios/` und werden beim ersten Start über die REST-API der laufenden App befüllt (`scripts/scenario-seed.mjs`). Dadurch gelten dieselben Regeln wie in der Oberfläche, und die Szenarien hängen nicht von der Datenbank ab. Ein neues Szenario ist eine weitere Datei in `scenarios/`; ungültige Verweise, Spalten, Tags oder Datumsbereiche werden vor dem Befüllen gemeldet. Bei `NODE_ENV=production` bricht der Befehl ab.
+Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-seed.mjs` seeds them through the running app's REST API. This applies the same rules as the UI and keeps scenarios independent of the database implementation. To add a scenario, create another file in `scenarios/`; invalid references, columns, tags, or date ranges are reported before seeding. The command refuses to run with `NODE_ENV=production`.
 
-### Docker und Produktion
+### Docker and production
 
-Kenny wird als Docker-Container ausgeliefert. Das Image enthält den Node-Produktionsserver und die Migrationen. Es läuft als Benutzer `node`; Datenbank und Anhänge liegen gemeinsam im persistenten Volume unter `/app/data`.
+Kenny is distributed as a Docker container. The image includes the Node production server and migrations. It runs as the `node` user; the database and attachments share a persistent volume under `/app/data`.
 
 ```bash
 cp .env.example .env
-# BETTER_AUTH_SECRET durch einen eigenen Wert ersetzen: openssl rand -base64 32
-# KENNY_ORIGIN auf die öffentlich erreichbare URL setzen
-# KENNY_VERSION auf eine veröffentlichte Version setzen
+# Replace BETTER_AUTH_SECRET with your own value: openssl rand -base64 32
+# Set KENNY_ORIGIN to the publicly accessible URL
+# Set KENNY_VERSION to a published version
 
 docker compose pull
 docker compose up -d
 ```
 
-Für einen lokalen Build ohne veröffentlichtes Image: `docker compose up -d --build`. Die Anwendung ist dann unter <http://localhost:3000> erreichbar. Der Port wird standardmäßig nur an `127.0.0.1` gebunden; für Zugriff von außen einen Reverse Proxy verwenden. `KENNY_ORIGIN` setzt sowohl `ORIGIN` als auch die Auth-URL.
+To build locally without a published image, run `docker compose up -d --build`. The app is then available at <http://localhost:3000>. By default, the port binds only to `127.0.0.1`; use a reverse proxy for external access. `KENNY_ORIGIN` sets both `ORIGIN` and the authentication URL.
 
-Releases erscheinen unter `ghcr.io/sniphs98/kenny:<version>`. Ein Tag wie `v0.1.0` auf einem Commit in `main` startet alle CI-Prüfungen und veröffentlicht erst nach deren Erfolg den Container. Ein manuell gestarteter Release-Workflow veröffentlicht nichts. Details stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
+Releases are published at `ghcr.io/sniphs98/kenny:<version>`. A tag such as `v0.1.0` on a commit in `main` runs all CI checks and publishes the container only after they pass. Manually triggering the release workflow does not publish an image. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-`BODY_SIZE_LIMIT` muss über der maximalen Anhanggröße liegen (Standard 25 MB, `ATTACHMENT_MAX_MB`); im Container sind 30 MB voreingestellt. Datenbank und Anhänge gemeinsam sichern. Für ein Update eine konkrete Container-Version wählen, dann erneut `docker compose pull && docker compose up -d` ausführen. Migrationen laufen beim Start automatisch; sie werden bei einem Image-Rollback nicht rückgängig gemacht.
+`BODY_SIZE_LIMIT` must exceed the maximum attachment size (25 MB by default, configured through `ATTACHMENT_MAX_MB`); the container defaults to 30 MB. Back up the database and attachments together. To update, select a specific container version and run `docker compose pull && docker compose up -d` again. Migrations run at startup and are not reversed when rolling back an image.
 
-Für Betrieb ohne Docker:
+To run without Docker:
 
 ```bash
 npm run build
-DATABASE_URL=/pfad/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny.example.com \
+DATABASE_URL=/path/to/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny.example.com \
   ORIGIN=https://kenny.example.com PORT=3000 BODY_SIZE_LIMIT=30M node build
 ```
 
-Der Ordner `drizzle/` muss neben dem Build liegen oder per `MIGRATIONS_DIR` angegeben werden. `/api/health` prüft, ob der Server auf die migrierte Datenbank zugreifen kann.
+The `drizzle/` directory must be next to the build or specified through `MIGRATIONS_DIR`. `/api/health` checks whether the server can access the migrated database.
 
-### Sprache und Übersetzungen
+### Languages and translations
 
-Die Oberfläche gibt es auf Deutsch und Englisch. Ohne eigene Wahl folgt sie der Systemsprache (Browser bzw. `Accept-Language`); wird diese nicht unterstützt, gilt Englisch. Jeder Benutzer kann die Sprache im Benutzermenü unter **Sprache** festlegen oder mit **Systemsprache** wieder der Systemeinstellung folgen. Die Wahl wird im Cookie `PARAGLIDE_LOCALE` gespeichert (siehe `src/lib/locale-choice.ts`) und gilt auch für Server-Rendering, Kalender, Datums- und Zahlenanzeigen. Eigene Projektnamen, Board-Spalten, Tags und Ticketinhalte werden nicht übersetzt. URLs und API-Feldnamen bleiben gleich.
+The UI is available in English and German. Without an explicit choice, it follows the system language (the browser or `Accept-Language`); unsupported languages fall back to English. Users can choose a language under **Language** in the user menu or select **System language** to follow the system setting again. The choice is stored in the `PARAGLIDE_LOCALE` cookie (see `src/lib/locale-choice.ts`) and applies to server rendering, calendars, dates, and numbers. User-created project names, board columns, tags, and ticket content are not translated. URLs and API field names stay the same.
 
-Die Übersetzungen stehen in `messages/de.json` und `messages/en.json`, die inlang-Konfiguration in `project.inlang/settings.json`. Neue UI-Texte in beiden Katalogen ergänzen und als `m.nachricht()` aus `$lib/paraglide/messages.js` verwenden. `npm ci`, `npm run dev`, `npm run build` und `npm run check` erzeugen die typisierten Nachrichten; manuell geht das mit `npm run i18n:compile`. Generierte Dateien unter `src/lib/paraglide/` werden nicht committed. Der Nachrichten-Plugin ist als npm-Abhängigkeit installiert; der Build benötigt keinen Download von einer CDN-URL.
+Translations live in `messages/de.json` and `messages/en.json`; inlang configuration lives in `project.inlang/settings.json`. Add new UI messages to both catalogs and use them as `m.message_name()` from `$lib/paraglide/messages.js`. `npm ci`, `npm run dev`, `npm run build`, and `npm run check` generate typed messages; run `npm run i18n:compile` to generate them manually. Generated files under `src/lib/paraglide/` are not committed. The message plugin is installed as an npm dependency, so builds do not need to download it from a CDN.
 
-Die Sprachwahl lädt die aktuelle Seite neu. Fehler aus den frameworkfreien Verträgen und Services bleiben intern stabil und werden an der UI-/API-Grenze lokalisiert. Bei neuen fachlichen Fehlern auch die Zuordnung in `src/lib/i18n.ts` ergänzen.
+Changing the language reloads the current page. Errors from framework-independent contracts and services remain stable internally and are localized at the UI/API boundary. When adding a business error, also add its mapping in `src/lib/i18n.ts`.
 
-### Datenbankschema ändern
+### Changing the database schema
 
-Schema in `src/lib/server/db/schema.ts` anpassen, dann `npm run db:generate`. Die neue Migration wird beim nächsten Start angewendet.
+Update the schema in `src/lib/server/db/schema.ts`, then run `npm run db:generate`. The new migration is applied on the next startup.
 
-### Qualität und Tests
+### Quality checks and tests
 
 ```bash
-npm run verify                   # Guard, Format, Lint, Typen, Unit-/Integrationstests, Build
-npx playwright install chromium  # einmalig
-npm run test:e2e:production       # Build und Browser-/HTTP-Tests
-npm run test:coverage             # Coverage für Verträge und Services
+npm run verify                   # Guard, formatting, lint, types, unit/integration tests, build
+npx playwright install chromium  # One-time browser installation
+npm run test:e2e:production       # Build and browser/HTTP tests
+npm run test:coverage             # Contract and service coverage
 npm run docker:build
-npm run docker:test               # Container, API, Upload und Persistenz nach Neustart
+npm run docker:test               # Container, API, uploads, and persistence after restart
 ```
 
-Unit-Tests liegen unter `tests/unit`, Service- und Migrationstests unter `tests/integration`, Browser- und HTTP-Tests unter `tests/e2e`. Die Service-Tests verwenden SQLite im Speicher. Playwright startet einen eigenen gebauten Node-Server auf Port 4174 mit einer frischen Datenbank unter `data/test`; Entwicklungsdaten bleiben unberührt. Jeder Test legt sein eigenes Projekt an.
+Unit tests live under `tests/unit`, service and migration tests under `tests/integration`, and browser and HTTP tests under `tests/e2e`. Service tests use in-memory SQLite. Playwright starts its own built Node server on port 4174 with a fresh database under `data/test`, leaving development data untouched. Each test creates its own project.
 
-GitHub Actions prüft Pull Requests und `main` automatisch. Gemeinsame Zod-Verträge stehen in `src/lib/contracts`; Formulare verwenden Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) beschreibt den Issue-/PR-Ablauf, [AGENTS.md](AGENTS.md) die Regeln für KI-Änderungen. Die Oberfläche ist mit ParaglideJS auf Deutsch und Englisch verfügbar.
+GitHub Actions checks pull requests and `main` automatically. Shared Zod contracts live in `src/lib/contracts`; forms use Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) describes the issue/PR workflow, and [AGENTS.md](AGENTS.md) contains the rules for AI-assisted changes. The English and German UI uses ParaglideJS.
 
-## REST-API
+## REST API
 
-Basis-URL: `/api/v1`. Schreibende JSON-Endpunkte validieren Eingaben mit Zod; unbekannte Felder werden mit HTTP 400 abgelehnt. Bei `PATCH` bleiben ausgelassene Felder unverändert, `null` leert ausdrücklich löschbare Werte. Authentifizierung über `Authorization: Bearer <token>`; Tokens werden in der App unter **API** erstellt. Im Browser funktioniert die API auch mit der normalen Anmeldung.
+Base URL: `/api/v1`. JSON write endpoints validate input with Zod and reject unknown fields with HTTP 400. For `PATCH`, omitted fields remain unchanged; `null` clears values that support it. Authenticate with `Authorization: Bearer <token>`; create tokens under **API** in the app. In the browser, the API also accepts the current sign-in session.
 
-Tickets können per ID (`42`) oder Schlüssel (`WEB-12`) angesprochen werden, Projekte per ID oder Kürzel.
+Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
 
-| Methode          | Pfad                                          | Beschreibung                                                                  |
-| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
-| GET              | `/me`                                         | Eigener Benutzer                                                              |
-| GET              | `/users`                                      | Alle Benutzer                                                                 |
-| GET              | `/projects`                                   | Projekte mit Ticketzählern                                                    |
-| POST             | `/projects`                                   | Projekt anlegen: `{name, key?, description?, color?}`                         |
-| GET/PATCH/DELETE | `/projects/:projekt`                          | Projekt lesen (inkl. Spalten), ändern, löschen                                |
-| GET/POST         | `/projects/:projekt/columns`                  | Spalten lesen / anlegen `{name, isDone?, isBacklog?}`                         |
-| PATCH/DELETE     | `/projects/:projekt/columns/:id`              | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen             |
-| GET/POST         | `/projects/:projekt/tags`                     | Tags lesen / anlegen `{name, color?}`                                         |
-| PATCH/DELETE     | `/projects/:projekt/tags/:id`                 | Tag ändern `{name?, color?}` / löschen                                        |
-| GET              | `/projects/:projekt/tickets?closed=false`     | Tickets auflisten                                                             |
-| POST             | `/projects/:projekt/tickets`                  | Ticket anlegen                                                                |
-| GET              | `/tickets/:ticket`                            | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen                      |
-| PATCH            | `/tickets/:ticket`                            | Ticket ändern                                                                 |
-| DELETE           | `/tickets/:ticket`                            | Ticket löschen (inkl. Unteraufgaben)                                          |
-| POST             | `/tickets/:ticket/close`                      | Abschließen (verschiebt in die erste „Erledigt“-Spalte)                       |
-| POST             | `/tickets/:ticket/reopen`                     | Wieder öffnen                                                                 |
-| POST             | `/tickets/:ticket/subtasks`                   | Unteraufgabe anlegen (Body wie Ticket anlegen)                                |
-| POST             | `/tickets/:ticket/links`                      | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`  |
-| DELETE           | `/tickets/:ticket/links/:id`                  | Verknüpfung entfernen                                                         |
-| GET              | `/tickets/:ticket/attachments`                | Anhänge auflisten                                                             |
-| POST             | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`) |
-| GET              | `/attachments/:id`                            | Anhang herunterladen (`?download` erzwingt Download)                          |
-| DELETE           | `/attachments/:id`                            | Anhang löschen                                                                |
+| Method           | Path                                          | Description                                                                       |
+| ---------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| GET              | `/me`                                         | Current user                                                                      |
+| GET              | `/users`                                      | All users                                                                         |
+| GET              | `/projects`                                   | Projects with ticket counts                                                       |
+| POST             | `/projects`                                   | Create a project: `{name, key?, description?, color?}`                            |
+| GET/PATCH/DELETE | `/projects/:project`                          | Read (including columns), update, or delete a project                             |
+| GET/POST         | `/projects/:project/columns`                  | List or create columns: `{name, isDone?, isBacklog?}`                             |
+| PATCH/DELETE     | `/projects/:project/columns/:id`              | Update `{name?, isDone?, isBacklog?, position?}` or delete a column               |
+| GET/POST         | `/projects/:project/tags`                     | List or create tags: `{name, color?}`                                             |
+| PATCH/DELETE     | `/projects/:project/tags/:id`                 | Update `{name?, color?}` or delete a tag                                          |
+| GET              | `/projects/:project/tickets?closed=false`     | List tickets                                                                      |
+| POST             | `/projects/:project/tickets`                  | Create a ticket                                                                   |
+| GET              | `/tickets/:ticket`                            | Ticket with subtasks, parent ticket, and links                                    |
+| PATCH            | `/tickets/:ticket`                            | Update a ticket                                                                   |
+| DELETE           | `/tickets/:ticket`                            | Delete a ticket (including subtasks)                                              |
+| POST             | `/tickets/:ticket/close`                      | Complete a ticket (move it to the first column marked as done)                    |
+| POST             | `/tickets/:ticket/reopen`                     | Reopen a ticket                                                                   |
+| POST             | `/tickets/:ticket/subtasks`                   | Create a subtask (same body as creating a ticket)                                 |
+| POST             | `/tickets/:ticket/links`                      | Link tickets: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`    |
+| DELETE           | `/tickets/:ticket/links/:id`                  | Remove a link                                                                     |
+| GET              | `/tickets/:ticket/attachments`                | List attachments                                                                  |
+| POST             | `/tickets/:ticket/attachments?filename=x.png` | Upload an attachment as the request body (or `multipart/form-data`, field `file`) |
+| GET              | `/attachments/:id`                            | Download an attachment (`?download` forces download)                              |
+| DELETE           | `/attachments/:id`                            | Delete an attachment                                                              |
 
-Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
+Fields for creating or updating a ticket (all optional except `title` when creating):
 
 ```json
 {
-	"title": "Login-Seite überarbeiten",
-	"description": "Text",
+	"title": "Improve the login page",
+	"description": "Optional description",
 	"priority": "low | medium | high | urgent",
 	"column": "In Arbeit",
-	"assignee": "name@firma.de",
+	"assignee": "name@example.com",
 	"startDate": "2026-10-10",
 	"dueDate": "2026-10-17",
 	"parent": "WEB-3",
@@ -151,12 +175,12 @@ Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
 }
 ```
 
-`column` akzeptiert den Spaltennamen oder `columnId`; mit `position` lässt sich die Reihenfolge in der Spalte setzen. Fehler kommen als `{"error": "..."}` mit passendem HTTP-Status zurück.
+Use an actual column name for `column` (the example uses the default `In Arbeit` column, meaning "In progress"), or supply `columnId` instead. `position` sets the order within a column. Errors are returned as `{"error": "..."}` with the appropriate HTTP status.
 
 ```bash
 curl -X POST http://localhost:5173/api/v1/projects/WEB/tickets \
   -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: application/json" \
-  -d '{"title": "Bug im Login", "priority": "high"}'
+  -d '{"title": "Login bug", "priority": "high"}'
 
 curl -X POST http://localhost:5173/api/v1/tickets/WEB-12/close \
   -H "Authorization: Bearer $KENNY_TOKEN"
@@ -165,20 +189,20 @@ curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=s
   -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: image/png" --data-binary @screenshot.png
 ```
 
-## Microsoft-Anbindung
+## Microsoft integration
 
-Die Anmeldung mit Microsoft (Entra ID) ist vorbereitet: Sobald `MICROSOFT_CLIENT_ID` und `MICROSOFT_CLIENT_SECRET` (optional `MICROSOFT_TENANT_ID`) gesetzt sind, erscheint auf der Login-Seite „Mit Microsoft anmelden“. Als Redirect-URI in der App-Registrierung `<BETTER_AUTH_URL>/api/auth/callback/microsoft` eintragen.
+Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` (optionally `MICROSOFT_TENANT_ID`) enables **Sign in with Microsoft** on the login page. Configure `<BETTER_AUTH_URL>/api/auth/callback/microsoft` as the redirect URI in the app registration.
 
-Weitere Ideen für später: Tickets aus Teams/Outlook anlegen (über die REST-API), Fälligkeiten in den Outlook-Kalender synchronisieren, Benachrichtigungen in Teams.
+Ideas for future integrations include creating tickets from Teams/Outlook through the REST API, synchronizing due dates with the Outlook calendar, and sending notifications to Teams.
 
-## Aufbau
+## Project structure
 
 ```
-src/lib/server/db/          Drizzle-Schema (Auth- und App-Tabellen) und DB-Verbindung
-src/lib/server/services/    Geschäftslogik für Projekte und Tickets (von UI und API genutzt)
-src/lib/server/auth.ts      Better-Auth-Konfiguration
-src/lib/server/api*.ts      API-Token-Prüfung und Handler-Wrapper
-src/routes/api/v1/          REST-API
-src/routes/projects/[key]/  Board, Gantt, Einstellungen
-src/routes/tickets/[key]/   Ticketdetails
+src/lib/server/db/          Drizzle schema (auth and application tables) and database connection
+src/lib/server/services/    Project and ticket business logic shared by the UI and API
+src/lib/server/auth.ts      Better Auth configuration
+src/lib/server/api*.ts      API token validation and handler wrapper
+src/routes/api/v1/          REST API
+src/routes/projects/[key]/  Board, Gantt, and settings
+src/routes/tickets/[key]/   Ticket details
 ```

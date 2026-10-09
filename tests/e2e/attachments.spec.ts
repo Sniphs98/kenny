@@ -36,7 +36,12 @@ test('Bild und Datei hochladen, ansehen und löschen', async ({ page, request })
 
 	// Board-Karte zeigt die Anzahl der Anhänge
 	await open(page, `/projects/${p.key}/board`);
-	await expect(card(page, 'Fehler im Layout').getByTitle(/Anhang/)).toContainText('1');
+	const count = card(page, 'Fehler im Layout').locator('[data-attachments]');
+	await expect(count).toContainText('1');
+	// Hinweis als shadcn-Tooltip statt title-Attribut
+	await expect(count).not.toHaveAttribute('title');
+	await count.hover();
+	await expect(page.locator('[data-slot="tooltip-content"]')).toContainText('1 Anhang');
 });
 
 test('Anhänge sind nur angemeldet abrufbar und SVG wird nie inline ausgeliefert', async ({

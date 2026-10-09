@@ -10,6 +10,10 @@ export const user = sqliteTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: integer('email_verified', { mode: 'boolean' }).default(false).notNull(),
 	image: text('image'),
+	role: text('role', { enum: ['admin', 'user'] })
+		.notNull()
+		.default('user'),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull(),
 	updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
 		.default(now)

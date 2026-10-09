@@ -3,6 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { api, updateProject } from '$lib/api';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
+	import Hint, { chain } from '$lib/components/Hint.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import TagColorButton from '$lib/components/TagColorButton.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -167,19 +168,23 @@
 						ondrop={(e) => e.preventDefault()}
 						ondragend={onDragEnd}
 					>
-						<Button
-							variant="ghost"
-							size="icon"
-							class="text-muted-foreground w-6 cursor-grab active:cursor-grabbing"
-							data-grip={col.id}
-							title={m.drag_to_reorder_or_use_arrow_keys()}
-							aria-label={m.move_column({ value1: col.name })}
-							onpointerdown={() => (armedId = col.id)}
-							onpointerup={() => dragId === null && (armedId = null)}
-							onkeydown={(e) => onGripKey(e, col.id)}
-						>
-							<GripVertical />
-						</Button>
+						<Hint text={m.drag_to_reorder_or_use_arrow_keys()}>
+							{#snippet children(props)}
+								<Button
+									{...props}
+									variant="ghost"
+									size="icon"
+									class="text-muted-foreground w-6 cursor-grab active:cursor-grabbing"
+									data-grip={col.id}
+									aria-label={m.move_column({ value1: col.name })}
+									onpointerdown={chain<PointerEvent>(props.onpointerdown, () => (armedId = col.id))}
+									onpointerup={chain<PointerEvent>(props.onpointerup, () => dragId === null && (armedId = null))}
+									onkeydown={chain<KeyboardEvent>(props.onkeydown, (e) => onGripKey(e, col.id))}
+								>
+									<GripVertical />
+								</Button>
+							{/snippet}
+						</Hint>
 						<Input
 							value={col.name}
 							onchange={(e) => run(() => api('PATCH', `${base}/columns/${col.id}`, { name: e.currentTarget.value }))}
@@ -191,21 +196,29 @@
 							/>
 							{m.done()}
 						</Label>
-						<Label class="shrink-0 px-2 font-normal" title={m.hide_in_gantt_chart_by_default()}>
-							<Checkbox
-								checked={col.isBacklog}
-								onCheckedChange={(v) => run(() => api('PATCH', `${base}/columns/${col.id}`, { isBacklog: v }))}
-							/>
-							{m.backlog()}
-						</Label>
-						<Button
-							variant="ghost"
-							size="icon"
-							class="hover:text-destructive"
-							title={m.delete_column()}
-							aria-label={m.delete_column()}
-							onclick={() => run(() => api('DELETE', `${base}/columns/${col.id}`))}><Trash2 /></Button
-						>
+						<Hint text={m.hide_in_gantt_chart_by_default()}>
+							{#snippet children(props)}
+								<Label {...props} class="shrink-0 px-2 font-normal">
+									<Checkbox
+										checked={col.isBacklog}
+										onCheckedChange={(v) => run(() => api('PATCH', `${base}/columns/${col.id}`, { isBacklog: v }))}
+									/>
+									{m.backlog()}
+								</Label>
+							{/snippet}
+						</Hint>
+						<Hint text={m.delete_column()}>
+							{#snippet children(props)}
+								<Button
+									{...props}
+									variant="ghost"
+									size="icon"
+									class="hover:text-destructive"
+									aria-label={m.delete_column()}
+									onclick={() => run(() => api('DELETE', `${base}/columns/${col.id}`))}><Trash2 /></Button
+								>
+							{/snippet}
+						</Hint>
 					</li>
 				{/each}
 			</ul>
@@ -239,15 +252,19 @@
 						<span class="text-muted-foreground w-20 shrink-0 text-right text-xs">
 							{m.ticket_2({ value1: tagUsage.get(g.id) ?? 0, value2: tagUsage.get(g.id) === 1 ? '' : 's' })}
 						</span>
-						<Button
-							variant="ghost"
-							size="icon"
-							class="hover:text-destructive"
-							title={m.delete_tag()}
-							aria-label={m.delete_tag()}
-							onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), m.deleted_tag({ name: g.name }))}
-							><Trash2 /></Button
-						>
+						<Hint text={m.delete_tag()}>
+							{#snippet children(props)}
+								<Button
+									{...props}
+									variant="ghost"
+									size="icon"
+									class="hover:text-destructive"
+									aria-label={m.delete_tag()}
+									onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), m.deleted_tag({ name: g.name }))}
+									><Trash2 /></Button
+								>
+							{/snippet}
+						</Hint>
 					</li>
 				{:else}
 					<li class="text-muted-foreground text-sm">{m.no_tags_yet()}</li>

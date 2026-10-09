@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
+	import Hint from '$lib/components/Hint.svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -18,12 +19,16 @@
 </script>
 
 <Popover.Root bind:open {onOpenChange}>
-	<Popover.Trigger
-		class="focus-visible:ring-ring/50 size-9 shrink-0 cursor-pointer rounded-md border outline-none focus-visible:ring-3"
-		style="background: {value}"
-		title={m.change_color()}
-		aria-label={m.color_of({ value1: name })}
-	/>
+	<Hint text={m.change_color()}>
+		{#snippet children(props)}
+			<Popover.Trigger
+				{...props}
+				class="focus-visible:ring-ring/50 size-9 shrink-0 cursor-pointer rounded-md border outline-none focus-visible:ring-3"
+				style="background: {value}"
+				aria-label={m.color_of({ value1: name })}
+			/>
+		{/snippet}
+	</Hint>
 	<Popover.Content class="w-auto max-w-72" align="start">
 		<ColorPicker bind:value />
 	</Popover.Content>

@@ -5,6 +5,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { createTicket, updateTicket } from '$lib/api';
 	import { openTicket } from '$lib/ticket-modal';
+	import Hint, { chain, cursorAnchor } from '$lib/components/Hint.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Label } from '$lib/components/ui/label';
@@ -30,6 +31,7 @@
 	type Item = TicketListItem;
 
 	let {
+		readOnly = false,
 		tickets: source,
 		dependencies,
 		columns,
@@ -40,6 +42,7 @@
 		height = $bindable(360),
 		actions
 	}: {
+		readOnly?: boolean;
 		tickets: Item[];
 		dependencies: DependencyDto[];
 		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
@@ -225,13 +228,24 @@
 		orig: { start: number; end: number };
 		moved: boolean;
 	} | null = null;
+	/** Reaktiv, damit Tooltips während des Ziehens aus sind */
+	let dragging = $state(false);
+	// Tooltips auf breiten Zeilen erscheinen am Mauszeiger statt mittig über der Zeile
+	const rowCursor = cursorAnchor();
+	const planCursor = cursorAnchor();
+	const resizeCursor = cursorAnchor();
 
 	function pointerDown(e: PointerEvent, t: Item, mode: 'move' | 'start' | 'end') {
+		if (readOnly) {
+			if (mode === 'move') openTicket(t.key);
+			return;
+		}
 		const s = span(t);
 		if (!s) return;
 		e.stopPropagation();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		drag = { t, mode, startX: e.clientX, orig: s, moved: false };
+		dragging = true;
 	}
 
 	function pointerMove(e: PointerEvent) {
@@ -252,6 +266,7 @@
 		if (!drag) return;
 		const { t, moved } = drag;
 		drag = null;
+		dragging = false;
 		if (!moved) {
 			openTicket(t.key);
 			return;
@@ -266,6 +281,7 @@
 
 	/** Klick in eine leere Zeile setzt Start- und Enddatum für Tickets ohne Termin */
 	async function setDates(e: MouseEvent, t: Item) {
+		if (readOnly) return;
 		if (span(t)) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const day = range.start + Math.floor((e.clientX - rect.left) / px);
@@ -299,6 +315,7 @@
 	);
 
 	function openPlan(e: MouseEvent | null) {
+		if (readOnly) return;
 		if (e) {
 			const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 			planDay = range.start + Math.floor((e.clientX - rect.left) / px);
@@ -312,6 +329,7 @@
 
 	/** Termin entfernen; optional zurück in die Backlog-Spalte */
 	async function unschedule(t: Item, toBacklog: boolean) {
+		if (readOnly) return;
 		const body: UpdateTicketInput = { startDate: null, dueDate: null };
 		if (toBacklog && backlogColumn) body.columnId = backlogColumn.id;
 		try {
@@ -328,6 +346,7 @@
 	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString(intlLocale(), { timeZone: 'UTC' });
 
 	async function plan(t: Item) {
+		if (readOnly) return;
 		planOpen = false;
 		const start = planDay ?? today;
 		const s = span(t);
@@ -368,6 +387,7 @@
 	}
 
 	async function createPlanned() {
+		if (readOnly) return;
 		const title = planQuery.trim();
 		planOpen = false;
 		const start = planDay ?? today;
@@ -469,7 +489,7 @@
 	<span class="grow"></span>
 	<span class="text-muted-foreground flex items-center gap-1.5 text-xs max-lg:hidden">
 		<Info class="size-3.5" />
-		{m.drag_bars_to_reschedule_drag_edges_to_change_duration()}
+		{readOnly ? m.um_read_only() : m.drag_bars_to_reschedule_drag_edges_to_change_duration()}
 	</span>
 	{@render actions?.()}
 </div>
@@ -503,33 +523,47 @@
 			{#each rows as { t, depth, childCount } (t.id)}
 				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
-						<button
-							type="button"
-							class="toggle"
-							class:open={expanded.has(t.id)}
-							aria-expanded={expanded.has(t.id)}
-							title="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})"
-							onclick={() => toggle(t.id)}
-						>
-							<ChevronRight class="size-3.5" />
-						</button>
+						<Hint text="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})">
+							{#snippet children(props)}
+								<button
+									{...props}
+									type="button"
+									class="toggle"
+									class:open={expanded.has(t.id)}
+									aria-expanded={expanded.has(t.id)}
+									aria-label="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})"
+									onclick={() => toggle(t.id)}
+								>
+									<ChevronRight class="size-3.5" />
+								</button>
+							{/snippet}
+						</Hint>
 					{:else}
 						<span class="toggle"></span>
 					{/if}
-					<a class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)} title={t.title}>
-						<span class="prio prio-{t.priority}"></span>
-						<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
-						<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
-					</a>
+					<Hint text={t.title} side="right">
+						{#snippet children(props)}
+							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
+								<span class="prio prio-{t.priority}"></span>
+								<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
+								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
+							</a>
+						{/snippet}
+					</Hint>
 					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
 						<DropdownMenu.Root>
-							<DropdownMenu.Trigger
-								class="rowaction"
-								title={m.unschedule()}
-								aria-label={m.unschedule_2({ value1: t.key })}
-							>
-								<X class="size-3.5" />
-							</DropdownMenu.Trigger>
+							<Hint text={m.unschedule()}>
+								{#snippet children(props)}
+									<DropdownMenu.Trigger
+										disabled={readOnly}
+										{...props}
+										class="rowaction"
+										aria-label={m.unschedule_2({ value1: t.key })}
+									>
+										<X class="size-3.5" />
+									</DropdownMenu.Trigger>
+								{/snippet}
+							</Hint>
 							<DropdownMenu.Content align="end" class="w-56">
 								<DropdownMenu.Label class="truncate">{t.key} {t.title}</DropdownMenu.Label>
 								<DropdownMenu.Item disabled={!t.startDate && !t.dueDate} onSelect={() => unschedule(t, false)}>
@@ -547,7 +581,13 @@
 					{/if}
 				</div>
 			{/each}
-			<button type="button" class="label planlabel" bind:this={planAnchor} onclick={() => openPlan(null)}>
+			<button
+				disabled={readOnly}
+				type="button"
+				class="label planlabel"
+				bind:this={planAnchor}
+				onclick={() => openPlan(null)}
+			>
 				<span class="toggle"><Plus class="size-3.5" /></span>
 				{m.schedule_ticket()}
 			</button>
@@ -605,67 +645,94 @@
 
 			{#each rows as { t }, i (t.id)}
 				{@const s = span(t)}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<div
-					class="trow"
-					class:nodate={!s}
-					class:highlight={highlighted === t.id}
-					style="top: {i * ROW}px"
-					onclick={(e) => setDates(e, t)}
-					role="presentation"
-					title={s ? '' : m.set_schedule_date()}
-				>
-					{#if s}
+				<Hint text={s || readOnly ? null : m.set_schedule_date()} anchor={rowCursor.anchor}>
+					{#snippet children(rowProps)}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div
-							class="bar"
-							class:closed={t.closed}
-							class:blocked={t.openBlockers > 0 && !t.closed}
-							class:parent={t.subtaskCount > 0}
-							style="left: {x(s.start)}px; width: {(s.end - s.start + 1) * px}px"
-							onpointerdown={(e) => pointerDown(e, t, 'move')}
-							role="button"
-							tabindex="-1"
-							title={m.to({ value1: t.key, value2: t.title, value3: t.startDate ?? '?', value4: t.dueDate ?? '?' })}
+							{...rowProps}
+							class="trow"
+							class:nodate={!s}
+							class:highlight={highlighted === t.id}
+							style="top: {i * ROW}px"
+							onclick={(e) => setDates(e, t)}
+							onmousemove={rowCursor.track}
+							role="presentation"
 						>
-							{#if t.subtaskCount > 0}
-								<div class="progress" style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"></div>
+							{#if s}
+								<Hint
+									text={m.to({
+										value1: t.key,
+										value2: t.title,
+										value3: t.startDate ?? '?',
+										value4: t.dueDate ?? '?'
+									})}
+									disabled={dragging}
+								>
+									{#snippet children(props)}
+										<div
+											{...props}
+											class="bar"
+											class:closed={t.closed}
+											class:blocked={t.openBlockers > 0 && !t.closed}
+											class:parent={t.subtaskCount > 0}
+											style="left: {x(s.start)}px; width: {(s.end - s.start + 1) * px}px"
+											onpointerdown={chain<PointerEvent>(props.onpointerdown, (e) => pointerDown(e, t, 'move'))}
+											role="button"
+											tabindex="-1"
+										>
+											{#if t.subtaskCount > 0}
+												<div class="progress" style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"></div>
+											{/if}
+											<span class="handle l" onpointerdown={(e) => pointerDown(e, t, 'start')} role="presentation"
+											></span>
+											{#if (s.end - s.start + 1) * px >= 70}<span class="btext">{t.title}</span>{/if}
+											<span class="handle r" onpointerdown={(e) => pointerDown(e, t, 'end')} role="presentation"></span>
+										</div>
+									{/snippet}
+								</Hint>
+								{#if (s.end - s.start + 1) * px < 70}
+									<span class="outside" style="left: {x(s.end + 1) + 6}px">{t.title}</span>
+								{/if}
 							{/if}
-							<span class="handle l" onpointerdown={(e) => pointerDown(e, t, 'start')} role="presentation"></span>
-							{#if (s.end - s.start + 1) * px >= 70}<span class="btext">{t.title}</span>{/if}
-							<span class="handle r" onpointerdown={(e) => pointerDown(e, t, 'end')} role="presentation"></span>
 						</div>
-						{#if (s.end - s.start + 1) * px < 70}
-							<span class="outside" style="left: {x(s.end + 1) + 6}px">{t.title}</span>
-						{/if}
-					{/if}
-				</div>
+					{/snippet}
+				</Hint>
 			{/each}
 
 			<!-- Leere Zeile zum Einplanen: Klick wählt den Starttag -->
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div
-				class="trow planrow"
-				style="top: {rows.length * ROW}px"
-				onclick={(e) => openPlan(e)}
-				onmousemove={(e) => {
-					const rect = e.currentTarget.getBoundingClientRect();
-					hoverDay = range.start + Math.floor((e.clientX - rect.left) / px);
-				}}
-				onmouseleave={() => (hoverDay = null)}
-				role="presentation"
-				title={m.click_to_schedule_a_ticket_starting_on_this_day()}
-			>
-				{#if planOpen && planDay !== null}
-					<!-- Gewählter Tag bleibt markiert, solange die Suche offen ist; die Suche hängt daran -->
-					<div class="plancell selected" bind:this={planCell} style="left: {x(planDay)}px; width: {Math.max(px, 18)}px">
-						<CalendarPlus class="size-3.5" />
+			<Hint text={m.click_to_schedule_a_ticket_starting_on_this_day()} anchor={planCursor.anchor} disabled={planOpen}>
+				{#snippet children(props)}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div
+						{...props}
+						class="trow planrow"
+						style="top: {rows.length * ROW}px"
+						onclick={(e) => openPlan(e)}
+						onmousemove={(e) => {
+							planCursor.track(e);
+							const rect = e.currentTarget.getBoundingClientRect();
+							hoverDay = range.start + Math.floor((e.clientX - rect.left) / px);
+						}}
+						onmouseleave={() => (hoverDay = null)}
+						role="presentation"
+					>
+						{#if planOpen && planDay !== null}
+							<!-- Gewählter Tag bleibt markiert, solange die Suche offen ist; die Suche hängt daran -->
+							<div
+								class="plancell selected"
+								bind:this={planCell}
+								style="left: {x(planDay)}px; width: {Math.max(px, 18)}px"
+							>
+								<CalendarPlus class="size-3.5" />
+							</div>
+						{:else if hoverDay !== null}
+							<div class="plancell" style="left: {x(hoverDay)}px; width: {Math.max(px, 18)}px">
+								<CalendarPlus class="size-3.5" />
+							</div>
+						{/if}
 					</div>
-				{:else if hoverDay !== null}
-					<div class="plancell" style="left: {x(hoverDay)}px; width: {Math.max(px, 18)}px">
-						<CalendarPlus class="size-3.5" />
-					</div>
-				{/if}
-			</div>
+				{/snippet}
+			</Hint>
 
 			<svg class="arrows" width={range.days * px} height={rows.length * ROW}>
 				<defs>
@@ -687,26 +754,31 @@
 {#if resizable}
 	<!-- Griff zum Ändern der Höhe; Doppelklick setzt sie zurück -->
 	<!-- Ein fokussierbarer separator ist laut ARIA ein bedienbares Element (Fensterteiler) -->
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-	<div
-		class="resize"
-		class:active={resizing}
-		role="separator"
-		aria-orientation="horizontal"
-		aria-label={m.resize_schedule()}
-		aria-valuenow={height}
-		aria-valuemin={MIN_HEIGHT}
-		tabindex="0"
-		title={m.drag_to_resize_double_click_to_reset()}
-		onpointerdown={resizeStart}
-		onpointermove={resizeMove}
-		onpointerup={() => (resizing = null)}
-		onpointercancel={() => (resizing = null)}
-		ondblclick={() => (height = DEFAULT_HEIGHT)}
-		onkeydown={resizeKey}
-	>
-		<span></span>
-	</div>
+	<Hint text={m.drag_to_resize_double_click_to_reset()} anchor={resizeCursor.anchor} disabled={!!resizing}>
+		{#snippet children(props)}
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+			<div
+				{...props}
+				class="resize"
+				class:active={resizing}
+				role="separator"
+				aria-orientation="horizontal"
+				aria-label={m.resize_schedule()}
+				aria-valuenow={height}
+				aria-valuemin={MIN_HEIGHT}
+				tabindex="0"
+				onpointerdown={chain<PointerEvent>(props.onpointerdown, resizeStart)}
+				onpointermove={chain<PointerEvent>(props.onpointermove, resizeMove)}
+				onpointerup={chain<PointerEvent>(props.onpointerup, () => (resizing = null))}
+				onpointercancel={() => (resizing = null)}
+				onmousemove={resizeCursor.track}
+				ondblclick={() => (height = DEFAULT_HEIGHT)}
+				onkeydown={chain<KeyboardEvent>(props.onkeydown, resizeKey)}
+			>
+				<span></span>
+			</div>
+		{/snippet}
+	</Hint>
 {/if}
 
 <style>

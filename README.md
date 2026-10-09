@@ -70,6 +70,8 @@ Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-
 
 ### Docker and production
 
+Container builds use the official Node.js 22 image through its Amazon ECR Public mirror to avoid anonymous Docker Hub pull limits. The Node.js version is pinned in `Dockerfile` and `.nvmrc`.
+
 Kenny is distributed as a Docker container. The image includes the Node production server and migrations. It runs as the `node` user; the database and attachments share a persistent volume under `/app/data`.
 
 ```bash
@@ -206,3 +208,9 @@ src/routes/api/v1/          REST API
 src/routes/projects/[key]/  Board, Gantt, and settings
 src/routes/tickets/[key]/   Ticket details
 ```
+
+## User management and project access
+
+Instance administrators can manage accounts through **Users** in the user menu. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
+
+See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.

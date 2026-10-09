@@ -15,6 +15,7 @@
 </script>
 
 <Gantt
+	readOnly={!data.canEdit}
 	tickets={data.tickets}
 	dependencies={data.dependencies}
 	columns={data.columns}
@@ -22,7 +23,11 @@
 	color={data.project.color}
 >
 	{#snippet actions()}
-		<Button size="sm" onclick={() => dialog.open({ startDate: fromDay(today), dueDate: fromDay(today + 3) })}>
+		<Button
+			disabled={!data.canEdit}
+			size="sm"
+			onclick={() => dialog.open({ startDate: fromDay(today), dueDate: fromDay(today + 3) })}
+		>
 			<Plus />
 			{m.ticket()}
 		</Button>

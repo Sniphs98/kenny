@@ -16,12 +16,14 @@
 		tags,
 		value,
 		onchange,
+		disabled = false,
 		class: className
 	}: {
 		/** Alle Tags des Projekts */
 		tags: Tag[];
 		value: Ref[];
 		onchange: (refs: Ref[]) => void;
+		disabled?: boolean;
 		class?: string;
 	} = $props();
 
@@ -51,6 +53,7 @@
 
 <Popover.Root bind:open onOpenChange={(o) => !o && (query = '')}>
 	<Popover.Trigger
+		{disabled}
 		class={cn(
 			buttonVariants({
 				variant: 'outline',

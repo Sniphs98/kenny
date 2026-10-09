@@ -5,6 +5,7 @@
 	import type { AttachmentDto } from '$lib/contracts';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
+	import Hint from '$lib/components/Hint.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -21,8 +22,10 @@
 	let {
 		ticketId,
 		attachments,
-		refresh
+		refresh,
+		readOnly = false
 	}: {
+		readOnly?: boolean;
 		ticketId: number;
 		attachments: AttachmentDto[];
 		/** Nach Hochladen oder Löschen die Ticketdaten neu laden */
@@ -39,7 +42,7 @@
 	const files = $derived(attachments.filter((a) => !a.isImage));
 
 	async function send(list: File[]) {
-		if (!list.length) return;
+		if (readOnly || !list.length) return;
 		uploading = list.length;
 		try {
 			await upload(`/tickets/${ticketId}/attachments`, list);
@@ -72,6 +75,7 @@
 
 	/** Screenshots o.ä. per Strg+V einfügen */
 	function onPaste(e: ClipboardEvent) {
+		if (readOnly) return;
 		const pasted = [...(e.clipboardData?.files ?? [])];
 		if (!pasted.length) return;
 		e.preventDefault();
@@ -94,7 +98,7 @@
 <Card.Root
 	class={cn('gap-4 transition-colors', dragOver && 'ring-primary bg-primary/5 ring-2')}
 	ondragover={(e: DragEvent) => {
-		if (!e.dataTransfer?.types.includes('Files')) return;
+		if (readOnly || !e.dataTransfer?.types.includes('Files')) return;
 		e.preventDefault();
 		dragOver = true;
 	}}
@@ -107,10 +111,11 @@
 		<Paperclip class="text-muted-foreground size-4" />
 		<Card.Title class="grow">{m.attachments()}</Card.Title>
 		{#if attachments.length}<Badge variant="secondary">{attachments.length}</Badge>{/if}
-		<Button variant="ghost" size="sm" disabled={uploading > 0} onclick={() => input.click()}>
+		<Button variant="ghost" size="sm" disabled={readOnly || uploading > 0} onclick={() => input.click()}>
 			{#if uploading}<LoaderCircle class="animate-spin" /> {m.uploading()}{:else}<Upload /> {m.upload()}{/if}
 		</Button>
 		<input
+			disabled={readOnly}
 			bind:this={input}
 			type="file"
 			multiple
@@ -125,10 +130,10 @@
 		{#if images.length}
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
 				{#each images as a (a.id)}
+					<!-- Kein Tooltip: der Dateiname wird beim Überfahren im Bild eingeblendet -->
 					<button
 						type="button"
 						class="group bg-muted focus-visible:ring-ring/50 relative aspect-[4/3] overflow-hidden rounded-md border outline-none focus-visible:ring-3"
-						title={a.filename}
 						onclick={() => (preview = a)}
 					>
 						<img
@@ -155,14 +160,19 @@
 							>{a.filename}</a
 						>
 						<span class="text-muted-foreground shrink-0 text-xs">{formatSize(a.size)}</span>
-						<Button
-							variant="ghost"
-							size="icon-xs"
-							class="hover:text-destructive"
-							title={m.delete_attachment()}
-							aria-label={m.delete_attachment_2({ value1: a.filename })}
-							onclick={() => (confirmDelete = a)}><Trash2 /></Button
-						>
+						<Hint text={m.delete_attachment()}>
+							{#snippet children(props)}
+								<Button
+									{...props}
+									variant="ghost"
+									size="icon-xs"
+									class="hover:text-destructive"
+									aria-label={m.delete_attachment_2({ value1: a.filename })}
+									disabled={readOnly}
+									onclick={() => (confirmDelete = a)}><Trash2 /></Button
+								>
+							{/snippet}
+						</Hint>
 					</li>
 				{/each}
 			</ul>
@@ -171,6 +181,7 @@
 			<button
 				type="button"
 				class="text-muted-foreground hover:border-foreground/30 hover:text-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm transition-colors"
+				disabled={readOnly}
 				onclick={() => input.click()}
 			>
 				{m.drop_files_here_paste_ctrl_v_or_click_to_select()}
@@ -193,8 +204,11 @@
 			</Dialog.Header>
 			<img src={preview.url} alt={preview.filename} class="bg-muted mx-auto max-h-[70vh] rounded-md object-contain" />
 			<Dialog.Footer>
-				<Button variant="ghost" class="hover:text-destructive mr-auto" onclick={() => (confirmDelete = preview)}
-					><Trash2 /> {m.delete()}</Button
+				<Button
+					variant="ghost"
+					class="hover:text-destructive mr-auto"
+					disabled={readOnly}
+					onclick={() => (confirmDelete = preview)}><Trash2 /> {m.delete()}</Button
 				>
 				<a href={preview.url} target="_blank" rel="noopener" class={buttonVariants({ variant: 'outline' })}
 					><ExternalLink /> {m.open_in_new_tab()}</a

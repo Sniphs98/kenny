@@ -1,4 +1,4 @@
-FROM node:22.23.2-bookworm-slim AS dependencies
+FROM public.ecr.aws/docker/library/node:22.23.2-bookworm-slim AS dependencies
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
@@ -12,7 +12,7 @@ RUN npm run build
 FROM dependencies AS production-dependencies
 RUN npm prune --omit=dev --ignore-scripts
 
-FROM node:22.23.2-bookworm-slim AS runtime
+FROM public.ecr.aws/docker/library/node:22.23.2-bookworm-slim AS runtime
 LABEL org.opencontainers.image.source="https://github.com/Sniphs98/kenny"
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 \

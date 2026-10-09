@@ -23,7 +23,11 @@ test('mehrere Unteraufgaben nacheinander im Modal anlegen', async ({ page, reque
 	await expect(page.getByText(/Ticket ".*" nicht gefunden/)).toHaveCount(0);
 
 	const detail = await getTicket(request, parent.key);
-	expect(detail.subtasks.map((s: { title: string }) => s.title)).toEqual(['Warenkorb prüfen', 'Zahlung testen', 'Bestätigungsmail']);
+	expect(detail.subtasks.map((s: { title: string }) => s.title)).toEqual([
+		'Warenkorb prüfen',
+		'Zahlung testen',
+		'Bestätigungsmail'
+	]);
 
 	// Modal schließen: Karte im Board zeigt den Fortschritt
 	await page.keyboard.press('Escape');

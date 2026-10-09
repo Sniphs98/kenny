@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { PRIORITIES, type UpdateTicketInput } from '$lib/contracts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from '../../routes/tickets/[key]/$types';
 	import { page } from '$app/state';
-	import { api, PRIORITY_LABELS } from '$lib/api';
+	import { api, updateTicket, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import Attachments from '$lib/components/Attachments.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -71,7 +72,7 @@
 		}
 	}
 
-	const patch = (body: Record<string, unknown>) => run(() => api('PATCH', base, body));
+	const patch = (body: UpdateTicketInput) => run(() => updateTicket(t.id, body));
 
 	async function saveTitle() {
 		if (title.trim() && title !== t.title) await patch({ title });
@@ -140,8 +141,13 @@
 			<Alert.Root class="text-warning border-warning/30 bg-warning/5">
 				<Ban />
 				<Alert.Title>
-					Wartet auf {openBlockers.length} offene{openBlockers.length === 1 ? 's' : ''} Ticket{openBlockers.length === 1 ? '' : 's'}:
-					{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i < openBlockers.length - 1 ? ', ' : ''}{/each}
+					Wartet auf {openBlockers.length} offene{openBlockers.length === 1 ? 's' : ''} Ticket{openBlockers.length === 1
+						? ''
+						: 's'}:
+					{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
+						openBlockers.length - 1
+							? ', '
+							: ''}{/each}
 				</Alert.Title>
 			</Alert.Root>
 		{/if}
@@ -159,7 +165,9 @@
 					<Textarea bind:value={description} rows={8} />
 					<div class="mt-3 flex gap-2">
 						<Button onclick={saveDescription}>Speichern</Button>
-						<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}>Abbrechen</Button>
+						<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}
+							>Abbrechen</Button
+						>
 					</div>
 				{:else if t.description}
 					<p class="whitespace-pre-wrap">{t.description}</p>
@@ -174,7 +182,9 @@
 				<ListChecks class="text-muted-foreground size-4" />
 				<Card.Title class="grow">Unteraufgaben</Card.Title>
 				{#if data.subtasks.length}
-					<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}>{subDone}/{data.subtasks.length}</Badge>
+					<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
+						>{subDone}/{data.subtasks.length}</Badge
+					>
 				{/if}
 			</Card.Header>
 			<Card.Content>
@@ -187,7 +197,10 @@
 									onCheckedChange={() => run(() => api('POST', `/tickets/${s.id}/${s.closed ? 'reopen' : 'close'}`))}
 									aria-label="Erledigt"
 								/>
-								<a href="/tickets/{s.key}" class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}>
+								<a
+									href="/tickets/{s.key}"
+									class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
+								>
 									<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
 									{s.title}
 								</a>
@@ -215,7 +228,10 @@
 						<ul class="-mx-2 mb-3 flex flex-col">
 							{#each g.items as l (l.id)}
 								<li class="hover:bg-muted flex items-center gap-2 rounded-md px-2 py-1">
-									<a href="/tickets/{l.ticket.key}" class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}>
+									<a
+										href="/tickets/{l.ticket.key}"
+										class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
+									>
 										<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
 										{l.ticket.title}
 									</a>
@@ -242,7 +258,12 @@
 							{/each}
 						</Select.Content>
 					</Select.Root>
-					<Input class="min-w-40 flex-1" list="ticket-options" placeholder="Ticket, z.B. {data.project.key}-1" bind:value={linkTarget} />
+					<Input
+						class="min-w-40 flex-1"
+						list="ticket-options"
+						placeholder="Ticket, z.B. {data.project.key}-1"
+						bind:value={linkTarget}
+					/>
 					<datalist id="ticket-options">
 						{#each linkCandidates as o (o.id)}<option value={o.key}>{o.title}</option>{/each}
 					</datalist>
@@ -257,7 +278,9 @@
 	<Card.Root class="gap-4 py-5">
 		<Card.Content class="flex flex-col gap-4 px-5">
 			{#if t.closed}
-				<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}><RotateCcw /> Wieder öffnen</Button>
+				<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
+					><RotateCcw /> Wieder öffnen</Button
+				>
 			{:else}
 				<Button onclick={() => run(() => api('POST', `${base}/close`))}><Check /> Abschließen</Button>
 			{/if}
@@ -273,9 +296,18 @@
 			</div>
 			<div class="grid gap-2">
 				<Label>Priorität</Label>
-				<Select.Root type="single" value={t.priority} onValueChange={(v) => patch({ priority: v })}>
+				<Select.Root
+					type="single"
+					value={t.priority}
+					onValueChange={(v) => {
+						const priority = PRIORITIES.find((p) => p === v);
+						if (priority) patch({ priority });
+					}}
+				>
 					<Select.Trigger class="w-full">
-						<span class="flex items-center gap-2"><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span>
+						<span class="flex items-center gap-2"
+							><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span
+						>
 					</Select.Trigger>
 					<Select.Content>
 						{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
@@ -297,7 +329,10 @@
 					onchange={(id) => patch({ assigneeId: id })}
 				/>
 				{#if page.data.user && t.assigneeId !== page.data.user.id}
-					<button class="text-primary -mt-1 self-start text-xs font-medium hover:underline" onclick={() => patch({ assigneeId: page.data.user!.id })}>
+					<button
+						class="text-primary -mt-1 self-start text-xs font-medium hover:underline"
+						onclick={() => patch({ assigneeId: page.data.user!.id })}
+					>
 						Mir zuweisen
 					</button>
 				{/if}
@@ -349,7 +384,9 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
-			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}>Löschen</AlertDialog.Action>
+			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}
+				>Löschen</AlertDialog.Action
+			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>

@@ -39,7 +39,8 @@
 		{#if data}
 			<Dialog.Header class="flex-row items-center gap-3 pr-8">
 				<Dialog.Title class="text-muted-foreground font-mono text-sm font-normal">
-					{data.project.key} / {#if data.parent}{data.parent.key} / {/if}{data.ticket.key}
+					{data.project.key} / {#if data.parent}{data.parent.key} /
+					{/if}{data.ticket.key}
 				</Dialog.Title>
 				<a
 					href="/tickets/{data.ticket.key}"

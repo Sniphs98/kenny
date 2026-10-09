@@ -1,0 +1,25 @@
+services:
+  kenny:
+    image: ghcr.io/sniphs98/kenny:${KENNY_VERSION:-latest}
+    build: .
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      ORIGIN: ${KENNY_ORIGIN:-http://localhost:3000}
+      BETTER_AUTH_URL: ${KENNY_ORIGIN:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      ATTACHMENT_MAX_MB: ${ATTACHMENT_MAX_MB:-25}
+      BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-30M}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+    volumes:
+      - kenny-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  kenny-data:

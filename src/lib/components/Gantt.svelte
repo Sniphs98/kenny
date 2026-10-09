@@ -1,6 +1,7 @@
 <script lang="ts">
+	import type { UpdateTicketInput } from '$lib/contracts';
 	import { invalidateAll } from '$app/navigation';
-	import { api } from '$lib/api';
+	import { createTicket, updateTicket } from '$lib/api';
 	import { openTicket } from '$lib/ticket-modal';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -10,8 +11,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
 	import { toast } from 'svelte-sonner';
-	import type { getColumns } from '$lib/server/services/projects';
-	import type { listDependencies, listTickets } from '$lib/server/services/tickets';
+	import type { BoardColumnDto, DependencyDto, TicketListItem } from '$lib/contracts';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
@@ -25,7 +25,7 @@
 	import { tick, type Snippet } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
-	type Item = ReturnType<typeof listTickets>[number];
+	type Item = TicketListItem;
 
 	let {
 		tickets: source,
@@ -39,9 +39,9 @@
 		actions
 	}: {
 		tickets: Item[];
-		dependencies: ReturnType<typeof listDependencies>;
+		dependencies: DependencyDto[];
 		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
-		columns: ReturnType<typeof getColumns>;
+		columns: BoardColumnDto[];
 		/** Für das Anlegen neuer Tickets aus der Einplanen-Suche */
 		projectKey: string;
 		color: string;
@@ -90,16 +90,18 @@
 
 	/** Tickets hierarchisch sortieren: Eltern, darunter ihre (aufgeklappten) Unteraufgaben */
 	const tree = $derived.by(() => {
-		let list = tickets.filter(
-			(t) => (!hideClosed || !t.closed) && (showBacklog || !backlogColumns.has(t.columnId))
-		);
+		let list = tickets.filter((t) => (!hideClosed || !t.closed) && (showBacklog || !backlogColumns.has(t.columnId)));
 		if (!showUndated) {
 			// Nur Tickets mit Termin, dazu ihre Elterntickets, damit die Hierarchie erhalten bleibt
 			const byId = new Map(list.map((t) => [t.id, t]));
 			const keep = new Set<number>();
 			for (const t of list) {
 				if (!t.startDate && !t.dueDate) continue;
-				for (let cur: Item | undefined = t; cur && !keep.has(cur.id); cur = cur.parentId ? byId.get(cur.parentId) : undefined)
+				for (
+					let cur: Item | undefined = t;
+					cur && !keep.has(cur.id);
+					cur = cur.parentId ? byId.get(cur.parentId) : undefined
+				)
 					keep.add(cur.id);
 			}
 			list = list.filter((t) => keep.has(t.id));
@@ -161,10 +163,7 @@
 		const end = range.start + range.days;
 		while (d < end) {
 			const date = new Date(d * DAY);
-			const next = Math.min(
-				end,
-				Math.round(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / DAY)
-			);
+			const next = Math.min(end, Math.round(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / DAY));
 			out.push({
 				label: date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
 				left: x(d),
@@ -256,7 +255,7 @@
 			return;
 		}
 		try {
-			await api('PATCH', `/tickets/${t.id}`, { startDate: t.startDate, dueDate: t.dueDate });
+			await updateTicket(t.id, { startDate: t.startDate, dueDate: t.dueDate });
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -269,7 +268,7 @@
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const day = range.start + Math.floor((e.clientX - rect.left) / px);
 		try {
-			await api('PATCH', `/tickets/${t.id}`, { startDate: fromDay(day), dueDate: fromDay(day + 2) });
+			await updateTicket(t.id, { startDate: fromDay(day), dueDate: fromDay(day + 2) });
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -311,10 +310,10 @@
 
 	/** Termin entfernen; optional zurück in die Backlog-Spalte */
 	async function unschedule(t: Item, toBacklog: boolean) {
-		const body: Record<string, unknown> = { startDate: null, dueDate: null };
+		const body: UpdateTicketInput = { startDate: null, dueDate: null };
 		if (toBacklog && backlogColumn) body.columnId = backlogColumn.id;
 		try {
-			await api('PATCH', `/tickets/${t.id}`, body);
+			await updateTicket(t.id, body);
 			toast.success(toBacklog ? `${t.key} zurück in den Backlog verschoben` : `${t.key} aus dem Zeitplan entfernt`);
 		} catch (err) {
 			toast.error((err as Error).message);
@@ -329,7 +328,7 @@
 		const start = planDay ?? today;
 		const s = span(t);
 		// Dauer behalten, wenn das Ticket schon Termine hat
-		const body: Record<string, unknown> = { startDate: fromDay(start), dueDate: fromDay(start + (s ? s.end - s.start : 2)) };
+		const body: UpdateTicketInput = { startDate: fromDay(start), dueDate: fromDay(start + (s ? s.end - s.start : 2)) };
 		if (backlogColumns.has(t.columnId)) {
 			// Aus dem Backlog holen, sonst wäre es im Gantt gleich wieder ausgeblendet
 			const target = columns.find((c) => !c.isBacklog && !c.isDone);
@@ -338,7 +337,7 @@
 		// Elterntickets aufklappen, damit eine eingeplante Unteraufgabe sichtbar ist
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
-			await api('PATCH', `/tickets/${t.id}`, body);
+			await updateTicket(t.id, body);
 			toast.success(`${t.key} eingeplant ab ${fmtDay(start)}`);
 		} catch (err) {
 			toast.error((err as Error).message);
@@ -370,7 +369,7 @@
 		const start = planDay ?? today;
 		let id: number | null = null;
 		try {
-			const t = await api<{ id: number; key: string }>('POST', `/projects/${projectKey}/tickets`, {
+			const t = await createTicket(projectKey, {
 				title,
 				startDate: fromDay(start),
 				dueDate: fromDay(start + 2)
@@ -422,8 +421,10 @@
 		scroller?.scrollTo({ left: Math.max(0, x(today) - 200), behavior: 'smooth' });
 	}
 	$effect(() => {
-		px;
-		queueMicrotask(scrollToToday);
+		const scale = px;
+		queueMicrotask(() => {
+			if (scale > 0) scrollToToday();
+		});
 	});
 </script>
 
@@ -470,19 +471,21 @@
 	class="gantt bg-card rounded-xl border shadow-xs"
 	bind:this={scroller}
 	bind:clientWidth={width}
-	style="--px: {px}px; --row: {ROW}px; --c: var(--primary, {color}); max-height: {resizable ? `${height}px` : maxHeight}"
+	style="--px: {px}px; --row: {ROW}px; --c: var(--primary, {color}); max-height: {resizable
+		? `${height}px`
+		: maxHeight}"
 >
 	<div class="grid" style="width: {280 + range.days * px}px">
 		<!-- Kopfzeile -->
 		<div class="corner">Ticket</div>
 		<div class="timehead" style="width: {range.days * px}px">
 			<div class="months">
-				{#each months as m}
+				{#each months as m (m.left)}
 					<div class="month" style="left: {m.left}px; width: {m.width}px">{m.label}</div>
 				{/each}
 			</div>
 			<div class="days">
-				{#each days as d}
+				{#each days as d (d)}
 					<div class="day" class:weekend={isWeekend(d)} class:today={d === today}>{dayLabel(d)}</div>
 				{/each}
 			</div>
@@ -513,7 +516,11 @@
 					</a>
 					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
 						<DropdownMenu.Root>
-							<DropdownMenu.Trigger class="rowaction" title="Aus dem Zeitplan nehmen" aria-label="{t.key} aus dem Zeitplan nehmen">
+							<DropdownMenu.Trigger
+								class="rowaction"
+								title="Aus dem Zeitplan nehmen"
+								aria-label="{t.key} aus dem Zeitplan nehmen"
+							>
 								<X class="size-3.5" />
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end" class="w-56">
@@ -536,7 +543,12 @@
 				Ticket einplanen…
 			</button>
 			<Popover.Root bind:open={planOpen}>
-				<Popover.Content class="w-96 p-0" align="start" side="top" customAnchor={planDay !== null && planCell ? planCell : planAnchor}>
+				<Popover.Content
+					class="w-96 p-0"
+					align="start"
+					side="top"
+					customAnchor={planDay !== null && planCell ? planCell : planAnchor}
+				>
 					<Command.Root>
 						<Command.Input placeholder="Ticket suchen oder neu anlegen…" bind:value={planQuery} />
 						<div class="text-muted-foreground border-b px-3 py-1.5 text-xs">
@@ -574,7 +586,7 @@
 		<!-- Zeitachse -->
 		<div class="body" style="width: {range.days * px}px; height: {(rows.length + 1) * ROW}px">
 			<div class="bg">
-				{#each days as d}
+				{#each days as d (d)}
 					<div class="bgday" class:weekend={isWeekend(d)}></div>
 				{/each}
 			</div>
@@ -634,9 +646,13 @@
 			>
 				{#if planOpen && planDay !== null}
 					<!-- Gewählter Tag bleibt markiert, solange die Suche offen ist; die Suche hängt daran -->
-					<div class="plancell selected" bind:this={planCell} style="left: {x(planDay)}px; width: {Math.max(px, 18)}px"><CalendarPlus class="size-3.5" /></div>
+					<div class="plancell selected" bind:this={planCell} style="left: {x(planDay)}px; width: {Math.max(px, 18)}px">
+						<CalendarPlus class="size-3.5" />
+					</div>
 				{:else if hoverDay !== null}
-					<div class="plancell" style="left: {x(hoverDay)}px; width: {Math.max(px, 18)}px"><CalendarPlus class="size-3.5" /></div>
+					<div class="plancell" style="left: {x(hoverDay)}px; width: {Math.max(px, 18)}px">
+						<CalendarPlus class="size-3.5" />
+					</div>
 				{/if}
 			</div>
 
@@ -650,11 +666,7 @@
 					</marker>
 				</defs>
 				{#each arrows as a (a.id)}
-					<path
-						d={a.path}
-						class:violated={a.violated}
-						marker-end={a.violated ? 'url(#arrow-bad)' : 'url(#arrow)'}
-					/>
+					<path d={a.path} class:violated={a.violated} marker-end={a.violated ? 'url(#arrow-bad)' : 'url(#arrow)'} />
 				{/each}
 			</svg>
 		</div>
@@ -701,7 +713,9 @@
 		height: 4px;
 		border-radius: 999px;
 		background: var(--border);
-		transition: background 0.12s, width 0.12s;
+		transition:
+			background 0.12s,
+			width 0.12s;
 	}
 	.resize:hover span,
 	.resize:focus-visible span,

@@ -2,7 +2,10 @@ import { expect, test } from '@playwright/test';
 import { card, createProject, createTicket, getTicket, open } from './helpers';
 
 // 1×1 Pixel PNG
-const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+const PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+	'base64'
+);
 
 test('Bild und Datei hochladen, ansehen und löschen', async ({ page, request }) => {
 	const p = await createProject(request);
@@ -36,7 +39,11 @@ test('Bild und Datei hochladen, ansehen und löschen', async ({ page, request })
 	await expect(card(page, 'Fehler im Layout').getByTitle(/Anhang/)).toContainText('1');
 });
 
-test('Anhänge sind nur angemeldet abrufbar und SVG wird nie inline ausgeliefert', async ({ request, playwright, baseURL }) => {
+test('Anhänge sind nur angemeldet abrufbar und SVG wird nie inline ausgeliefert', async ({
+	request,
+	playwright,
+	baseURL
+}) => {
 	const p = await createProject(request);
 	const t = await createTicket(request, p.key, { title: 'Sicherheit' });
 	const res = await request.post(`/api/v1/tickets/${t.key}/attachments?filename=bild.svg`, {

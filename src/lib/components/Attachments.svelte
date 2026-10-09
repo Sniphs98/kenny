@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api, formatSize, upload } from '$lib/api';
-	import type { AttachmentDto } from '$lib/server/services/attachments';
+	import type { AttachmentDto } from '$lib/contracts';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
@@ -74,7 +74,11 @@
 		// Screenshots heißen im Browser meist nur "image.png"
 		const named = pasted.map((f, i) =>
 			/^image\.\w+$/.test(f.name)
-				? new File([f], `Screenshot ${new Date().toLocaleString('de-DE').replace(/[/:]/g, '-')}${pasted.length > 1 ? ` (${i + 1})` : ''}.${f.name.split('.').pop()}`, { type: f.type })
+				? new File(
+						[f],
+						`Screenshot ${new Date().toLocaleString('de-DE').replace(/[/:]/g, '-')}${pasted.length > 1 ? ` (${i + 1})` : ''}.${f.name.split('.').pop()}`,
+						{ type: f.type }
+					)
 				: f
 		);
 		send(named);
@@ -123,8 +127,15 @@
 						title={a.filename}
 						onclick={() => (preview = a)}
 					>
-						<img src={a.url} alt={a.filename} loading="lazy" class="size-full object-cover transition-transform group-hover:scale-105" />
-						<span class="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1.5 py-0.5 text-left text-[11px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+						<img
+							src={a.url}
+							alt={a.filename}
+							loading="lazy"
+							class="size-full object-cover transition-transform group-hover:scale-105"
+						/>
+						<span
+							class="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1.5 py-0.5 text-left text-[11px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+						>
 							{a.filename}
 						</span>
 					</button>
@@ -136,7 +147,9 @@
 				{#each files as a (a.id)}
 					<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
 						<FileIcon class="text-muted-foreground size-4 shrink-0" />
-						<a href="{a.url}?download" class="min-w-0 grow truncate hover:underline" download={a.filename}>{a.filename}</a>
+						<a href="{a.url}?download" class="min-w-0 grow truncate hover:underline" download={a.filename}
+							>{a.filename}</a
+						>
 						<span class="text-muted-foreground shrink-0 text-xs">{formatSize(a.size)}</span>
 						<Button
 							variant="ghost"
@@ -170,14 +183,21 @@
 			<Dialog.Header>
 				<Dialog.Title class="truncate pr-8">{preview.filename}</Dialog.Title>
 				<Dialog.Description>
-					{formatSize(preview.size)}{#if preview.uploadedBy} · {preview.uploadedBy}{/if} · {new Date(preview.createdAt).toLocaleString('de-DE')}
+					{formatSize(preview.size)}{#if preview.uploadedBy}
+						· {preview.uploadedBy}{/if} · {new Date(preview.createdAt).toLocaleString('de-DE')}
 				</Dialog.Description>
 			</Dialog.Header>
 			<img src={preview.url} alt={preview.filename} class="bg-muted mx-auto max-h-[70vh] rounded-md object-contain" />
 			<Dialog.Footer>
-				<Button variant="ghost" class="hover:text-destructive mr-auto" onclick={() => (confirmDelete = preview)}><Trash2 /> Löschen</Button>
-				<a href={preview.url} target="_blank" rel="noopener" class={buttonVariants({ variant: 'outline' })}><ExternalLink /> In neuem Tab</a>
-				<a href="{preview.url}?download" download={preview.filename} class={buttonVariants()}><Download /> Herunterladen</a>
+				<Button variant="ghost" class="hover:text-destructive mr-auto" onclick={() => (confirmDelete = preview)}
+					><Trash2 /> Löschen</Button
+				>
+				<a href={preview.url} target="_blank" rel="noopener" class={buttonVariants({ variant: 'outline' })}
+					><ExternalLink /> In neuem Tab</a
+				>
+				<a href="{preview.url}?download" download={preview.filename} class={buttonVariants()}
+					><Download /> Herunterladen</a
+				>
 			</Dialog.Footer>
 		{/if}
 	</Dialog.Content>

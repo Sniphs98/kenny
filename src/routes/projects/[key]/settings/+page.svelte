@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { api } from '$lib/api';
+	import { api, updateProject } from '$lib/api';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -44,7 +44,7 @@
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
-		await run(() => api('PATCH', base, { name, description, color }), 'Projekt gespeichert');
+		await run(() => updateProject(data.project.key, { name, description, color }), 'Projekt gespeichert');
 	}
 
 	// --- Spalten per Drag & Drop sortieren (nur am Griff, damit die Eingabefelder bedienbar bleiben) ---
@@ -124,7 +124,9 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Projekt</Card.Title>
-			<Card.Description>Name, Farbe und Beschreibung des Projekts. Die Farbe wird im Projekt zur Hauptfarbe.</Card.Description>
+			<Card.Description
+				>Name, Farbe und Beschreibung des Projekts. Die Farbe wird im Projekt zur Hauptfarbe.</Card.Description
+			>
 		</Card.Header>
 		<Card.Content>
 			<form class="grid gap-4" onsubmit={save}>
@@ -149,9 +151,8 @@
 		<Card.Header>
 			<Card.Title>Board-Spalten</Card.Title>
 			<Card.Description>
-				Tickets in Spalten mit „Erledigt“ gelten als abgeschlossen. Beim Schließen per API landet ein Ticket in
-				der ersten Erledigt-Spalte. Tickets in Spalten mit „Backlog“ werden im Gantt-Diagramm standardmäßig
-				ausgeblendet.
+				Tickets in Spalten mit „Erledigt“ gelten als abgeschlossen. Beim Schließen per API landet ein Ticket in der
+				ersten Erledigt-Spalte. Tickets in Spalten mit „Backlog“ werden im Gantt-Diagramm standardmäßig ausgeblendet.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
@@ -221,8 +222,7 @@
 		<Card.Header>
 			<Card.Title>Tags</Card.Title>
 			<Card.Description>
-				Tags wie Bug, Feature oder Story zum Einordnen von Tickets. Neue Tags lassen sich auch direkt am Ticket
-				anlegen.
+				Tags wie Bug, Feature oder Story zum Einordnen von Tickets. Neue Tags lassen sich auch direkt am Ticket anlegen.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
@@ -257,7 +257,8 @@
 							class="hover:text-destructive"
 							title="Tag löschen"
 							aria-label="Tag löschen"
-							onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), `Tag „${g.name}“ gelöscht`)}><Trash2 /></Button
+							onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), `Tag „${g.name}“ gelöscht`)}
+							><Trash2 /></Button
 						>
 					</li>
 				{:else}
@@ -292,7 +293,9 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
-			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}>Endgültig löschen</AlertDialog.Action>
+			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}
+				>Endgültig löschen</AlertDialog.Action
+			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>

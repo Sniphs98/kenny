@@ -1,3 +1,5 @@
+import { createTagSchema, updateTagSchema } from '$lib/contracts';
+import { parseInput } from '../validation';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { tag, ticketTag, type Tag } from '../db/schema';
@@ -16,7 +18,8 @@ export const DEFAULT_TAGS = [
 /** Farben für automatisch angelegte Tags, reihum vergeben */
 const AUTO_COLORS = ['#a855f7', '#f97316', '#14b8a6', '#ec4899', '#eab308', '#0ea5e9', '#6366f1', '#292524'];
 
-export type TagDto = { id: number; name: string; color: string };
+export type { TagDto } from '$lib/contracts';
+import type { TagDto } from '$lib/contracts';
 const presentTag = (t: Tag): TagDto => ({ id: t.id, name: t.name, color: t.color });
 
 function checkColor(v: unknown) {
@@ -48,7 +51,12 @@ function getTag(projectId: number, tagId: number) {
 }
 
 function insertTag(tx: Tx | typeof db, projectId: number, name: string, color?: string) {
-	const count = tx.select({ n: sql<number>`count(*)` }).from(tag).where(eq(tag.projectId, projectId)).get()?.n ?? 0;
+	const count =
+		tx
+			.select({ n: sql<number>`count(*)` })
+			.from(tag)
+			.where(eq(tag.projectId, projectId))
+			.get()?.n ?? 0;
 	return tx
 		.insert(tag)
 		.values({ projectId, name, color: color ?? AUTO_COLORS[count % AUTO_COLORS.length] })
@@ -56,14 +64,16 @@ function insertTag(tx: Tx | typeof db, projectId: number, name: string, color?: 
 		.get();
 }
 
-export function createTag(projectRef: string | number, input: Record<string, unknown>) {
+export function createTag(projectRef: string | number, rawInput: unknown) {
+	const input = parseInput(createTagSchema, rawInput);
 	const p = getProject(projectRef);
 	const name = str(input.name, 'name', { max: 40 });
 	if (findByName(db, p.id, name)) throw new ApiError(409, `Tag "${name}" gibt es bereits.`);
 	return presentTag(insertTag(db, p.id, name, input.color !== undefined ? checkColor(input.color) : undefined));
 }
 
-export function updateTag(projectRef: string | number, tagId: number, input: Record<string, unknown>) {
+export function updateTag(projectRef: string | number, tagId: number, rawInput: unknown) {
+	const input = parseInput(updateTagSchema, rawInput);
 	const p = getProject(projectRef);
 	const t = getTag(p.id, tagId);
 	const patch: Partial<typeof tag.$inferInsert> = {};
@@ -79,11 +89,16 @@ export function updateTag(projectRef: string | number, tagId: number, input: Rec
 
 export function deleteTag(projectRef: string | number, tagId: number) {
 	const p = getProject(projectRef);
-	db.delete(tag).where(eq(tag.id, getTag(p.id, tagId).id)).run();
+	db.delete(tag)
+		.where(eq(tag.id, getTag(p.id, tagId).id))
+		.run();
 }
 
 export function insertDefaultTags(tx: Tx, projectId: number) {
-	for (const t of DEFAULT_TAGS) tx.insert(tag).values({ projectId, ...t }).run();
+	for (const t of DEFAULT_TAGS)
+		tx.insert(tag)
+			.values({ projectId, ...t })
+			.run();
 }
 
 /** Tags mehrerer Tickets, nach Ticket-ID gruppiert */

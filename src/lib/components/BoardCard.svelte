@@ -2,7 +2,7 @@
 	import { PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
-	import type { TicketListItem } from '$lib/server/services/tickets';
+	import type { TicketListItem } from '$lib/contracts';
 	import { openTicket } from '$lib/ticket-modal';
 	import { cn } from '$lib/utils';
 	import Ban from '@lucide/svelte/icons/ban';
@@ -78,7 +78,10 @@
 >
 	{#if parent}
 		<div class="-mb-0.5 flex items-start gap-2">
-			<div class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs" title="Unteraufgabe von {parent.key} {parent.title}">
+			<div
+				class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs"
+				title="Unteraufgabe von {parent.key} {parent.title}"
+			>
 				<CornerDownRight class="size-3 shrink-0" />
 				<span class="shrink-0 font-mono">{parent.key}</span>
 				<span class="truncate">{parent.title}</span>
@@ -89,7 +92,10 @@
 	<div class="flex items-start gap-2">
 		<a
 			href="/tickets/{t.key}"
-			class={cn('line-clamp-3 min-w-0 grow font-medium break-words hover:underline', t.closed && 'text-muted-foreground line-through')}
+			class={cn(
+				'line-clamp-3 min-w-0 grow font-medium break-words hover:underline',
+				t.closed && 'text-muted-foreground line-through'
+			)}
 			onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
 			draggable="false">{t.title}</a
 		>
@@ -105,17 +111,20 @@
 				class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}
 				title="Fällig am {new Date(t.dueDate).toLocaleDateString('de-DE')}{overdue ? ' (überfällig)' : ''}"
 			>
-				<Calendar /> {shortDate(t.dueDate)}
+				<Calendar />
+				{shortDate(t.dueDate)}
 			</span>
 		{/if}
 		{#if blocked}
 			<span class="text-warning flex items-center gap-1" title="Wartet auf {t.openBlockers} offene(s) Ticket(s)">
-				<Ban /> {t.openBlockers}
+				<Ban />
+				{t.openBlockers}
 			</span>
 		{/if}
 		{#if t.attachmentCount > 0}
 			<span class="flex items-center gap-1" title="{t.attachmentCount} Anhang/Anhänge">
-				<Paperclip /> {t.attachmentCount}
+				<Paperclip />
+				{t.attachmentCount}
 			</span>
 		{/if}
 		<span class="ml-auto">
@@ -140,7 +149,9 @@
 						style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"
 					></span>
 				</span>
-				<span class={cn('tabular-nums', t.subtaskDone === t.subtaskCount && 'text-success')}>{t.subtaskDone}/{t.subtaskCount}</span>
+				<span class={cn('tabular-nums', t.subtaskDone === t.subtaskCount && 'text-success')}
+					>{t.subtaskDone}/{t.subtaskCount}</span
+				>
 			</button>
 			{#if expanded && subtasks.length}
 				<ul class="flex flex-col px-2 pb-1.5">

@@ -50,7 +50,13 @@
 
 <Popover.Root bind:open onOpenChange={(o) => !o && (query = '')}>
 	<Popover.Trigger
-		class={cn(buttonVariants({ variant: 'outline', class: 'h-auto min-h-9 w-full flex-wrap justify-start gap-1 py-1.5 font-normal' }), className)}
+		class={cn(
+			buttonVariants({
+				variant: 'outline',
+				class: 'h-auto min-h-9 w-full flex-wrap justify-start gap-1 py-1.5 font-normal'
+			}),
+			className
+		)}
 		onclick={(e) => e.stopPropagation()}
 	>
 		{#each selected as t (t.id)}
@@ -67,7 +73,12 @@
 				{#if !canCreate}<Command.Empty>Kein Tag gefunden.</Command.Empty>{/if}
 				<Command.Group>
 					{#each tags as t (t.id)}
-						<Command.Item value={String(t.id)} keywords={[t.name]} data-checked={value.includes(t.id)} onSelect={() => toggle(t.id)}>
+						<Command.Item
+							value={String(t.id)}
+							keywords={[t.name]}
+							data-checked={value.includes(t.id)}
+							onSelect={() => toggle(t.id)}
+						>
 							<TagBadge name={t.name} color={t.color} />
 						</Command.Item>
 					{/each}

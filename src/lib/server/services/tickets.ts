@@ -1,3 +1,5 @@
+import { createTicketSchema, updateTicketSchema, createLinkSchema } from '$lib/contracts';
+import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '../db';
@@ -14,7 +16,7 @@ import {
 } from '../db/schema';
 import { ApiError } from '../errors';
 import { getColumns, getProject } from './projects';
-import { setTicketTags, tagsByTicket, type TagDto } from './tags';
+import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
 import { oneOf, optDate, optInt, optStr, str } from './validate';
 
@@ -35,7 +37,11 @@ export function resolveTicket(ref: string | number, tx: Tx | typeof db = db): Ti
 			.where(and(eq(project.key, keyMatch[1].toUpperCase()), eq(ticket.number, Number(keyMatch[2]))))
 			.get()?.t;
 	} else if (/^\d+$/.test(s)) {
-		row = tx.select().from(ticket).where(eq(ticket.id, Number(s))).get();
+		row = tx
+			.select()
+			.from(ticket)
+			.where(eq(ticket.id, Number(s)))
+			.get();
 	}
 	if (!row) throw new ApiError(404, `Ticket "${s}" nicht gefunden.`);
 	return row;
@@ -64,7 +70,8 @@ function present(t: Ticket, projectKey: string, column?: { name: string; isDone:
 		updatedAt: t.updatedAt
 	};
 }
-export type TicketDto = ReturnType<typeof present> & { tags: TagDto[] };
+export type { TicketDto, TicketListItem } from '$lib/contracts';
+import type { TicketDto, TicketListItem } from '$lib/contracts';
 
 export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);
@@ -72,15 +79,6 @@ export function getTicket(ref: string | number): TicketDto {
 	const col = db.select().from(boardColumn).where(eq(boardColumn.id, t.columnId)).get();
 	return { ...present(t, p.key, col), tags: tagsByTicket([t.id]).get(t.id) ?? [] };
 }
-
-export type TicketListItem = TicketDto & {
-	assigneeName: string | null;
-	subtaskCount: number;
-	subtaskDone: number;
-	attachmentCount: number;
-	dependsOn: number[];
-	openBlockers: number;
-};
 
 /** Alle Tickets eines Projekts inkl. Unteraufgaben-Zähler und Abhängigkeiten */
 export function listTickets(projectId: number, filter: { closed?: boolean } = {}): TicketListItem[] {
@@ -163,8 +161,7 @@ export function getTicketDetail(ref: string | number) {
 	const links = linkRows.map(({ link, other, otherKey }) => {
 		const outgoing = link.sourceId === t.id;
 		// Aus Sicht dieses Tickets beschreiben
-		const relation =
-			link.type === 'relates' ? 'relates' : outgoing ? 'depends_on' : ('blocks' as const);
+		const relation = link.type === 'relates' ? 'relates' : outgoing ? 'depends_on' : ('blocks' as const);
 		return {
 			id: link.id,
 			type: link.type,
@@ -229,7 +226,7 @@ function checkParent(tx: Tx, t: { id?: number; projectId: number }, parentRef: u
 	if (parent.projectId !== t.projectId)
 		throw new ApiError(400, 'Unteraufgaben müssen im selben Projekt liegen wie das übergeordnete Ticket.');
 	// Zyklen verhindern: das neue Elternticket darf kein Nachfahre dieses Tickets sein
-	for (let cur: Ticket | undefined = parent; cur; ) {
+	for (let cur: Ticket | undefined = parent; cur;) {
 		if (cur.id === t.id) throw new ApiError(400, 'Ein Ticket kann nicht Unteraufgabe von sich selbst sein.');
 		cur = cur.parentId ? tx.select().from(ticket).where(eq(ticket.id, cur.parentId)).get() : undefined;
 	}
@@ -242,12 +239,17 @@ function checkDates(start: string | null, due: string | null) {
 
 function checkAssignee(tx: Tx, id: unknown) {
 	if (id === null || id === undefined || id === '') return null;
-	const u = tx.select({ id: user.id }).from(user).where(or(eq(user.id, String(id)), eq(user.email, String(id)))).get();
+	const u = tx
+		.select({ id: user.id })
+		.from(user)
+		.where(or(eq(user.id, String(id)), eq(user.email, String(id))))
+		.get();
 	if (!u) throw new ApiError(400, `Benutzer "${id}" nicht gefunden.`);
 	return u.id;
 }
 
-export function createTicket(projectRef: string | number, input: Record<string, unknown>, userId: string | null) {
+export function createTicket(projectRef: string | number, rawInput: unknown, userId: string | null) {
+	const input = parseInput(createTicketSchema, rawInput);
 	const p = getProject(projectRef);
 	const cols = getColumns(p.id);
 	const col =
@@ -306,7 +308,8 @@ export function createTicket(projectRef: string | number, input: Record<string, 
 	return getTicket(created.id);
 }
 
-export function updateTicket(ref: string | number, input: Record<string, unknown>) {
+export function updateTicket(ref: string | number, rawInput: unknown) {
+	const input = parseInput(updateTicketSchema, rawInput);
 	const t = resolveTicket(ref);
 	db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
@@ -431,7 +434,8 @@ function insertLink(tx: Tx, source: Ticket, targetRef: string, type: LinkType) {
  * - blocks: dieses Ticket ist Voraussetzung für das Ziel
  * - relates: einfache Verlinkung
  */
-export function addLink(ref: string | number, input: Record<string, unknown>) {
+export function addLink(ref: string | number, rawInput: unknown) {
+	const input = parseInput(createLinkSchema, rawInput);
 	const t = resolveTicket(ref);
 	const type = oneOf(input.type ?? 'relates', [...LINK_TYPES, 'blocks'] as const, 'type');
 	const targetRef = str(String(input.target ?? input.targetId ?? ''), 'target');

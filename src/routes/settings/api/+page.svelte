@@ -38,7 +38,11 @@
 		['PATCH', '/projects/:projekt/tags/:id', 'Tag ändern {name?, color?}'],
 		['DELETE', '/projects/:projekt/tags/:id', 'Tag löschen'],
 		['GET', '/tickets/:ticket', 'Ticket mit Unteraufgaben und Verknüpfungen'],
-		['PATCH', '/tickets/:ticket', 'Ticket ändern (auch column zum Verschieben, assignee zum Zuweisen, tags ersetzt alle Tags)'],
+		[
+			'PATCH',
+			'/tickets/:ticket',
+			'Ticket ändern (auch column zum Verschieben, assignee zum Zuweisen, tags ersetzt alle Tags)'
+		],
 		['POST', '/tickets/:ticket/close', 'Ticket abschließen'],
 		['POST', '/tickets/:ticket/reopen', 'Ticket wieder öffnen'],
 		['POST', '/tickets/:ticket/subtasks', 'Unteraufgabe anlegen'],
@@ -74,8 +78,17 @@
 					<Alert.Title>Neues Token erstellt</Alert.Title>
 					<Alert.Description>
 						<div class="mt-1 flex w-full items-center gap-2">
-							<code class="bg-background text-foreground grow rounded-md border px-2.5 py-1.5 font-mono text-xs break-all select-all">{form.token}</code>
-							<Button variant="outline" size="icon-sm" title="Kopieren" aria-label="Token kopieren" onclick={() => copy(form.token!)}>
+							<code
+								class="bg-background text-foreground grow rounded-md border px-2.5 py-1.5 font-mono text-xs break-all select-all"
+								>{form.token}</code
+							>
+							<Button
+								variant="outline"
+								size="icon-sm"
+								title="Kopieren"
+								aria-label="Token kopieren"
+								onclick={() => copy(form.token!)}
+							>
 								{#if copied}<Check />{:else}<Copy />{/if}
 							</Button>
 						</div>
@@ -114,7 +127,9 @@
 								<Table.Cell class="text-right">
 									<form method="POST" action="?/delete" use:enhance>
 										<input type="hidden" name="id" value={t.id} />
-										<Button type="submit" variant="ghost" size="sm" class="hover:text-destructive"><Trash2 /> Widerrufen</Button>
+										<Button type="submit" variant="ghost" size="sm" class="hover:text-destructive"
+											><Trash2 /> Widerrufen</Button
+										>
 									</form>
 								</Table.Cell>
 							</Table.Row>
@@ -130,8 +145,9 @@
 			<Card.Title>Kurzreferenz</Card.Title>
 			<Card.Description>
 				Alle Endpunkte liegen unter <code class="font-mono">{origin}/api/v1</code> und erwarten
-				<code class="font-mono">Authorization: Bearer &lt;token&gt;</code>. Tickets können per ID (<code class="font-mono">42</code>) oder
-				Schlüssel (<code class="font-mono">WEB-12</code>) angesprochen werden, Projekte per ID oder Kürzel.
+				<code class="font-mono">Authorization: Bearer &lt;token&gt;</code>. Tickets können per ID (<code
+					class="font-mono">42</code
+				>) oder Schlüssel (<code class="font-mono">WEB-12</code>) angesprochen werden, Projekte per ID oder Kürzel.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
@@ -148,7 +164,8 @@
 			</Table.Root>
 
 			<h3 class="mt-2 text-sm font-semibold">Beispiel: Ticket anlegen</h3>
-			<pre class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/projects/WEB/tickets \\
+			<pre
+				class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/projects/WEB/tickets \\
   -H "Authorization: Bearer $KENNY_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -164,7 +181,8 @@
   }'`}</pre>
 
 			<h3 class="mt-2 text-sm font-semibold">Beispiel: Ticket abschließen</h3>
-			<pre class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/tickets/WEB-12/close \\
+			<pre
+				class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`curl -X POST ${origin}/api/v1/tickets/WEB-12/close \\
   -H "Authorization: Bearer $KENNY_TOKEN"`}</pre>
 		</Card.Content>
 	</Card.Root>

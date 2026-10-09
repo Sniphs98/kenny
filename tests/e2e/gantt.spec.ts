@@ -66,15 +66,24 @@ test('neues Ticket direkt aus der Einplanen-Suche anlegen', async ({ page, reque
 test('Unteraufgaben im Gantt auf- und zuklappen', async ({ page, request }) => {
 	const p = await createProject(request);
 	const parent = await createTicket(request, p.key, { title: 'Umzug', startDate: day(0), dueDate: day(10) });
-	await createTicket(request, p.key, { title: 'Kisten packen', parent: parent.key, startDate: day(1), dueDate: day(2) });
+	await createTicket(request, p.key, {
+		title: 'Kisten packen',
+		parent: parent.key,
+		startDate: day(1),
+		dueDate: day(2)
+	});
 
 	await open(page, `/projects/${p.key}/gantt`);
 	await expect(row(page, 'Kisten packen')).toHaveCount(0);
 
-	await row(page, 'Umzug').getByRole('button', { name: /Unteraufgaben aufklappen/ }).click();
+	await row(page, 'Umzug')
+		.getByRole('button', { name: /Unteraufgaben aufklappen/ })
+		.click();
 	await expect(row(page, 'Kisten packen')).toBeVisible();
 
-	await row(page, 'Umzug').getByRole('button', { name: /Unteraufgaben zuklappen/ }).click();
+	await row(page, 'Umzug')
+		.getByRole('button', { name: /Unteraufgaben zuklappen/ })
+		.click();
 	await expect(row(page, 'Kisten packen')).toHaveCount(0);
 });
 
@@ -91,7 +100,8 @@ test('Gantt passt ohne horizontale Scrollleiste, wenn alle Termine hineinpassen'
 test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vielen Tickets', async ({ page, request }) => {
 	const p = await createProject(request);
 	// Mehr Zeilen, als in den Zeitplan über dem Board passen (max. 360 px)
-	for (let i = 0; i < 14; i++) await createTicket(request, p.key, { title: `Geplant ${i}`, startDate: day(i), dueDate: day(i + 1) });
+	for (let i = 0; i < 14; i++)
+		await createTicket(request, p.key, { title: `Geplant ${i}`, startDate: day(i), dueDate: day(i + 1) });
 	for (const title of ['Offen A', 'Offen B', 'Offen C']) await createTicket(request, p.key, { title });
 
 	await open(page, `/projects/${p.key}/board`);
@@ -115,7 +125,8 @@ test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vie
 
 test('Zeitplan über dem Board in der Höhe ziehen, Höhe bleibt gespeichert', async ({ page, request }) => {
 	const p = await createProject(request);
-	for (let i = 0; i < 20; i++) await createTicket(request, p.key, { title: `Aufgabe ${i}`, startDate: day(i), dueDate: day(i + 1) });
+	for (let i = 0; i < 20; i++)
+		await createTicket(request, p.key, { title: `Aufgabe ${i}`, startDate: day(i), dueDate: day(i + 1) });
 
 	await open(page, `/projects/${p.key}/board`);
 	const gantt = page.locator('.gantt');

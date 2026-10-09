@@ -1,0 +1,33 @@
+name: Fehler melden
+description: Einen reproduzierbaren Fehler beschreiben.
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Schritte zum Reproduzieren
+      description: Ausgangszustand und konkrete Schritte; keine Tokens oder privaten Daten.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Erwartetes und tatsächliches Verhalten
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Container-Version, Browser und Betriebssystem
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien
+      description: Woran erkennen wir, dass der Fehler behoben ist?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Bereinigte Logs oder Screenshots

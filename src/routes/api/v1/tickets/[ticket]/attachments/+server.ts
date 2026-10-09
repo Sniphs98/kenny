@@ -24,8 +24,14 @@ export const POST = apiHandler(
 			return addAttachments(e.params.ticket!, files, user.id);
 		}
 		const filename = e.url.searchParams.get('filename');
-		if (!filename) throw new ApiError(400, 'Entweder multipart/form-data mit Feld "file" oder ?filename=… mit der Datei als Body senden.');
-		const file = new File([await e.request.arrayBuffer()], filename, { type: type.split(';')[0] || 'application/octet-stream' });
+		if (!filename)
+			throw new ApiError(
+				400,
+				'Entweder multipart/form-data mit Feld "file" oder ?filename=… mit der Datei als Body senden.'
+			);
+		const file = new File([await e.request.arrayBuffer()], filename, {
+			type: type.split(';')[0] || 'application/octet-stream'
+		});
 		return addAttachments(e.params.ticket!, [file], user.id);
 	},
 	{ status: 201 }

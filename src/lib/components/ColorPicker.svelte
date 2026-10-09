@@ -5,7 +5,19 @@
 
 	let { value = $bindable() }: { value: string } = $props();
 
-	const presets = ['#292524', '#6366f1', '#3b82f6', '#0ea5e9', '#14b8a6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#ec4899', '#a855f7'];
+	const presets = [
+		'#292524',
+		'#6366f1',
+		'#3b82f6',
+		'#0ea5e9',
+		'#14b8a6',
+		'#22c55e',
+		'#eab308',
+		'#f97316',
+		'#ef4444',
+		'#ec4899',
+		'#a855f7'
+	];
 	const isPreset = $derived(presets.includes(value.toLowerCase()));
 </script>
 

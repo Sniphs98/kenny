@@ -1,0 +1,29 @@
+name: Feature vorschlagen
+description: Eine Erweiterung als umsetzbare Aufgabe beschreiben.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem und Ziel
+      description: Was möchtest du erreichen, und was fehlt heute?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Gewünschtes Verhalten
+      description: Konkrete Beispiele für UI oder API.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien
+      description: Überprüfbare Bedingungen, die eine Umsetzung erfüllen muss.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Umfang, Grenzen und Alternativen
+      description: Was gehört dazu, was bleibt für später? Müssen bestehende Daten migriert werden?

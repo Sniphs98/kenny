@@ -1,3 +1,5 @@
+import { createProjectSchema, updateProjectSchema, createColumnSchema, updateColumnSchema } from '$lib/contracts';
+import { parseInput } from '../validation';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { boardColumn, project, ticket } from '../db/schema';
@@ -78,7 +80,8 @@ function deriveKey(name: string) {
 	return key;
 }
 
-export function createProject(input: Record<string, unknown>, userId: string | null) {
+export function createProject(rawInput: unknown, userId: string | null) {
+	const input = parseInput(createProjectSchema, rawInput);
 	const name = str(input.name, 'name', { max: 120 });
 	const key = input.key ? normalizeKey(str(input.key, 'key')) : deriveKey(name);
 	if (db.select().from(project).where(eq(project.key, key)).get())
@@ -104,7 +107,8 @@ export function createProject(input: Record<string, unknown>, userId: string | n
 	});
 }
 
-export function updateProject(id: number, input: Record<string, unknown>) {
+export function updateProject(id: number, rawInput: unknown) {
+	const input = parseInput(updateProjectSchema, rawInput);
 	const patch: Partial<typeof project.$inferInsert> = {};
 	if (input.name !== undefined) patch.name = str(input.name, 'name', { max: 120 });
 	if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
@@ -120,7 +124,8 @@ export async function deleteProject(id: number) {
 	await removeFiles(files);
 }
 
-export function addColumn(projectId: number, input: Record<string, unknown>) {
+export function addColumn(projectId: number, rawInput: unknown) {
+	const input = parseInput(createColumnSchema, rawInput);
 	const cols = getColumns(projectId);
 	return db
 		.insert(boardColumn)
@@ -135,7 +140,8 @@ export function addColumn(projectId: number, input: Record<string, unknown>) {
 		.get();
 }
 
-export function updateColumn(projectId: number, columnId: number, input: Record<string, unknown>) {
+export function updateColumn(projectId: number, columnId: number, rawInput: unknown) {
+	const input = parseInput(updateColumnSchema, rawInput);
 	const col = db
 		.select()
 		.from(boardColumn)
@@ -162,9 +168,7 @@ export function updateColumn(projectId: number, columnId: number, input: Record<
 			const others = getColumns(projectId).filter((c) => c.id !== columnId);
 			const pos = Math.max(0, Math.min(others.length, Math.round(input.position)));
 			others.splice(pos, 0, col);
-			others.forEach((c, i) =>
-				tx.update(boardColumn).set({ position: i }).where(eq(boardColumn.id, c.id)).run()
-			);
+			others.forEach((c, i) => tx.update(boardColumn).set({ position: i }).where(eq(boardColumn.id, c.id)).run());
 		}
 	});
 	return getColumns(projectId);
@@ -174,8 +178,11 @@ export function deleteColumn(projectId: number, columnId: number) {
 	const cols = getColumns(projectId);
 	if (!cols.some((c) => c.id === columnId)) throw new ApiError(404, 'Spalte nicht gefunden.');
 	if (cols.length <= 1) throw new ApiError(409, 'Die letzte Spalte kann nicht gelöscht werden.');
-	const used = db.select({ n: sql<number>`count(*)` }).from(ticket).where(eq(ticket.columnId, columnId)).get();
-	if (used && used.n > 0)
-		throw new ApiError(409, 'Die Spalte enthält noch Tickets. Bitte zuerst verschieben.');
+	const used = db
+		.select({ n: sql<number>`count(*)` })
+		.from(ticket)
+		.where(eq(ticket.columnId, columnId))
+		.get();
+	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Tickets. Bitte zuerst verschieben.');
 	db.delete(boardColumn).where(eq(boardColumn.id, columnId)).run();
 }

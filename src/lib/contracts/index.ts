@@ -152,7 +152,9 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 		})
 	),
 	attachments: z.array(attachmentSchema),
-	assignee: userSchema.nullable()
+	assignee: userSchema.nullable(),
+	/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
+	submission: z.object({ form: z.string().nullable(), email: z.string().nullable() }).nullable()
 });
 
 export type CreateProjectInput = z.input<typeof createProjectSchema>;
@@ -185,3 +187,53 @@ export const ticketFormSchema = z
 		columnId: id.optional()
 	})
 	.refine(validDateRange, rangeError);
+
+// --- Formulare: Tickets per Link einreichen (auch ohne Anmeldung) ---
+
+/** E-Mail-Feld bei Formularen ohne Anmeldung: ausgeblendet, optional oder Pflicht */
+export const INTAKE_EMAIL_MODES = ['hidden', 'optional', 'required'] as const;
+export type IntakeEmailMode = (typeof INTAKE_EMAIL_MODES)[number];
+
+/** Formular anlegen oder vollständig ändern (Einstellungsseite) */
+export const intakeFormSchema = z.strictObject({
+	name: z.string().trim().min(1, 'Bitte einen Namen angeben.').max(120),
+	projectIds: z.array(id).min(1, 'Bitte mindestens ein Projekt auswählen.').max(100),
+	requireLogin: z.boolean().default(false),
+	emailMode: z.enum(INTAKE_EMAIL_MODES).default('optional'),
+	active: z.boolean().default(true)
+});
+
+/** Einreichung über ein Formular; "website" ist ein unsichtbares Fallen-Feld gegen Bots */
+export const intakeSubmissionSchema = z.strictObject({
+	project: z.string().trim().max(20).default(''),
+	title: z.string().trim().min(1, 'Bitte einen Titel angeben.').max(300),
+	description: z.string().max(100_000).default(''),
+	email: z
+		.union([z.literal(''), z.email({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' }).max(320)])
+		.default(''),
+	website: z.string().max(500).default('')
+});
+
+export const intakeFormDtoSchema = z.object({
+	id,
+	name: z.string(),
+	token: z.string(),
+	requireLogin: z.boolean(),
+	emailMode: z.enum(INTAKE_EMAIL_MODES),
+	active: z.boolean(),
+	projects: z.array(z.object({ id, key: z.string(), name: z.string() })),
+	createdAt: timestamp
+});
+
+/** Was die öffentliche Seite über ein Formular erfährt (ohne interne IDs außer dem Projektkürzel) */
+export const publicIntakeFormSchema = z.object({
+	name: z.string(),
+	requireLogin: z.boolean(),
+	emailMode: z.enum(INTAKE_EMAIL_MODES),
+	projects: z.array(z.object({ key: z.string(), name: z.string(), color: z.string() }))
+});
+
+export type IntakeFormInput = z.input<typeof intakeFormSchema>;
+export type IntakeSubmissionInput = z.input<typeof intakeSubmissionSchema>;
+export type IntakeFormDto = z.output<typeof intakeFormDtoSchema>;
+export type PublicIntakeForm = z.output<typeof publicIntakeFormSchema>;

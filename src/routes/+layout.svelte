@@ -19,6 +19,7 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
+	import Inbox from '@lucide/svelte/icons/inbox';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
@@ -37,7 +38,8 @@
 			icon: FolderKanban,
 			match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
 		},
-		{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings') }
+		{ href: '/settings/forms', label: m.forms(), icon: Inbox, match: (p: string) => p.startsWith('/settings/forms') },
+		{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') }
 	];
 
 	// In Projekten (und deren Tickets) wird die Projektfarbe zur Primärfarbe.

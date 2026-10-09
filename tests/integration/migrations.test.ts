@@ -28,6 +28,14 @@ it('upgrades populated databases from every earlier migration and can restart id
 			expect(client.prepare('SELECT title FROM ticket').get()).toEqual({ title: 'Existing ticket' });
 			expect(client.prepare('SELECT is_backlog FROM board_column').get()).toEqual({ is_backlog: 0 });
 			expect(client.prepare('SELECT * FROM attachment').all()).toEqual([]);
+			// Formular löschen lässt eingereichte Tickets bestehen und leert nur die Herkunft
+			client.exec("INSERT INTO intake_form (name, token) VALUES ('Support', 'token')");
+			client.exec('UPDATE ticket SET intake_form_id = 1');
+			client.exec('DELETE FROM intake_form');
+			expect(client.prepare('SELECT title, intake_form_id FROM ticket').get()).toEqual({
+				title: 'Existing ticket',
+				intake_form_id: null
+			});
 			expect(client.pragma('foreign_key_check')).toEqual([]);
 			expect(client.prepare('SELECT count(*) AS n FROM __drizzle_migrations').get()).toEqual({
 				n: journal.entries.length

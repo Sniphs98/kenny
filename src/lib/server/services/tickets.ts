@@ -5,6 +5,7 @@ import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '../db';
 import {
 	boardColumn,
+	intakeForm,
 	LINK_TYPES,
 	PRIORITIES,
 	project,
@@ -196,7 +197,17 @@ export function getTicketDetail(ref: string | number) {
 		subtasks,
 		links,
 		attachments: listAttachments(t.id),
-		assignee: assignee ?? null
+		assignee: assignee ?? null,
+		submission:
+			t.intakeFormId !== null || t.reporterEmail !== null
+				? {
+						form: t.intakeFormId
+							? (db.select({ name: intakeForm.name }).from(intakeForm).where(eq(intakeForm.id, t.intakeFormId)).get()
+									?.name ?? null)
+							: null,
+						email: t.reporterEmail
+					}
+				: null
 	};
 }
 
@@ -248,7 +259,15 @@ function checkAssignee(tx: Tx, id: unknown) {
 	return u.id;
 }
 
-export function createTicket(projectRef: string | number, rawInput: unknown, userId: string | null) {
+/** Herkunft eines Tickets aus einem Formular (nur intern, nicht über die API setzbar) */
+export type TicketOrigin = { intakeFormId: number; reporterEmail: string | null };
+
+export function createTicket(
+	projectRef: string | number,
+	rawInput: unknown,
+	userId: string | null,
+	origin?: TicketOrigin
+) {
 	const input = parseInput(createTicketSchema, rawInput);
 	const p = getProject(projectRef);
 	const cols = getColumns(p.id);
@@ -288,7 +307,9 @@ export function createTicket(projectRef: string | number, rawInput: unknown, use
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
-				createdById: userId
+				createdById: userId,
+				intakeFormId: origin?.intakeFormId ?? null,
+				reporterEmail: origin?.reporterEmail ?? null
 			})
 			.returning()
 			.get();

@@ -30,6 +30,7 @@
 	import Ban from '@lucide/svelte/icons/ban';
 	import Check from '@lucide/svelte/icons/check';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Inbox from '@lucide/svelte/icons/inbox';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -380,6 +381,15 @@
 
 				<Separator />
 				<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
+					{#if data.submission}
+						<span class="flex items-center gap-1.5" data-submission>
+							<Inbox class="size-3.5" />
+							{data.submission.form ? m.submitted_via({ form: data.submission.form }) : m.submitted_via_form()}
+						</span>
+						{#if data.submission.email}
+							<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a>
+						{/if}
+					{/if}
 					<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
 					<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
 				</div>

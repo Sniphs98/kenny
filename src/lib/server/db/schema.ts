@@ -46,7 +46,7 @@ export const boardColumn = sqliteTable(
 );
 
 export { PRIORITIES, type Priority } from '$lib/contracts';
-import { PRIORITIES, LINK_TYPES } from '$lib/contracts';
+import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES } from '$lib/contracts';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -71,6 +71,12 @@ export const ticket = sqliteTable(
 		dueDate: text('due_date'),
 		closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
 		createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
+		/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
+		intakeFormId: integer('intake_form_id').references((): AnySQLiteColumn => intakeForm.id, {
+			onDelete: 'set null'
+		}),
+		/** E-Mail der einreichenden Person bei Formularen ohne Anmeldung */
+		reporterEmail: text('reporter_email'),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull(),
 		updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
 			.default(now)
@@ -168,6 +174,33 @@ export const apiToken = sqliteTable('api_token', {
 	lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
 	createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
 });
+
+/** Formulare, über die Tickets per Link eingereicht werden (je nach Einstellung auch ohne Anmeldung) */
+export const intakeForm = sqliteTable('intake_form', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	name: text('name').notNull(),
+	/** Zufälliger Teil des öffentlichen Links; neu erzeugen macht den alten Link ungültig */
+	token: text('token').notNull().unique(),
+	requireLogin: integer('require_login', { mode: 'boolean' }).notNull().default(false),
+	emailMode: text('email_mode', { enum: INTAKE_EMAIL_MODES }).notNull().default('optional'),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
+	createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+});
+
+/** Projekte eines Formulars; bei mehreren wählt die einreichende Person das Projekt */
+export const intakeFormProject = sqliteTable(
+	'intake_form_project',
+	{
+		formId: integer('form_id')
+			.notNull()
+			.references(() => intakeForm.id, { onDelete: 'cascade' }),
+		projectId: integer('project_id')
+			.notNull()
+			.references(() => project.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.formId, t.projectId] }), index('intake_form_project_project_idx').on(t.projectId)]
+);
 
 export type Project = typeof project.$inferSelect;
 export type BoardColumn = typeof boardColumn.$inferSelect;

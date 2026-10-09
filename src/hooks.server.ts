@@ -5,7 +5,8 @@ import { auth } from '$lib/server/auth';
 import '$lib/locale-choice';
 import { paraglideMiddleware } from '$lib/paraglide/server.js';
 
-const PUBLIC_PATHS = ['/login', '/api/'];
+// /submit/: Formulare zum Einreichen; ob eine Anmeldung nötig ist, entscheidet das Formular selbst
+const PUBLIC_PATHS = ['/login', '/api/', '/submit/'];
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });

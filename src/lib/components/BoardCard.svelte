@@ -67,7 +67,8 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <div
 	class={cn(
-		'bg-card border-foreground/10 hover:border-foreground/25 flex cursor-grab flex-col gap-2 overflow-hidden rounded-md border px-3 py-2.5 text-sm transition-colors',
+		// shrink-0: In der scrollenden Spalte sonst zusammengedrückt (overflow-hidden setzt die Mindesthöhe auf 0)
+		'bg-card border-foreground/10 hover:border-foreground/25 flex shrink-0 cursor-grab flex-col gap-2 overflow-hidden rounded-md border px-3 py-2.5 text-sm transition-colors',
 		blocked && 'border-l-warning border-l-[3px]',
 		dragging && 'opacity-40'
 	)}

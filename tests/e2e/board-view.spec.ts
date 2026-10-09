@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { card, choose, createProject, createTicket, getTicket, open, reload } from './helpers';
+import { card, choose, createProject, createTicket, day, getTicket, open, reload } from './helpers';
 
 async function cardTitles(page: Page, region: string) {
 	const cards = page.getByRole('region', { name: region, exact: true }).locator('[data-card]');
@@ -71,4 +71,22 @@ test('Schnell-Anlegen in einer Bahn übernimmt den Tag', async ({ page, request 
 	await page.getByPlaceholder('Titel, Enter zum Anlegen').press('Enter');
 
 	await expect(page.getByRole('region', { name: 'Bug: Review' }).getByText('Neuer Bug')).toBeVisible();
+});
+
+test('Karten werden in einer vollen Spalte nicht abgeschnitten', async ({ page, request }) => {
+	const p = await createProject(request);
+	// Genug Karten mit zweizeiligen Titeln und Fälligkeit, damit die Spalte scrollen muss
+	for (let i = 1; i <= 14; i++)
+		await createTicket(request, p.key, { title: `Benachrichtigungen per E-Mail versenden ${i}`, dueDate: day(i) });
+
+	await open(page, `/projects/${p.key}/board`);
+	const list = page.getByRole('region', { name: 'Offen', exact: true });
+	await expect(list.locator('[data-card]')).toHaveCount(14);
+
+	// Die Spalte scrollt, statt die Karten zusammenzudrücken
+	expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+	const clipped = await list
+		.locator('[data-card]')
+		.evaluateAll((els) => els.filter((el) => el.scrollHeight > el.clientHeight + 1).length);
+	expect(clipped).toBe(0);
 });

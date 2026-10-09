@@ -45,3 +45,22 @@ test('Spalte als Backlog markieren', async ({ page, request }) => {
 		)
 		.toBe(true);
 });
+
+test('Tag-Farbe über den Farbwähler ändern', async ({ page, request }) => {
+	const p = await createProject(request);
+	await open(page, `/projects/${p.key}/settings`);
+
+	await page.getByRole('button', { name: 'Farbe von Bug' }).click();
+	await page.locator('[data-slot="popover-content"]').getByRole('button', { name: 'Farbe #22c55e' }).click();
+	// Gespeichert wird beim Schließen des Popovers
+	await page.keyboard.press('Escape');
+
+	await expect
+		.poll(
+			async () =>
+				(await api<{ name: string; color: string }[]>(request, 'GET', `/projects/${p.key}/tags`)).find(
+					(t) => t.name === 'Bug'
+				)?.color
+		)
+		.toBe('#22c55e');
+});

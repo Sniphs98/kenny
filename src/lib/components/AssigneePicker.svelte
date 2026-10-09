@@ -3,6 +3,7 @@
 	import * as Command from '$lib/components/ui/command';
 	import * as Popover from '$lib/components/ui/popover';
 	import { buttonVariants } from '$lib/components/ui/button';
+	import Hint from '$lib/components/Hint.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import { cn } from '$lib/utils';
 	import Check from '@lucide/svelte/icons/check';
@@ -43,26 +44,32 @@
 </script>
 
 <Popover.Root bind:open>
-	<Popover.Trigger
-		class={cn(
-			compact
-				? 'focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3'
-				: buttonVariants({ variant: 'outline', class: 'w-full justify-between font-normal' }),
-			className
-		)}
-		title={current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()}
-		onclick={(e) => e.stopPropagation()}
-	>
-		{#if compact}
-			<UserAvatar name={current?.name} size="sm" />
-		{:else}
-			<span class="flex min-w-0 items-center gap-2">
-				<UserAvatar name={current?.name} size="sm" />
-				<span class={cn('truncate', !current && 'text-muted-foreground')}>{current?.name ?? m.nobody()}</span>
-			</span>
-			<ChevronsUpDown class="text-muted-foreground" />
-		{/if}
-	</Popover.Trigger>
+	<!-- Tooltip nur in der kompakten Form; sonst steht der Name schon im Button -->
+	<Hint text={compact ? (current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()) : null}>
+		{#snippet children(props)}
+			<Popover.Trigger
+				{...props}
+				class={cn(
+					compact
+						? 'focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3'
+						: buttonVariants({ variant: 'outline', class: 'w-full justify-between font-normal' }),
+					className
+				)}
+				aria-label={current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()}
+				onclick={(e) => e.stopPropagation()}
+			>
+				{#if compact}
+					<UserAvatar name={current?.name} size="sm" tooltip={false} />
+				{:else}
+					<span class="flex min-w-0 items-center gap-2">
+						<UserAvatar name={current?.name} size="sm" tooltip={false} />
+						<span class={cn('truncate', !current && 'text-muted-foreground')}>{current?.name ?? m.nobody()}</span>
+					</span>
+					<ChevronsUpDown class="text-muted-foreground" />
+				{/if}
+			</Popover.Trigger>
+		{/snippet}
+	</Hint>
 	<Popover.Content class="w-64 p-0" align={compact ? 'end' : 'start'} onclick={(e) => e.stopPropagation()}>
 		<Command.Root>
 			<Command.Input placeholder={m.search_users()} />

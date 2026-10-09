@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
+	import Hint from '$lib/components/Hint.svelte';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -22,8 +23,12 @@
 	aria-label={m.appearance()}
 >
 	{#each options as o (o.value)}
-		<ToggleGroup.Item value={o.value} aria-label={o.label} title={o.label}>
-			<o.icon />
-		</ToggleGroup.Item>
+		<Hint text={o.label} side="bottom">
+			{#snippet children(props)}
+				<ToggleGroup.Item {...props} value={o.value} aria-label={o.label}>
+					<o.icon />
+				</ToggleGroup.Item>
+			{/snippet}
+		</Hint>
 	{/each}
 </ToggleGroup.Root>

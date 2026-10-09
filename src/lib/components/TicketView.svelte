@@ -14,6 +14,7 @@
 	import * as Alert from '$lib/components/ui/alert';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
+	import Hint from '$lib/components/Hint.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -242,14 +243,18 @@
 										{l.ticket.title}
 									</a>
 									{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
-									<Button
-										variant="ghost"
-										size="icon-xs"
-										class="hover:text-destructive"
-										title={m.remove_link()}
-										aria-label={m.remove_link()}
-										onclick={() => run(() => api('DELETE', `${base}/links/${l.id}`))}><X /></Button
-									>
+									<Hint text={m.remove_link()}>
+										{#snippet children(props)}
+											<Button
+												{...props}
+												variant="ghost"
+												size="icon-xs"
+												class="hover:text-destructive"
+												aria-label={m.remove_link()}
+												onclick={() => run(() => api('DELETE', `${base}/links/${l.id}`))}><X /></Button
+											>
+										{/snippet}
+									</Hint>
 								</li>
 							{/each}
 						</ul>

@@ -46,14 +46,14 @@ After upgrading, review **Users** and each project's **Members**, transfer insta
 
 Personal API tokens use their owner's current permissions.
 
-| Endpoint                                         | Purpose                                                        | Required access        |
-| ------------------------------------------------ | -------------------------------------------------------------- | ---------------------- |
-| `GET /api/v1/admin/users`                        | List accounts and sign-in providers                            | Instance administrator |
-| `PATCH /api/v1/admin/users/:user`                | Change `role` (`admin`/`user`) or `active`                     | Instance administrator |
-| `GET /api/v1/projects/:project/members`          | List memberships                                               | Project read access    |
-| `POST /api/v1/projects/:project/members`         | Add `{ "user": "email-or-id", "role": "admin/member/reader" }` | Project administrator  |
-| `PATCH /api/v1/projects/:project/members/:user`  | Change `{ "role": "admin/member/reader" }`                     | Project administrator  |
-| `DELETE /api/v1/projects/:project/members/:user` | Remove membership                                              | Project administrator  |
+| Endpoint                                         | Purpose                                           | Required access        |
+| ------------------------------------------------ | ------------------------------------------------- | ---------------------- |
+| `GET /api/v1/admin/users`                        | List accounts and sign-in providers               | Instance administrator |
+| `PATCH /api/v1/admin/users/:user`                | Change `role` (`admin`/`user`) or `active`        | Instance administrator |
+| `GET /api/v1/projects/:project/members`          | List memberships                                  | Project read access    |
+| `POST /api/v1/projects/:project/members`         | Add `{ "user": "email-or-id", "role": "member" }` | Project administrator  |
+| `PATCH /api/v1/projects/:project/members/:user`  | Change `{ "role": "reader" }`                     | Project administrator  |
+| `DELETE /api/v1/projects/:project/members/:user` | Remove membership                                 | Project administrator  |
 
 `GET /api/v1/projects` returns accessible projects. `GET /api/v1/users` returns active users sharing a project with the caller, plus the caller; instance administrators see all active users. Neither endpoint returns credentials or authentication tokens.
 

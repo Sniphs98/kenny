@@ -43,6 +43,12 @@ export async function createTicket(project: string | number, input: CreateTicket
 export async function updateTicket(ticket: string | number, input: UpdateTicketInput) {
 	return ticketDtoSchema.parse(await api('PATCH', `/tickets/${ref(ticket)}`, updateTicketSchema.parse(input)));
 }
+export async function closeTicket(ticket: string | number) {
+	return ticketDtoSchema.parse(await api('POST', `/tickets/${ref(ticket)}/close`));
+}
+export async function reopenTicket(ticket: string | number) {
+	return ticketDtoSchema.parse(await api('POST', `/tickets/${ref(ticket)}/reopen`));
+}
 export async function getTicket(ticket: string | number) {
 	return ticketDetailSchema.parse(await api('GET', `/tickets/${ref(ticket)}`));
 }

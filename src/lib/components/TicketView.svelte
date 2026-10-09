@@ -5,7 +5,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from '../../routes/tickets/[key]/$types';
 	import { page } from '$app/state';
-	import { api, updateTicket, PRIORITY_LABELS } from '$lib/api';
+	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import Attachments from '$lib/components/Attachments.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -24,6 +24,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { cn } from '$lib/utils';
+	import { playIfCompleted } from '$lib/sound';
 	import { toast } from 'svelte-sonner';
 	import AlignLeft from '@lucide/svelte/icons/align-left';
 	import Ban from '@lucide/svelte/icons/ban';
@@ -202,7 +203,10 @@
 								<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
 									<Checkbox
 										checked={s.closed}
-										onCheckedChange={() => run(() => api('POST', `/tickets/${s.id}/${s.closed ? 'reopen' : 'close'}`))}
+										onCheckedChange={() =>
+											run(async () =>
+												playIfCompleted(s.closed, await (s.closed ? reopenTicket(s.id) : closeTicket(s.id)))
+											)}
 										aria-label={m.done()}
 									/>
 									<a
@@ -286,12 +290,19 @@
 						><RotateCcw /> {m.reopen()}</Button
 					>
 				{:else}
-					<Button onclick={() => run(() => api('POST', `${base}/close`))}><Check /> {m.complete()}</Button>
+					<Button onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
+						><Check /> {m.complete()}</Button
+					>
 				{/if}
 
 				<div class="grid gap-2">
 					<Label>{m.status()}</Label>
-					<Select.Root type="single" value={String(t.columnId)} onValueChange={(v) => patch({ columnId: Number(v) })}>
+					<Select.Root
+						type="single"
+						value={String(t.columnId)}
+						onValueChange={(v) =>
+							run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
+					>
 						<Select.Trigger class="w-full">{columnName}</Select.Trigger>
 						<Select.Content>
 							{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}

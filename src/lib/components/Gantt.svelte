@@ -22,7 +22,7 @@
 	import Archive from '@lucide/svelte/icons/archive';
 	import CalendarX from '@lucide/svelte/icons/calendar-x';
 	import X from '@lucide/svelte/icons/x';
-	import type { Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	type Item = ReturnType<typeof listTickets>[number];
@@ -338,23 +338,44 @@
 			toast.error((err as Error).message);
 		}
 		await invalidateAll();
+		await afterPlan(t.id);
+	}
+
+	/** Gerade eingeplantes Ticket kurz hervorheben */
+	let highlighted = $state<number | null>(null);
+	let highlightTimer: ReturnType<typeof setTimeout>;
+
+	/**
+	 * Nach dem Einplanen: „Ticket einplanen…“ wieder in den sichtbaren Bereich holen,
+	 * damit man direkt das nächste Ticket einplanen kann, und die neue Zeile hervorheben.
+	 */
+	async function afterPlan(id: number | null) {
+		await tick();
+		planAnchor?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		if (id === null) return;
+		highlighted = id;
+		clearTimeout(highlightTimer);
+		highlightTimer = setTimeout(() => (highlighted = null), 1600);
 	}
 
 	async function createPlanned() {
 		const title = planQuery.trim();
 		planOpen = false;
 		const start = planDay ?? today;
+		let id: number | null = null;
 		try {
-			const t = await api<{ key: string }>('POST', `/projects/${projectKey}/tickets`, {
+			const t = await api<{ id: number; key: string }>('POST', `/projects/${projectKey}/tickets`, {
 				title,
 				startDate: fromDay(start),
 				dueDate: fromDay(start + 2)
 			});
+			id = t.id;
 			toast.success(`${t.key} angelegt und ab ${fmtDay(start)} eingeplant`);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
 		await invalidateAll();
+		await afterPlan(id);
 	}
 
 	let scroller: HTMLDivElement;
@@ -432,7 +453,7 @@
 		<!-- Ticketliste links -->
 		<div class="labels">
 			{#each rows as { t, depth, childCount } (t.id)}
-				<div class="label" style="padding-left: {0.3 + depth * 1.1}rem">
+				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
 						<button
 							type="button"
@@ -527,6 +548,7 @@
 				<div
 					class="trow"
 					class:nodate={!s}
+					class:highlight={highlighted === t.id}
 					style="top: {i * ROW}px"
 					onclick={(e) => setDates(e, t)}
 					role="presentation"
@@ -683,6 +705,19 @@
 		color: var(--foreground);
 		white-space: nowrap;
 		overflow: hidden;
+	}
+	/* Kurzes Aufleuchten der gerade eingeplanten Zeile */
+	.highlight {
+		animation: flash 1.6s ease-out;
+	}
+	@keyframes flash {
+		0%,
+		30% {
+			background: color-mix(in srgb, var(--primary) 18%, transparent);
+		}
+		100% {
+			background: transparent;
+		}
 	}
 	.label:hover {
 		background: var(--muted);

@@ -87,3 +87,28 @@ test('Gantt passt ohne horizontale Scrollleiste, wenn alle Termine hineinpassen'
 	const overflow = await page.locator('.gantt').evaluate((el) => el.scrollWidth - el.clientWidth);
 	expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vielen Tickets', async ({ page, request }) => {
+	const p = await createProject(request);
+	// Mehr Zeilen, als in den Zeitplan über dem Board passen (max. 360 px)
+	for (let i = 0; i < 14; i++) await createTicket(request, p.key, { title: `Geplant ${i}`, startDate: day(i), dueDate: day(i + 1) });
+	for (const title of ['Offen A', 'Offen B', 'Offen C']) await createTicket(request, p.key, { title });
+
+	await open(page, `/projects/${p.key}/board`);
+	const button = page.getByRole('button', { name: 'Ticket einplanen…' });
+	await button.scrollIntoViewIfNeeded();
+
+	for (const title of ['Offen A', 'Offen B', 'Offen C']) {
+		await button.click();
+		await page.getByRole('option', { name: new RegExp(title) }).click();
+		await expect(row(page, title)).toBeVisible();
+		await expect(button).toBeInViewport({ ratio: 1 });
+	}
+
+	// Auch beim Anlegen eines neuen Tickets aus der Suche
+	await button.click();
+	await page.getByPlaceholder('Ticket suchen oder neu anlegen…').fill('Ganz neu');
+	await page.getByRole('option', { name: '„Ganz neu“ als neues Ticket anlegen' }).click();
+	await expect(row(page, 'Ganz neu')).toBeVisible();
+	await expect(button).toBeInViewport({ ratio: 1 });
+});

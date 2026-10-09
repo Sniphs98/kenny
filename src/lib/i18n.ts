@@ -166,6 +166,12 @@ const errorTranslations = [
 	{
 		pattern: new RegExp('^Ungültiges multipart/form-data\\.$'),
 		translate: (_values: string[]) => m.invalid_multipart_form_data()
+	},
+	{
+		pattern: new RegExp(
+			'^Entweder multipart/form-data mit Feld "file" oder \\?filename=… mit der Datei als Body senden\\.$'
+		),
+		translate: (_values: string[]) => m.send_multipart_or_filename()
 	}
 ];
 

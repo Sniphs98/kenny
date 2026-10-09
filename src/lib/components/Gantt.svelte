@@ -34,6 +34,8 @@
 		projectKey,
 		color,
 		maxHeight = 'calc(100vh - 210px)',
+		resizable = false,
+		height = $bindable(360),
 		actions
 	}: {
 		tickets: Item[];
@@ -45,6 +47,10 @@
 		color: string;
 		/** Maximale Höhe des Diagramms, danach wird gescrollt */
 		maxHeight?: string;
+		/** Höhe per Griff unten am Diagramm einstellbar; ersetzt dann maxHeight */
+		resizable?: boolean;
+		/** Eingestellte Höhe in px (nur mit resizable) */
+		height?: number;
 		/** Zusätzliche Buttons rechts in der Werkzeugleiste */
 		actions?: Snippet;
 	} = $props();
@@ -378,6 +384,38 @@
 		await afterPlan(id);
 	}
 
+	// --- Höhe per Griff ändern ---
+	const MIN_HEIGHT = 120;
+	const DEFAULT_HEIGHT = 360;
+	let resizing = $state<{ startY: number; startHeight: number } | null>(null);
+
+	/** Höhe begrenzen: nicht kleiner als MIN_HEIGHT, nicht größer als der Inhalt */
+	function clampHeight(h: number) {
+		const content = scroller ? scroller.scrollHeight + 2 : Infinity;
+		return Math.round(Math.max(MIN_HEIGHT, Math.min(h, content, window.innerHeight - 120)));
+	}
+
+	function resizeStart(e: PointerEvent) {
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		// Mit der tatsächlich sichtbaren Höhe starten (kann kleiner sein als height, wenn wenig Zeilen)
+		resizing = { startY: e.clientY, startHeight: scroller.clientHeight + 2 };
+	}
+
+	function resizeMove(e: PointerEvent) {
+		if (!resizing) return;
+		height = clampHeight(resizing.startHeight + e.clientY - resizing.startY);
+	}
+
+	function resizeKey(e: KeyboardEvent) {
+		const step = e.shiftKey ? 80 : 20;
+		if (e.key === 'ArrowDown') height = clampHeight(scroller.clientHeight + 2 + step);
+		else if (e.key === 'ArrowUp') height = clampHeight(scroller.clientHeight + 2 - step);
+		else if (e.key === 'Home') height = MIN_HEIGHT;
+		else return;
+		e.preventDefault();
+	}
+
 	let scroller: HTMLDivElement;
 	let width = $state(1000);
 	function scrollToToday() {
@@ -432,7 +470,7 @@
 	class="gantt bg-card rounded-xl border shadow-xs"
 	bind:this={scroller}
 	bind:clientWidth={width}
-	style="--px: {px}px; --row: {ROW}px; --c: var(--primary, {color}); max-height: {maxHeight}"
+	style="--px: {px}px; --row: {ROW}px; --c: var(--primary, {color}); max-height: {resizable ? `${height}px` : maxHeight}"
 >
 	<div class="grid" style="width: {280 + range.days * px}px">
 		<!-- Kopfzeile -->
@@ -623,7 +661,54 @@
 	</div>
 </div>
 
+{#if resizable}
+	<!-- Griff zum Ändern der Höhe; Doppelklick setzt sie zurück -->
+	<!-- Ein fokussierbarer separator ist laut ARIA ein bedienbares Element (Fensterteiler) -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<div
+		class="resize"
+		class:active={resizing}
+		role="separator"
+		aria-orientation="horizontal"
+		aria-label="Höhe des Zeitplans ändern"
+		aria-valuenow={height}
+		aria-valuemin={MIN_HEIGHT}
+		tabindex="0"
+		title="Ziehen, um die Höhe zu ändern (Doppelklick: zurücksetzen)"
+		onpointerdown={resizeStart}
+		onpointermove={resizeMove}
+		onpointerup={() => (resizing = null)}
+		onpointercancel={() => (resizing = null)}
+		ondblclick={() => (height = DEFAULT_HEIGHT)}
+		onkeydown={resizeKey}
+	>
+		<span></span>
+	</div>
+{/if}
+
 <style>
+	.resize {
+		display: grid;
+		place-items: center;
+		height: 14px;
+		margin: -1.25rem 1.25rem 0.5rem;
+		cursor: row-resize;
+		touch-action: none;
+		outline: none;
+	}
+	.resize span {
+		width: 48px;
+		height: 4px;
+		border-radius: 999px;
+		background: var(--border);
+		transition: background 0.12s, width 0.12s;
+	}
+	.resize:hover span,
+	.resize:focus-visible span,
+	.resize.active span {
+		width: 72px;
+		background: var(--primary);
+	}
 	.gantt {
 		margin: 0 1.25rem 1.25rem;
 		overflow: auto;

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, createProject, createTicket, day, getTicket, open } from './helpers';
+import { api, createProject, createTicket, day, getTicket, open, reload } from './helpers';
 
 /** Ticketzeile in der Liste links */
 const row = (page: Page, title: string) => page.locator('.labels .label').filter({ hasText: title });
@@ -111,4 +111,34 @@ test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vie
 	await page.getByRole('option', { name: '„Ganz neu“ als neues Ticket anlegen' }).click();
 	await expect(row(page, 'Ganz neu')).toBeVisible();
 	await expect(button).toBeInViewport({ ratio: 1 });
+});
+
+test('Zeitplan über dem Board in der Höhe ziehen, Höhe bleibt gespeichert', async ({ page, request }) => {
+	const p = await createProject(request);
+	for (let i = 0; i < 20; i++) await createTicket(request, p.key, { title: `Aufgabe ${i}`, startDate: day(i), dueDate: day(i + 1) });
+
+	await open(page, `/projects/${p.key}/board`);
+	const gantt = page.locator('.gantt');
+	const handle = page.getByRole('separator', { name: 'Höhe des Zeitplans ändern' });
+	const before = (await gantt.boundingBox())!.height;
+	expect(before).toBeCloseTo(360, -1);
+
+	// Griff 200 px nach unten ziehen
+	const box = (await handle.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 200, { steps: 5 });
+	await page.mouse.up();
+	await expect.poll(async () => (await gantt.boundingBox())!.height).toBeCloseTo(before + 200, -1);
+
+	// Nach Neuladen gleiche Höhe
+	await reload(page);
+	await expect.poll(async () => (await page.locator('.gantt').boundingBox())!.height).toBeCloseTo(before + 200, -1);
+
+	// Tastatur und Doppelklick
+	await handle.focus();
+	await page.keyboard.press('ArrowUp');
+	await expect.poll(async () => (await gantt.boundingBox())!.height).toBeCloseTo(before + 180, -1);
+	await handle.dblclick();
+	await expect.poll(async () => (await gantt.boundingBox())!.height).toBeCloseTo(360, -1);
 });

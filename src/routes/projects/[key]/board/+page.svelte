@@ -56,15 +56,20 @@
 
 	// Zeitplan über dem Board, auf-/zuklappbar; Zustand wird im Browser gemerkt
 	let showTimeline = $state(true);
+	/** Höhe des Zeitplans in px, per Griff einstellbar */
+	let timelineHeight = $state(360);
 	const scheduled = $derived(data.tickets.filter((t) => t.startDate || t.dueDate).length);
 	onMount(() => {
 		try {
 			showTimeline = localStorage.getItem('board-timeline') !== 'closed';
+			const h = Number(localStorage.getItem('board-timeline-height'));
+			if (h >= 120) timelineHeight = h;
 		} catch {}
 	});
 	$effect(() => {
 		try {
 			localStorage.setItem('board-timeline', showTimeline ? 'open' : 'closed');
+			localStorage.setItem('board-timeline-height', String(timelineHeight));
 		} catch {}
 	});
 
@@ -546,7 +551,7 @@
 		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
 	</Collapsible.Trigger>
 	<Collapsible.Content>
-		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} projectKey={data.project.key} color={data.project.color} maxHeight="360px" />
+		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} projectKey={data.project.key} color={data.project.color} resizable bind:height={timelineHeight} />
 	</Collapsible.Content>
 </Collapsible.Root>
 

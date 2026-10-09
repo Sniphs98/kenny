@@ -22,6 +22,7 @@
 	import { cn } from '$lib/utils';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { playIfCompleted } from '$lib/sound';
 	import { toast } from 'svelte-sonner';
 	import ArrowDownUp from '@lucide/svelte/icons/arrow-down-up';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
@@ -354,10 +355,11 @@
 			body.columnId = columnId;
 		}
 		if (!Object.keys(body).length) return;
+		const wasClosed = moved.closed;
 		moved.columnId = columnId;
 
 		try {
-			await updateTicket(id, body);
+			playIfCompleted(wasClosed, await updateTicket(id, body));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}

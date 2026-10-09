@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createTicket, updateTicket } from '$lib/api';
+import { closeTicket, createTicket, reopenTicket, updateTicket } from '$lib/api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -16,4 +16,9 @@ it('validates successful responses instead of asserting an arbitrary type', asyn
 it('preserves the server error message', async () => {
 	vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ error: 'Ticket fehlt' }, { status: 404 })));
 	await expect(updateTicket('WEB-1', { title: 'Changed' })).rejects.toThrow('Ticket fehlt');
+});
+it('validates close and reopen responses', async () => {
+	vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ closed: true })));
+	await expect(closeTicket('WEB-1')).rejects.toThrow();
+	await expect(reopenTicket('WEB-1')).rejects.toThrow();
 });

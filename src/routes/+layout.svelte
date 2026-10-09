@@ -8,6 +8,7 @@
 	import { authClient } from '$lib/auth-client';
 	import { accentStyle, accentVars } from '$lib/theme';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+	import SoundToggle from '$lib/components/SoundToggle.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -104,6 +105,7 @@
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						<LanguageSwitcher />
+						<SoundToggle />
 						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
 							<KeyRound />
 							{m.api_tokens()}

@@ -316,5 +316,6 @@
 	"search_ticket_number_or_title": "Nummer oder Titel suchen…",
 	"no_ticket_found": "Kein Ticket gefunden.",
 	"system_language": "Systemsprache",
-	"send_multipart_or_filename": "Entweder multipart/form-data mit Feld \"file\" oder ?filename=… mit der Datei als Body senden."
+	"send_multipart_or_filename": "Entweder multipart/form-data mit Feld \"file\" oder ?filename=… mit der Datei als Body senden.",
+	"sound_on_complete": "Ton bei Erledigt"
 }

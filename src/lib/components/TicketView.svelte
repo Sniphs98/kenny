@@ -7,6 +7,7 @@
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import Attachments from '$lib/components/Attachments.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
+	import TicketPicker from '$lib/components/TicketPicker.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import * as Alert from '$lib/components/ui/alert';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -110,7 +111,10 @@
 		{ label: 'Verknüpft mit', items: data.links.filter((l) => l.relation === 'relates') }
 	]);
 	const openBlockers = $derived(data.links.filter((l) => l.relation === 'depends_on' && !l.ticket.closed));
-	const linkCandidates = $derived(data.projectTickets.filter((o) => o.id !== t.id));
+	// Bereits verknüpfte Tickets nicht noch einmal anbieten
+	const linkCandidates = $derived(
+		data.projectTickets.filter((o) => o.id !== t.id && !data.links.some((l) => l.ticket.key === o.key))
+	);
 	const parentCandidates = $derived(
 		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id))
 	);
@@ -258,16 +262,8 @@
 							{/each}
 						</Select.Content>
 					</Select.Root>
-					<Input
-						class="min-w-40 flex-1"
-						list="ticket-options"
-						placeholder="Ticket, z.B. {data.project.key}-1"
-						bind:value={linkTarget}
-					/>
-					<datalist id="ticket-options">
-						{#each linkCandidates as o (o.id)}<option value={o.key}>{o.title}</option>{/each}
-					</datalist>
-					<Button type="submit" variant="outline"><Link2 /> Verknüpfen</Button>
+					<TicketPicker class="min-w-40 flex-1" tickets={linkCandidates} bind:value={linkTarget} />
+					<Button type="submit" variant="outline" disabled={!linkTarget}><Link2 /> Verknüpfen</Button>
 				</form>
 			</Card.Content>
 		</Card.Root>

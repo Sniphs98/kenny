@@ -45,3 +45,50 @@ it('upgrades populated databases from every earlier migration and can restart id
 		}
 	}
 });
+
+it('preserves shared project access and chooses the oldest existing account during upgrade', () => {
+	const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as {
+		entries: { tag: string; when: number }[];
+	};
+	const client = new Database(':memory:');
+	try {
+		client.pragma('foreign_keys = ON');
+		client.exec(
+			'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)'
+		);
+		for (const entry of journal.entries.slice(
+			0,
+			journal.entries.findIndex((entry) => entry.tag === '0004_shiny_eternals')
+		)) {
+			client.exec(readFileSync(`drizzle/${entry.tag}.sql`, 'utf8'));
+			client.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run('fixture', entry.when);
+		}
+		client.exec(
+			"INSERT INTO user (id, name, email, created_at) VALUES ('first', 'First', 'first@example.com', 1), ('owner', 'Owner', 'owner@example.com', 2)"
+		);
+		client.exec(
+			"INSERT INTO project (key, name, owner_id) VALUES ('OWNED', 'Owned', 'owner'), ('SHARED', 'Shared', NULL)"
+		);
+		const db = drizzle(client);
+		migrate(db, { migrationsFolder: 'drizzle' });
+		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT id, role, active FROM user ORDER BY id').all()).toEqual([
+			{ id: 'first', role: 'admin', active: 1 },
+			{ id: 'owner', role: 'user', active: 1 }
+		]);
+		expect(
+			client.prepare('SELECT project_id, user_id, role FROM project_member ORDER BY project_id, user_id').all()
+		).toEqual([
+			{ project_id: 1, user_id: 'first', role: 'member' },
+			{ project_id: 1, user_id: 'owner', role: 'admin' },
+			{ project_id: 2, user_id: 'first', role: 'admin' },
+			{ project_id: 2, user_id: 'owner', role: 'member' }
+		]);
+		client.exec("INSERT INTO user (id, name, email) VALUES ('new', 'New', 'new@example.com')");
+		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare("SELECT * FROM project_member WHERE user_id = 'new'").all()).toEqual([]);
+		expect(client.pragma('foreign_key_check')).toEqual([]);
+	} finally {
+		client.close();
+	}
+});

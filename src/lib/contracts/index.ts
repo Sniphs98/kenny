@@ -237,3 +237,26 @@ export type IntakeFormInput = z.input<typeof intakeFormSchema>;
 export type IntakeSubmissionInput = z.input<typeof intakeSubmissionSchema>;
 export type IntakeFormDto = z.output<typeof intakeFormDtoSchema>;
 export type PublicIntakeForm = z.output<typeof publicIntakeFormSchema>;
+export const GLOBAL_ROLES = ['admin', 'user'] as const;
+export const PROJECT_ROLES = ['admin', 'member', 'reader'] as const;
+export type ProjectRole = (typeof PROJECT_ROLES)[number];
+export const updateUserSchema = z.strictObject({
+	role: z.enum(GLOBAL_ROLES).optional(),
+	active: z.boolean().optional()
+});
+export const addMemberSchema = z.strictObject({
+	user: z.string().trim().min(1).max(320),
+	role: z.enum(PROJECT_ROLES)
+});
+export const updateMemberSchema = addMemberSchema.pick({ role: true });
+export const managedUserSchema = userSchema.extend({
+	role: z.enum(GLOBAL_ROLES),
+	active: z.boolean(),
+	createdAt: timestamp,
+	providers: z.array(z.string())
+});
+export const memberSchema = userSchema.extend({ role: z.enum(PROJECT_ROLES), active: z.boolean() });
+export type ManagedUser = z.output<typeof managedUserSchema>;
+export type ProjectMember = z.output<typeof memberSchema>;
+export type UpdateUserInput = z.input<typeof updateUserSchema>;
+export type AddMemberInput = z.input<typeof addMemberSchema>;

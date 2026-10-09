@@ -13,12 +13,14 @@
 		tickets,
 		value = $bindable(''),
 		placeholder = m.choose_ticket(),
+		disabled = false,
 		class: className
 	}: {
 		tickets: Option[];
 		/** Schlüssel des gewählten Tickets, z.B. "WEB-3" */
 		value?: string;
 		placeholder?: string;
+		disabled?: boolean;
 		class?: string;
 	} = $props();
 
@@ -28,6 +30,7 @@
 
 <Popover.Root bind:open>
 	<Popover.Trigger
+		{disabled}
 		class={cn(buttonVariants({ variant: 'outline' }), 'min-w-0 justify-between px-2.5 font-normal', className)}
 		aria-label={m.choose_ticket()}
 	>

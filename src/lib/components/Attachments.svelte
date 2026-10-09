@@ -22,8 +22,10 @@
 	let {
 		ticketId,
 		attachments,
-		refresh
+		refresh,
+		readOnly = false
 	}: {
+		readOnly?: boolean;
 		ticketId: number;
 		attachments: AttachmentDto[];
 		/** Nach Hochladen oder Löschen die Ticketdaten neu laden */
@@ -40,7 +42,7 @@
 	const files = $derived(attachments.filter((a) => !a.isImage));
 
 	async function send(list: File[]) {
-		if (!list.length) return;
+		if (readOnly || !list.length) return;
 		uploading = list.length;
 		try {
 			await upload(`/tickets/${ticketId}/attachments`, list);
@@ -73,6 +75,7 @@
 
 	/** Screenshots o.ä. per Strg+V einfügen */
 	function onPaste(e: ClipboardEvent) {
+		if (readOnly) return;
 		const pasted = [...(e.clipboardData?.files ?? [])];
 		if (!pasted.length) return;
 		e.preventDefault();
@@ -95,7 +98,7 @@
 <Card.Root
 	class={cn('gap-4 transition-colors', dragOver && 'ring-primary bg-primary/5 ring-2')}
 	ondragover={(e: DragEvent) => {
-		if (!e.dataTransfer?.types.includes('Files')) return;
+		if (readOnly || !e.dataTransfer?.types.includes('Files')) return;
 		e.preventDefault();
 		dragOver = true;
 	}}
@@ -108,10 +111,11 @@
 		<Paperclip class="text-muted-foreground size-4" />
 		<Card.Title class="grow">{m.attachments()}</Card.Title>
 		{#if attachments.length}<Badge variant="secondary">{attachments.length}</Badge>{/if}
-		<Button variant="ghost" size="sm" disabled={uploading > 0} onclick={() => input.click()}>
+		<Button variant="ghost" size="sm" disabled={readOnly || uploading > 0} onclick={() => input.click()}>
 			{#if uploading}<LoaderCircle class="animate-spin" /> {m.uploading()}{:else}<Upload /> {m.upload()}{/if}
 		</Button>
 		<input
+			disabled={readOnly}
 			bind:this={input}
 			type="file"
 			multiple
@@ -164,6 +168,7 @@
 									size="icon-xs"
 									class="hover:text-destructive"
 									aria-label={m.delete_attachment_2({ value1: a.filename })}
+									disabled={readOnly}
 									onclick={() => (confirmDelete = a)}><Trash2 /></Button
 								>
 							{/snippet}
@@ -176,6 +181,7 @@
 			<button
 				type="button"
 				class="text-muted-foreground hover:border-foreground/30 hover:text-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm transition-colors"
+				disabled={readOnly}
 				onclick={() => input.click()}
 			>
 				{m.drop_files_here_paste_ctrl_v_or_click_to_select()}
@@ -198,8 +204,11 @@
 			</Dialog.Header>
 			<img src={preview.url} alt={preview.filename} class="bg-muted mx-auto max-h-[70vh] rounded-md object-contain" />
 			<Dialog.Footer>
-				<Button variant="ghost" class="hover:text-destructive mr-auto" onclick={() => (confirmDelete = preview)}
-					><Trash2 /> {m.delete()}</Button
+				<Button
+					variant="ghost"
+					class="hover:text-destructive mr-auto"
+					disabled={readOnly}
+					onclick={() => (confirmDelete = preview)}><Trash2 /> {m.delete()}</Button
 				>
 				<a href={preview.url} target="_blank" rel="noopener" class={buttonVariants({ variant: 'outline' })}
 					><ExternalLink /> {m.open_in_new_tab()}</a

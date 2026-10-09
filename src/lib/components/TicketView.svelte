@@ -70,6 +70,7 @@
 	const LINK_TYPES = { depends_on: m.depends_on(), blocks: m.blocks(), relates: m.related_to() };
 
 	async function run(fn: () => Promise<unknown>) {
+		if (!data.canEdit) return;
 		try {
 			await fn();
 			await refresh();
@@ -131,9 +132,11 @@
 	});
 </script>
 
+{#if !data.canEdit}<p class="text-muted-foreground mb-4 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex flex-col gap-4">
 	<input
 		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
+		readonly={!data.canEdit}
 		bind:value={title}
 		onblur={saveTitle}
 		onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
@@ -167,16 +170,20 @@
 					<AlignLeft class="text-muted-foreground size-4" />
 					<Card.Title class="grow">{m.description()}</Card.Title>
 					{#if !editingDesc}
-						<Button variant="ghost" size="sm" onclick={() => (editingDesc = true)}><Pencil /> {m.edit()}</Button>
+						<Button disabled={!data.canEdit} variant="ghost" size="sm" onclick={() => (editingDesc = true)}
+							><Pencil /> {m.edit()}</Button
+						>
 					{/if}
 				</Card.Header>
 				<Card.Content>
 					{#if editingDesc}
-						<Textarea bind:value={description} rows={8} />
+						<Textarea disabled={!data.canEdit} bind:value={description} rows={8} />
 						<div class="mt-3 flex gap-2">
-							<Button onclick={saveDescription}>{m.save()}</Button>
-							<Button variant="outline" onclick={() => ((editingDesc = false), (description = t.description))}
-								>{m.cancel()}</Button
+							<Button disabled={!data.canEdit} onclick={saveDescription}>{m.save()}</Button>
+							<Button
+								disabled={!data.canEdit}
+								variant="outline"
+								onclick={() => ((editingDesc = false), (description = t.description))}>{m.cancel()}</Button
 							>
 						</div>
 					{:else if t.description}
@@ -203,6 +210,7 @@
 							{#each data.subtasks as s (s.id)}
 								<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
 									<Checkbox
+										disabled={!data.canEdit}
 										checked={s.closed}
 										onCheckedChange={() =>
 											run(async () =>
@@ -223,8 +231,8 @@
 						</ul>
 					{/if}
 					<form class="flex gap-2" onsubmit={addSubtask}>
-						<Input placeholder={m.new_subtask()} bind:value={newSubtask} />
-						<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
+						<Input disabled={!data.canEdit} placeholder={m.new_subtask()} bind:value={newSubtask} />
+						<Button disabled={!data.canEdit} type="submit" variant="outline"><Plus /> {m.add()}</Button>
 					</form>
 				</Card.Content>
 			</Card.Root>
@@ -267,7 +275,7 @@
 						{/if}
 					{/each}
 					<form class="flex flex-wrap gap-2" onsubmit={addLink}>
-						<Select.Root type="single" bind:value={linkType}>
+						<Select.Root disabled={!data.canEdit} type="single" bind:value={linkType}>
 							<Select.Trigger class="w-48">{LINK_TYPES[linkType]}</Select.Trigger>
 							<Select.Content>
 								{#each Object.entries(LINK_TYPES) as [v, l] (v)}
@@ -275,23 +283,31 @@
 								{/each}
 							</Select.Content>
 						</Select.Root>
-						<TicketPicker class="min-w-40 flex-1" tickets={linkCandidates} bind:value={linkTarget} />
-						<Button type="submit" variant="outline" disabled={!linkTarget}><Link2 /> {m.link()}</Button>
+						<TicketPicker
+							disabled={!data.canEdit}
+							class="min-w-40 flex-1"
+							tickets={linkCandidates}
+							bind:value={linkTarget}
+						/>
+						<Button disabled={!data.canEdit || !linkTarget} type="submit" variant="outline"><Link2 /> {m.link()}</Button
+						>
 					</form>
 				</Card.Content>
 			</Card.Root>
 
-			<Attachments ticketId={t.id} attachments={data.attachments} {refresh} />
+			<Attachments readOnly={!data.canEdit} ticketId={t.id} attachments={data.attachments} {refresh} />
 		</div>
 
 		<Card.Root class="gap-4 py-5">
 			<Card.Content class="flex flex-col gap-4 px-5">
 				{#if t.closed}
-					<Button variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
+					<Button disabled={!data.canEdit} variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
 						><RotateCcw /> {m.reopen()}</Button
 					>
 				{:else}
-					<Button onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
+					<Button
+						disabled={!data.canEdit}
+						onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
 						><Check /> {m.complete()}</Button
 					>
 				{/if}
@@ -299,6 +315,7 @@
 				<div class="grid gap-2">
 					<Label>{m.status()}</Label>
 					<Select.Root
+						disabled={!data.canEdit}
 						type="single"
 						value={String(t.columnId)}
 						onValueChange={(v) =>
@@ -313,6 +330,7 @@
 				<div class="grid gap-2">
 					<Label>{m.priority_2()}</Label>
 					<Select.Root
+						disabled={!data.canEdit}
 						type="single"
 						value={t.priority}
 						onValueChange={(v) => {
@@ -334,17 +352,24 @@
 				</div>
 				<div class="grid gap-2">
 					<Label>{m.tags()}</Label>
-					<TagPicker tags={data.tags} value={t.tags.map((g) => g.id)} onchange={(tags) => patch({ tags })} />
+					<TagPicker
+						disabled={!data.canEdit}
+						tags={data.tags}
+						value={t.tags.map((g) => g.id)}
+						onchange={(tags) => patch({ tags })}
+					/>
 				</div>
 				<div class="grid gap-2">
 					<Label>{m.assignee()}</Label>
 					<AssigneePicker
+						assignedName={data.assignee?.name}
+						disabled={!data.canEdit}
 						users={data.users}
 						me={page.data.user?.id}
 						value={t.assigneeId}
 						onchange={(id) => patch({ assigneeId: id })}
 					/>
-					{#if page.data.user && t.assigneeId !== page.data.user.id}
+					{#if page.data.user && data.users.some((u) => u.id === page.data.user!.id) && t.assigneeId !== page.data.user.id}
 						<Button
 							variant="link"
 							size="xs"
@@ -357,15 +382,27 @@
 				</div>
 				<div class="grid gap-2">
 					<Label for="start">{m.start()}</Label>
-					<DatePicker id="start" value={t.startDate} onchange={(d) => patch({ startDate: d })} />
+					<DatePicker
+						disabled={!data.canEdit}
+						id="start"
+						value={t.startDate}
+						onchange={(d) => patch({ startDate: d })}
+					/>
 				</div>
 				<div class="grid gap-2">
 					<Label for="due">{m.due()}</Label>
-					<DatePicker id="due" value={t.dueDate} min={t.startDate} onchange={(d) => patch({ dueDate: d })} />
+					<DatePicker
+						disabled={!data.canEdit}
+						id="due"
+						value={t.dueDate}
+						min={t.startDate}
+						onchange={(d) => patch({ dueDate: d })}
+					/>
 				</div>
 				<div class="grid gap-2">
 					<Label>{m.subtask_of_2()}</Label>
 					<Select.Root
+						disabled={!data.canEdit}
 						type="single"
 						value={t.parentId ? String(t.parentId) : ''}
 						onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
@@ -393,7 +430,9 @@
 					<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
 					<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
 				</div>
-				<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> {m.delete_ticket()}</Button>
+				<Button disabled={!data.canEdit} variant="destructive" onclick={() => (confirmDelete = true)}
+					><Trash2 /> {m.delete_ticket()}</Button
+				>
 			</Card.Content>
 		</Card.Root>
 	</div>

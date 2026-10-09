@@ -5,6 +5,9 @@ import { getRequestEvent } from '$app/server';
 import { building } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { db, schema } from './db';
+import { APIError } from 'better-auth/api';
+import { requireActiveUser } from './services/access';
+import { bootstrapAdministrator } from './services/users';
 
 // Microsoft-Login wird nur aktiviert, wenn die Zugangsdaten gesetzt sind (siehe README)
 const socialProviders: BetterAuthOptions['socialProviders'] = {};
@@ -24,6 +27,32 @@ export const auth = betterAuth({
 	secret: building ? 'build-only-placeholder-never-used-at-runtime-0123456789' : env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'sqlite', schema }),
 	emailAndPassword: { enabled: true },
+	user: {
+		additionalFields: {
+			role: { type: 'string', required: false, defaultValue: 'user', input: false },
+			active: { type: 'boolean', required: false, defaultValue: true, input: false }
+		}
+	},
+	databaseHooks: {
+		user: {
+			create: {
+				after: async () => {
+					bootstrapAdministrator();
+				}
+			}
+		},
+		session: {
+			create: {
+				before: async (created) => {
+					try {
+						requireActiveUser(created.userId);
+					} catch {
+						throw new APIError('FORBIDDEN', { message: 'Konto gesperrt oder nicht verfügbar.' });
+					}
+				}
+			}
+		}
+	},
 	socialProviders,
 	plugins: [sveltekitCookies(getRequestEvent)]
 });

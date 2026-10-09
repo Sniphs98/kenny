@@ -1,16 +1,30 @@
-import { fail } from '@sveltejs/kit';
+import { localizeError } from '$lib/i18n';
+import { fail, error } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { intakeFormSchema } from '$lib/contracts';
 import { ApiError } from '$lib/server/errors';
 import { createForm, deleteForm, listForms, regenerateToken, updateForm } from '$lib/server/services/intake';
+import { requireAdmin } from '$lib/server/services/access';
 import { listProjects } from '$lib/server/services/projects';
 
-export const load = async () => ({
-	forms: listForms(),
-	projects: listProjects().map(({ id, key, name, color }) => ({ id, key, name, color })),
-	form: await superValidate(zod4(intakeFormSchema))
-});
+function authorize(userId: string) {
+	try {
+		requireAdmin(userId);
+	} catch (e) {
+		if (e instanceof ApiError) error(e.status, localizeError(e.message));
+		throw e;
+	}
+}
+
+export const load = async ({ locals }) => {
+	authorize(locals.user!.id);
+	return {
+		forms: listForms(),
+		projects: listProjects().map(({ id, key, name, color }) => ({ id, key, name, color })),
+		form: await superValidate(zod4(intakeFormSchema))
+	};
+};
 
 /** Formular-ID aus einem einfachen POST (Löschen, Link neu erzeugen) */
 async function formId(request: Request) {
@@ -25,6 +39,7 @@ function failed(e: unknown) {
 export const actions = {
 	/** Anlegen (ohne ?id) oder ändern (?/save&id=3) */
 	save: async ({ request, url, locals }) => {
+		authorize(locals.user!.id);
 		const form = await superValidate(request, zod4(intakeFormSchema));
 		if (!form.valid) return fail(400, { form });
 		const id = Number(url.searchParams.get('id'));
@@ -37,14 +52,16 @@ export const actions = {
 		}
 		return { form };
 	},
-	regenerate: async ({ request }) => {
+	regenerate: async ({ request, locals }) => {
+		authorize(locals.user!.id);
 		try {
 			regenerateToken(await formId(request));
 		} catch (e) {
 			return failed(e);
 		}
 	},
-	delete: async ({ request }) => {
+	delete: async ({ request, locals }) => {
+		authorize(locals.user!.id);
 		try {
 			deleteForm(await formId(request));
 		} catch (e) {

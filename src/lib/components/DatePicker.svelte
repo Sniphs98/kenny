@@ -14,6 +14,7 @@
 		min,
 		placeholder = m.choose_date(),
 		id,
+		disabled = false,
 		class: className
 	}: {
 		/** Datum als YYYY-MM-DD oder null */
@@ -23,6 +24,7 @@
 		min?: string | null;
 		placeholder?: string;
 		id?: string;
+		disabled?: boolean;
 		class?: string;
 	} = $props();
 
@@ -54,6 +56,7 @@
 
 <Popover.Root bind:open>
 	<Popover.Trigger
+		{disabled}
 		{id}
 		class={cn(
 			buttonVariants({ variant: 'outline' }),

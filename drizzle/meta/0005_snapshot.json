@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "89bdcf0f-55c9-4ebc-a3ca-baad3228b405",
-  "prevId": "a433f327-fb84-468a-b2c6-c42c0ed9b8d4",
+  "id": "3340de50-7e07-4c5e-b793-0774421f9e32",
+  "prevId": "89bdcf0f-55c9-4ebc-a3ca-baad3228b405",
   "tables": {
     "api_token": {
       "name": "api_token",
@@ -269,6 +269,165 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "intake_form": {
+      "name": "intake_form",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "require_login": {
+          "name": "require_login",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "email_mode": {
+          "name": "email_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'optional'"
+        },
+        "active": {
+          "name": "active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "intake_form_token_unique": {
+          "name": "intake_form_token_unique",
+          "columns": [
+            "token"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "intake_form_created_by_id_user_id_fk": {
+          "name": "intake_form_created_by_id_user_id_fk",
+          "tableFrom": "intake_form",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "intake_form_project": {
+      "name": "intake_form_project",
+      "columns": {
+        "form_id": {
+          "name": "form_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "intake_form_project_project_idx": {
+          "name": "intake_form_project_project_idx",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "intake_form_project_form_id_intake_form_id_fk": {
+          "name": "intake_form_project_form_id_intake_form_id_fk",
+          "tableFrom": "intake_form_project",
+          "tableTo": "intake_form",
+          "columnsFrom": [
+            "form_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "intake_form_project_project_id_project_id_fk": {
+          "name": "intake_form_project_project_id_project_id_fk",
+          "tableFrom": "intake_form_project",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "intake_form_project_form_id_project_id_pk": {
+          "columns": [
+            "form_id",
+            "project_id"
+          ],
+          "name": "intake_form_project_form_id_project_id_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -612,6 +771,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "intake_form_id": {
+          "name": "intake_form_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reporter_email": {
+          "name": "reporter_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -712,6 +885,19 @@
           "tableTo": "user",
           "columnsFrom": [
             "created_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "ticket_intake_form_id_intake_form_id_fk": {
+          "name": "ticket_intake_form_id_intake_form_id_fk",
+          "tableFrom": "ticket",
+          "tableTo": "intake_form",
+          "columnsFrom": [
+            "intake_form_id"
           ],
           "columnsTo": [
             "id"

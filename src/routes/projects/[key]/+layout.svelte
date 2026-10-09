@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { page } from '$app/state';
 	import TicketModal from '$lib/components/TicketModal.svelte';
 	import { cn } from '$lib/utils';
@@ -9,9 +10,9 @@
 	let { data, children } = $props();
 
 	const tabs = [
-		{ href: 'board', label: 'Board', icon: SquareKanban },
-		{ href: 'gantt', label: 'Gantt', icon: ChartGantt },
-		{ href: 'settings', label: 'Einstellungen', icon: Settings }
+		{ href: 'board', label: m.board(), icon: SquareKanban },
+		{ href: 'gantt', label: m.gantt(), icon: ChartGantt },
+		{ href: 'settings', label: m.settings(), icon: Settings }
 	];
 	const open = $derived(data.tickets.filter((t) => !t.closed).length);
 </script>
@@ -26,7 +27,8 @@
 		<div>
 			<h1 class="text-xl font-semibold tracking-tight">{data.project.name}</h1>
 			<div class="text-muted-foreground text-xs">
-				<span class="font-mono">{data.project.key}</span> · {open} offen von {data.tickets.length} Tickets
+				<span class="font-mono">{data.project.key}</span>
+				{m.open_out_of_tickets({ value1: open, value2: data.tickets.length })}
 			</div>
 		</div>
 	</div>

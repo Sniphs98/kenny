@@ -53,4 +53,4 @@ Nach einem grünen Merge auf `main` einen Tag wie `v0.1.0` auf den gewünschten 
 
 Ein manuell gestarteter Release-Workflow baut und prüft ohne Veröffentlichung. Für einen Rollback einen früheren Container-Tag oder Digest verwenden. Datenbank und Anhänge vorher sichern; ein Image-Rollback macht bereits angewandte Datenbankmigrationen nicht rückgängig.
 
-Es gibt keinen automatischen Produktions-Deploy. Mehrsprachigkeit mit Paraglide wird später als eigenes Feature geplant.
+Es gibt keinen automatischen Produktions-Deploy. UI-Texte werden mit ParaglideJS gepflegt; neue Nachrichten in `messages/de.json` und `messages/en.json` ergänzen. Schema- und API-Feldnamen sowie vom Benutzer gespeicherte Inhalte bleiben sprachunabhängig.

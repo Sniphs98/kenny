@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth-client';
@@ -34,7 +35,14 @@
 				: await authClient.signUp.email({ name, email, password });
 		busy = false;
 		if (res.error) {
-			error = res.error.message ?? 'Anmeldung fehlgeschlagen';
+			error =
+				res.error.code === 'INVALID_EMAIL_OR_PASSWORD'
+					? m.login_invalid()
+					: res.error.code === 'USER_ALREADY_EXISTS' || res.error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
+						? m.register_exists()
+						: res.error.code === 'PASSWORD_TOO_SHORT'
+							? m.register_password()
+							: m.login_failed();
 			return;
 		}
 		await goto(target.startsWith('/') ? target : '/', { invalidateAll: true });
@@ -54,12 +62,10 @@
 				<SquareKanban class="size-5" strokeWidth={2.25} />
 			</span>
 			<h1 class="mt-4 text-2xl font-semibold tracking-tight">
-				{mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}
+				{mode === 'login' ? m.welcome_back() : m.create_account()}
 			</h1>
 			<p class="text-muted-foreground mt-1 text-sm">
-				{mode === 'login'
-					? 'Melde dich bei Kenny an, um deine Projekte zu sehen.'
-					: 'Lege ein neues Konto für Kenny an.'}
+				{mode === 'login' ? m.sign_in_to_kenny_to_see_your_projects() : m.create_a_new_kenny_account()}
 			</p>
 		</div>
 
@@ -68,7 +74,7 @@
 				<form class="grid gap-4" onsubmit={submit}>
 					{#if mode === 'register'}
 						<div class="grid gap-2">
-							<Label for="name">Name</Label>
+							<Label for="name">{m.name()}</Label>
 							<InputGroup.Root>
 								<InputGroup.Addon><User /></InputGroup.Addon>
 								<InputGroup.Input id="name" bind:value={name} required autocomplete="name" />
@@ -76,14 +82,14 @@
 						</div>
 					{/if}
 					<div class="grid gap-2">
-						<Label for="email">E-Mail</Label>
+						<Label for="email">{m.email()}</Label>
 						<InputGroup.Root>
 							<InputGroup.Addon><Mail /></InputGroup.Addon>
 							<InputGroup.Input id="email" type="email" bind:value={email} required autocomplete="email" />
 						</InputGroup.Root>
 					</div>
 					<div class="grid gap-2">
-						<Label for="password">Passwort</Label>
+						<Label for="password">{m.password()}</Label>
 						<InputGroup.Root>
 							<InputGroup.Addon><Lock /></InputGroup.Addon>
 							<InputGroup.Input
@@ -102,14 +108,14 @@
 							<Alert.Title>{error}</Alert.Title>
 						</Alert.Root>
 					{/if}
-					<Button type="submit" disabled={busy}>{mode === 'login' ? 'Anmelden' : 'Registrieren'}</Button>
+					<Button type="submit" disabled={busy}>{mode === 'login' ? m.sign_in() : m.sign_up()}</Button>
 					{#if data.microsoftEnabled}
 						<div
 							class="text-muted-foreground flex items-center gap-3 text-xs before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border"
 						>
-							oder
+							{m.or()}
 						</div>
-						<Button variant="outline" onclick={microsoft}>Mit Microsoft anmelden</Button>
+						<Button variant="outline" onclick={microsoft}>{m.sign_in_with_microsoft()}</Button>
 					{/if}
 				</form>
 			</Card.Content>
@@ -117,16 +123,14 @@
 
 		<p class="text-muted-foreground mt-5 text-center text-sm">
 			{#if mode === 'login'}
-				Noch kein Konto? <a
-					class="text-primary font-medium hover:underline"
-					href="#register"
-					onclick={() => (mode = 'register')}>Registrieren</a
+				{m.don_t_have_an_account()}
+				<a class="text-primary font-medium hover:underline" href="#register" onclick={() => (mode = 'register')}
+					>{m.sign_up()}</a
 				>
 			{:else}
-				Schon registriert? <a
-					class="text-primary font-medium hover:underline"
-					href="#login"
-					onclick={() => (mode = 'login')}>Anmelden</a
+				{m.already_registered()}
+				<a class="text-primary font-medium hover:underline" href="#login" onclick={() => (mode = 'login')}
+					>{m.sign_in()}</a
 				>
 			{/if}
 		</p>

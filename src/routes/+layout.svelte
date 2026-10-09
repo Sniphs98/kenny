@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import '@fontsource-variable/inter';
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -6,6 +7,7 @@
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth-client';
 	import { accentStyle, accentVars } from '$lib/theme';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -29,7 +31,7 @@
 	const links = [
 		{
 			href: '/',
-			label: 'Projekte',
+			label: m.projects(),
 			icon: FolderKanban,
 			match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
 		},
@@ -99,12 +101,15 @@
 						<div class="text-muted-foreground truncate text-xs">{data.user.email}</div>
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
+					<LanguageSwitcher />
 					<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
-						<KeyRound /> API-Tokens
+						<KeyRound />
+						{m.api_tokens()}
 					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={logout}>
-						<LogOut /> Abmelden
+						<LogOut />
+						{m.sign_out()}
 					</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>

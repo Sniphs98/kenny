@@ -30,3 +30,7 @@ vite.config.ts.timestamp-*
 
 # Coverage
 /coverage
+
+# Generated localization runtime and inlang cache
+/src/lib/paraglide
+/project.inlang/cache

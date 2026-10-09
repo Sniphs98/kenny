@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { api, updateProject } from '$lib/api';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
@@ -44,7 +45,7 @@
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
-		await run(() => updateProject(data.project.key, { name, description, color }), 'Projekt gespeichert');
+		await run(() => updateProject(data.project.key, { name, description, color }), m.project_saved());
 	}
 
 	// --- Spalten per Drag & Drop sortieren (nur am Griff, damit die Eingabefelder bedienbar bleiben) ---
@@ -115,7 +116,7 @@
 
 	async function remove() {
 		await api('DELETE', base);
-		toast.success(`Projekt „${data.project.name}“ gelöscht`);
+		toast.success(m.deleted_project({ value1: data.project.name }));
 		await goto('/', { invalidateAll: true });
 	}
 </script>
@@ -123,37 +124,32 @@
 <div class="mx-auto flex max-w-3xl flex-col gap-5 px-5 py-6">
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Projekt</Card.Title>
-			<Card.Description
-				>Name, Farbe und Beschreibung des Projekts. Die Farbe wird im Projekt zur Hauptfarbe.</Card.Description
-			>
+			<Card.Title>{m.project()}</Card.Title>
+			<Card.Description>{m.project_name_color_and_description_the_color_becomes_the_project_s_pri()}</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<form class="grid gap-4" onsubmit={save}>
 				<div class="grid gap-2">
-					<Label for="name">Name</Label>
+					<Label for="name">{m.name()}</Label>
 					<Input id="name" bind:value={name} required />
 				</div>
 				<div class="grid gap-2">
-					<Label>Farbe</Label>
+					<Label>{m.color()}</Label>
 					<ColorPicker bind:value={color} />
 				</div>
 				<div class="grid gap-2">
-					<Label for="desc">Beschreibung</Label>
+					<Label for="desc">{m.description()}</Label>
 					<Textarea id="desc" bind:value={description} rows={3} />
 				</div>
-				<div><Button type="submit">Speichern</Button></div>
+				<div><Button type="submit">{m.save()}</Button></div>
 			</form>
 		</Card.Content>
 	</Card.Root>
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Board-Spalten</Card.Title>
-			<Card.Description>
-				Tickets in Spalten mit „Erledigt“ gelten als abgeschlossen. Beim Schließen per API landet ein Ticket in der
-				ersten Erledigt-Spalte. Tickets in Spalten mit „Backlog“ werden im Gantt-Diagramm standardmäßig ausgeblendet.
-			</Card.Description>
+			<Card.Title>{m.board_columns()}</Card.Title>
+			<Card.Description>{m.tickets_in_columns_marked_done_are_completed_completing_a_ticket_via_t()}</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
 			<ul class="flex flex-col gap-2">
@@ -174,8 +170,8 @@
 							type="button"
 							class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 hover:bg-muted grid h-9 w-6 shrink-0 cursor-grab place-items-center rounded-md outline-none focus-visible:ring-3 active:cursor-grabbing"
 							data-grip={col.id}
-							title="Ziehen zum Sortieren (oder Pfeiltasten)"
-							aria-label="Spalte {col.name} verschieben"
+							title={m.drag_to_reorder_or_use_arrow_keys()}
+							aria-label={m.move_column({ value1: col.name })}
 							onpointerdown={() => (armedId = col.id)}
 							onpointerup={() => dragId === null && (armedId = null)}
 							onkeydown={(e) => onGripKey(e, col.id)}
@@ -191,39 +187,37 @@
 								checked={col.isDone}
 								onCheckedChange={(v) => run(() => api('PATCH', `${base}/columns/${col.id}`, { isDone: v }))}
 							/>
-							Erledigt
+							{m.done()}
 						</Label>
-						<Label class="shrink-0 px-2 font-normal" title="Im Gantt-Diagramm standardmäßig ausblenden">
+						<Label class="shrink-0 px-2 font-normal" title={m.hide_in_gantt_chart_by_default()}>
 							<Checkbox
 								checked={col.isBacklog}
 								onCheckedChange={(v) => run(() => api('PATCH', `${base}/columns/${col.id}`, { isBacklog: v }))}
 							/>
-							Backlog
+							{m.backlog()}
 						</Label>
 						<Button
 							variant="ghost"
 							size="icon"
 							class="hover:text-destructive"
-							title="Spalte löschen"
-							aria-label="Spalte löschen"
+							title={m.delete_column()}
+							aria-label={m.delete_column()}
 							onclick={() => run(() => api('DELETE', `${base}/columns/${col.id}`))}><Trash2 /></Button
 						>
 					</li>
 				{/each}
 			</ul>
 			<form class="flex gap-2" onsubmit={addColumn}>
-				<Input placeholder="Neue Spalte" bind:value={newColumn} />
-				<Button type="submit" variant="outline"><Plus /> Hinzufügen</Button>
+				<Input placeholder={m.new_column()} bind:value={newColumn} />
+				<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>
 
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Tags</Card.Title>
-			<Card.Description>
-				Tags wie Bug, Feature oder Story zum Einordnen von Tickets. Neue Tags lassen sich auch direkt am Ticket anlegen.
-			</Card.Description>
+			<Card.Title>{m.tags()}</Card.Title>
+			<Card.Description>{m.organize_tickets_with_tags_such_as_bug_feature_or_story_you_can_also_c()}</Card.Description>
 		</Card.Header>
 		<Card.Content class="gap-4">
 			<ul class="flex flex-col gap-2">
@@ -232,13 +226,13 @@
 						<label
 							class="relative size-9 shrink-0 cursor-pointer rounded-md border"
 							style="background: {g.color}"
-							title="Farbe ändern"
+							title={m.change_color()}
 						>
 							<input
 								type="color"
 								value={g.color}
 								class="absolute inset-0 cursor-pointer opacity-0"
-								aria-label="Farbe von {g.name}"
+								aria-label={m.color_of({ value1: g.name })}
 								onchange={(e) => run(() => api('PATCH', `${base}/tags/${g.id}`, { color: e.currentTarget.value }))}
 							/>
 						</label>
@@ -249,25 +243,25 @@
 						/>
 						<span class="w-28 shrink-0"><TagBadge name={g.name} color={g.color} /></span>
 						<span class="text-muted-foreground w-20 shrink-0 text-right text-xs">
-							{tagUsage.get(g.id)} Ticket{tagUsage.get(g.id) === 1 ? '' : 's'}
+							{m.ticket_2({ value1: tagUsage.get(g.id) ?? 0, value2: tagUsage.get(g.id) === 1 ? '' : 's' })}
 						</span>
 						<Button
 							variant="ghost"
 							size="icon"
 							class="hover:text-destructive"
-							title="Tag löschen"
-							aria-label="Tag löschen"
-							onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), `Tag „${g.name}“ gelöscht`)}
+							title={m.delete_tag()}
+							aria-label={m.delete_tag()}
+							onclick={() => run(() => api('DELETE', `${base}/tags/${g.id}`), m.deleted_tag({ name: g.name }))}
 							><Trash2 /></Button
 						>
 					</li>
 				{:else}
-					<li class="text-muted-foreground text-sm">Noch keine Tags.</li>
+					<li class="text-muted-foreground text-sm">{m.no_tags_yet()}</li>
 				{/each}
 			</ul>
 			<form class="flex gap-2" onsubmit={addTag}>
-				<Input placeholder="Neuer Tag" maxlength={40} bind:value={newTag} />
-				<Button type="submit" variant="outline"><Plus /> Hinzufügen</Button>
+				<Input placeholder={m.new_tag()} maxlength={40} bind:value={newTag} />
+				<Button type="submit" variant="outline"><Plus /> {m.add()}</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -275,10 +269,10 @@
 	<Card.Root class="ring-destructive/30">
 		<Card.Header class="flex items-center gap-4">
 			<div class="grow">
-				<Card.Title>Projekt löschen</Card.Title>
-				<Card.Description>Löscht das Projekt mit allen Tickets endgültig.</Card.Description>
+				<Card.Title>{m.delete_project()}</Card.Title>
+				<Card.Description>{m.permanently_deletes_the_project_and_all_its_tickets()}</Card.Description>
 			</div>
-			<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> Löschen</Button>
+			<Button variant="destructive" onclick={() => (confirmDelete = true)}><Trash2 /> {m.delete()}</Button>
 		</Card.Header>
 	</Card.Root>
 </div>
@@ -286,15 +280,15 @@
 <AlertDialog.Root bind:open={confirmDelete}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>Projekt „{data.project.name}“ löschen?</AlertDialog.Title>
+			<AlertDialog.Title>{m.delete_project_2({ value1: data.project.name })}</AlertDialog.Title>
 			<AlertDialog.Description>
-				Das Projekt und alle {data.tickets.length} Tickets werden endgültig gelöscht. Das kann nicht rückgängig gemacht werden.
+				{m.the_project_and_all_tickets_will_be_permanently_deleted_this_cannot_be({ value1: data.tickets.length })}
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+			<AlertDialog.Cancel>{m.cancel()}</AlertDialog.Cancel>
 			<AlertDialog.Action class="bg-destructive hover:bg-destructive/90 text-white" onclick={remove}
-				>Endgültig löschen</AlertDialog.Action
+				>{m.delete_permanently()}</AlertDialog.Action
 			>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>

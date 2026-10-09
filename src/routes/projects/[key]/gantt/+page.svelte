@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import Gantt from '$lib/components/Gantt.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -22,7 +23,8 @@
 >
 	{#snippet actions()}
 		<Button size="sm" onclick={() => dialog.open({ startDate: fromDay(today), dueDate: fromDay(today + 3) })}>
-			<Plus /> Ticket
+			<Plus />
+			{m.ticket()}
 		</Button>
 	{/snippet}
 </Gantt>

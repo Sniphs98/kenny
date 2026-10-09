@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { intlLocale } from '$lib/i18n';
+	import { m } from '$lib/paraglide/messages.js';
 	import { buttonVariants, Button } from '$lib/components/ui/button';
 	import { Calendar } from '$lib/components/ui/calendar';
 	import * as Popover from '$lib/components/ui/popover';
@@ -10,7 +12,7 @@
 		value,
 		onchange,
 		min,
-		placeholder = 'Datum wählen',
+		placeholder = m.choose_date(),
 		id,
 		class: className
 	}: {
@@ -39,7 +41,7 @@
 		current
 			? current
 					.toDate(getLocalTimeZone())
-					.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+					.toLocaleDateString(intlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
 			: placeholder
 	);
 
@@ -68,17 +70,17 @@
 			type="single"
 			value={current}
 			onValueChange={(v) => pick(v as DateValue | undefined)}
-			locale="de-DE"
+			locale={intlLocale()}
 			weekStartsOn={1}
 			captionLayout="dropdown"
 			{minValue}
 			initialFocus
 		/>
 		<div class="flex justify-between gap-2 border-t p-2">
-			<Button variant="ghost" size="sm" onclick={() => pick(today(getLocalTimeZone()))}>Heute</Button>
+			<Button variant="ghost" size="sm" onclick={() => pick(today(getLocalTimeZone()))}>{m.today()}</Button>
 			{#if current}
 				<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => pick(undefined)}
-					>Entfernen</Button
+					>{m.remove()}</Button
 				>
 			{/if}
 		</div>

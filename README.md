@@ -207,6 +207,25 @@ curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=s
   -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: image/png" --data-binary @screenshot.png
 ```
 
+## AI assistants (MCP)
+
+Kenny includes a [Model Context Protocol](https://modelcontextprotocol.io) server so AI assistants can read projects and tickets. It is served by the app itself at `/api/v1/mcp` (Streamable HTTP, stateless, JSON responses) and authenticates like the REST API with `Authorization: Bearer <token>`. The assistant sees exactly what the token's owner can see: projects they are a member of (all projects for instance administrators), and ticket links into other projects are hidden. Deactivating the account or revoking the token cuts off access.
+
+All tools are read-only:
+
+| Tool             | Description                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `list_projects`  | Accessible projects with key and ticket counts                                                                            |
+| `search_tickets` | Tickets across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit` |
+| `get_ticket`     | One ticket by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                |
+
+The **API** page in the app shows the endpoint URL and configuration examples. For example, with Claude Code:
+
+```bash
+claude mcp add --transport http kenny https://kenny.example.com/api/v1/mcp \
+  --header "Authorization: Bearer $KENNY_TOKEN"
+```
+
 ## Microsoft integration
 
 Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` (optionally `MICROSOFT_TENANT_ID`) enables **Sign in with Microsoft** on the login page. Configure `<BETTER_AUTH_URL>/api/auth/callback/microsoft` as the redirect URI in the app registration.
@@ -220,7 +239,8 @@ src/lib/server/db/          Drizzle schema (auth and application tables) and dat
 src/lib/server/services/    Project and ticket business logic shared by the UI and API
 src/lib/server/auth.ts      Better Auth configuration
 src/lib/server/api*.ts      API token validation and handler wrapper
-src/routes/api/v1/          REST API
+src/lib/server/mcp.ts       MCP tools for AI assistants
+src/routes/api/v1/          REST API and MCP endpoint
 src/routes/projects/[key]/  Board, Gantt, and settings
 src/routes/tickets/[key]/   Ticket details
 ```

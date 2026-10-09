@@ -434,5 +434,12 @@
 	"copy_code": "Copy code",
 	"embed_code_copied": "Code copied",
 	"embed_requires_public": "Forms that require sign-in cannot be embedded because signing in does not work inside an embedded frame. Share the link instead.",
-	"embed_inactive_hint": "The form is deactivated and only shows up once it is active again."
+	"embed_inactive_hint": "The form is deactivated and only shows up once it is active again.",
+	"mcp_title": "AI assistants (MCP)",
+	"mcp_description": "Connect an AI assistant through the Model Context Protocol. It can list projects, search tickets and read ticket details, but cannot change anything, and it only sees what you can see. Authenticate with one of your API tokens.",
+	"mcp_endpoint": "MCP endpoint (Streamable HTTP)",
+	"mcp_copy_url": "Copy MCP URL",
+	"mcp_url_copied": "MCP URL copied",
+	"mcp_example_config": "Example: client configuration",
+	"mcp_example_claude_code": "Example: Claude Code"
 }

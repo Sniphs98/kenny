@@ -85,3 +85,56 @@ test('project responses expose only public fields', async ({ request }) => {
 	expect(data).not.toHaveProperty('ownerId');
 	expect(data).not.toHaveProperty('ticketCounter');
 });
+
+test('MCP endpoint lets AI assistants read tickets with a personal API token', async ({
+	page,
+	request,
+	playwright,
+	baseURL
+}) => {
+	const project = await createProject(request);
+	const ticket = await createTicket(request, project.key, { title: 'Visible to the assistant' });
+
+	await open(page, '/settings/api');
+	await expect(page.getByTestId('mcp-url')).toHaveText(`${baseURL}/api/v1/mcp`);
+	await page.getByPlaceholder('Name, z.B. CI-Pipeline').fill(`MCP ${Date.now()}`);
+	await page.getByRole('button', { name: 'Token erstellen' }).click();
+	const token = await page
+		.locator('code')
+		.filter({ hasText: /^kny_[A-Za-z0-9_-]+$/ })
+		.innerText();
+
+	const headers = { accept: 'application/json, text/event-stream', 'content-type': 'application/json' };
+	const anonymous = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+	const client = await playwright.request.newContext({
+		baseURL,
+		storageState: { cookies: [], origins: [] },
+		extraHTTPHeaders: { ...headers, authorization: `Bearer ${token}` }
+	});
+	const rpc = async (id: number, method: string, params: Record<string, unknown>) => {
+		const response = await client.post('/api/v1/mcp', { data: { jsonrpc: '2.0', id, method, params } });
+		expect(response.status(), await response.text()).toBe(200);
+		return (await response.json()).result;
+	};
+	try {
+		const initialize = { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} };
+		expect((await anonymous.post('/api/v1/mcp', { headers, data: initialize })).status()).toBe(401);
+
+		const init = await rpc(1, 'initialize', {
+			protocolVersion: '2025-06-18',
+			capabilities: {},
+			clientInfo: { name: 'e2e', version: '1.0.0' }
+		});
+		expect(init.serverInfo.name).toBe('kenny');
+		const { tools } = await rpc(2, 'tools/list', {});
+		expect(tools.map((t: { name: string }) => t.name)).toContain('search_tickets');
+
+		const found = await rpc(3, 'tools/call', { name: 'search_tickets', arguments: { project: project.key } });
+		expect(JSON.parse(found.content[0].text).tickets).toMatchObject([{ key: ticket.key }]);
+		const detail = await rpc(4, 'tools/call', { name: 'get_ticket', arguments: { ticket: ticket.key } });
+		expect(JSON.parse(detail.content[0].text)).toMatchObject({ key: ticket.key, title: 'Visible to the assistant' });
+	} finally {
+		await anonymous.dispose();
+		await client.dispose();
+	}
+});

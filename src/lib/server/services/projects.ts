@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { boardColumn, project, ticket } from '../db/schema';
 import { ApiError } from '../errors';
+import { removeFiles, storageKeysForProject } from './attachments';
 import { insertDefaultTags } from './tags';
 import { str, optStr } from './validate';
 
@@ -112,9 +113,11 @@ export function updateProject(id: number, input: Record<string, unknown>) {
 	return getProject(id);
 }
 
-export function deleteProject(id: number) {
+export async function deleteProject(id: number) {
 	getProject(id);
+	const files = storageKeysForProject(id);
 	db.delete(project).where(eq(project.id, id)).run();
+	await removeFiles(files);
 }
 
 export function addColumn(projectId: number, input: Record<string, unknown>) {

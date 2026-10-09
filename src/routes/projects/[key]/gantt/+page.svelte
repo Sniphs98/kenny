@@ -13,7 +13,7 @@
 	const today = Math.floor(Date.now() / DAY);
 </script>
 
-<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} color={data.project.color}>
+<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} projectKey={data.project.key} color={data.project.color}>
 	{#snippet actions()}
 		<Button size="sm" onclick={() => dialog.open({ startDate: fromDay(today), dueDate: fromDay(today + 3) })}>
 			<Plus /> Ticket

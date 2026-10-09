@@ -130,6 +130,24 @@ export const ticketTag = sqliteTable(
 	(t) => [primaryKey({ columns: [t.ticketId, t.tagId] }), index('ticket_tag_tag_idx').on(t.tagId)]
 );
 
+/** Dateianhänge an Tickets; die Datei selbst liegt unter ATTACHMENTS_DIR/<storageKey> */
+export const attachment = sqliteTable(
+	'attachment',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		filename: text('filename').notNull(),
+		mimeType: text('mime_type').notNull(),
+		size: integer('size').notNull(),
+		storageKey: text('storage_key').notNull().unique(),
+		uploadedById: text('uploaded_by_id').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+	},
+	(t) => [index('attachment_ticket_idx').on(t.ticketId)]
+);
+
 /** Persönliche API-Tokens für die REST-API. Gespeichert wird nur der SHA-256-Hash. */
 export const apiToken = sqliteTable('api_token', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -149,3 +167,4 @@ export type BoardColumn = typeof boardColumn.$inferSelect;
 export type Ticket = typeof ticket.$inferSelect;
 export type TicketLink = typeof ticketLink.$inferSelect;
 export type Tag = typeof tag.$inferSelect;
+export type Attachment = typeof attachment.$inferSelect;

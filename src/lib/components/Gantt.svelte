@@ -5,6 +5,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Label } from '$lib/components/ui/label';
+	import * as Command from '$lib/components/ui/command';
+	import * as Popover from '$lib/components/ui/popover';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
 	import { toast } from 'svelte-sonner';
 	import type { getColumns } from '$lib/server/services/projects';
@@ -14,6 +17,11 @@
 	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Info from '@lucide/svelte/icons/info';
+	import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Archive from '@lucide/svelte/icons/archive';
+	import CalendarX from '@lucide/svelte/icons/calendar-x';
+	import X from '@lucide/svelte/icons/x';
 	import type { Snippet } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
@@ -23,6 +31,7 @@
 		tickets: source,
 		dependencies,
 		columns,
+		projectKey,
 		color,
 		maxHeight = 'calc(100vh - 210px)',
 		actions
@@ -31,6 +40,8 @@
 		dependencies: ReturnType<typeof listDependencies>;
 		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
 		columns: ReturnType<typeof getColumns>;
+		/** Für das Anlegen neuer Tickets aus der Einplanen-Suche */
+		projectKey: string;
 		color: string;
 		/** Maximale Höhe des Diagramms, danach wird gescrollt */
 		maxHeight?: string;
@@ -45,6 +56,8 @@
 	let zoom = $state<keyof typeof ZOOMS>('Woche');
 	let hideClosed = $state(false);
 	let showBacklog = $state(false);
+	/** Tickets ohne Termin standardmäßig ausblenden; eingeplant wird über „Ticket einplanen…“ */
+	let showUndated = $state(false);
 
 	const backlogColumns = $derived(new Set(columns.filter((c) => c.isBacklog).map((c) => c.id)));
 	const backlogCount = $derived(source.filter((t) => backlogColumns.has(t.columnId)).length);
@@ -71,9 +84,20 @@
 
 	/** Tickets hierarchisch sortieren: Eltern, darunter ihre (aufgeklappten) Unteraufgaben */
 	const tree = $derived.by(() => {
-		const list = tickets.filter(
+		let list = tickets.filter(
 			(t) => (!hideClosed || !t.closed) && (showBacklog || !backlogColumns.has(t.columnId))
 		);
+		if (!showUndated) {
+			// Nur Tickets mit Termin, dazu ihre Elterntickets, damit die Hierarchie erhalten bleibt
+			const byId = new Map(list.map((t) => [t.id, t]));
+			const keep = new Set<number>();
+			for (const t of list) {
+				if (!t.startDate && !t.dueDate) continue;
+				for (let cur: Item | undefined = t; cur && !keep.has(cur.id); cur = cur.parentId ? byId.get(cur.parentId) : undefined)
+					keep.add(cur.id);
+			}
+			list = list.filter((t) => keep.has(t.id));
+		}
 		const ids = new Set(list.map((t) => t.id));
 		const children = new Map<number | null, Item[]>();
 		for (const t of list) {
@@ -118,7 +142,8 @@
 			min = Math.min(min, s.start - 7);
 			max = Math.max(max, s.end + 14);
 		}
-		const minDays = Math.ceil((width - 280) / px) + 1;
+		// Breite auffüllen, aber abrunden: sonst ist das Diagramm immer etwas zu breit und zeigt eine Scrollleiste
+		const minDays = Math.floor((width - 280) / px);
 		return { start: min, days: Math.max(max - min + 1, minDays) };
 	});
 
@@ -245,6 +270,93 @@
 		await invalidateAll();
 	}
 
+	// --- Tickets einplanen: Suche in der letzten Zeile, z.B. um Tickets aus dem Backlog zu terminieren ---
+	let planOpen = $state(false);
+	let planQuery = $state('');
+	/** Angeklickter Tag in der Zeitachse; ohne Klick wird ab heute geplant */
+	let planDay = $state<number | null>(null);
+	let hoverDay = $state<number | null>(null);
+	let planAnchor = $state<HTMLButtonElement | null>(null);
+	let planCell = $state<HTMLDivElement | null>(null);
+
+	/** Noch nicht eingeplante offene Tickets: ohne Termin oder im Backlog; Backlog zuerst */
+	const planCandidates = $derived(
+		source
+			.filter((t) => !t.closed)
+			.map((t) => ({ t, backlog: backlogColumns.has(t.columnId), dated: !!(t.startDate || t.dueDate) }))
+			.filter(({ backlog, dated }) => backlog || !dated)
+			.sort((a, b) => Number(b.backlog) - Number(a.backlog) || a.t.number - b.t.number)
+	);
+	const canCreatePlan = $derived(
+		planQuery.trim() !== '' && !source.some((t) => t.title.toLowerCase() === planQuery.trim().toLowerCase())
+	);
+
+	function openPlan(e: MouseEvent | null) {
+		if (e) {
+			const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+			planDay = range.start + Math.floor((e.clientX - rect.left) / px);
+		} else planDay = null;
+		planQuery = '';
+		planOpen = true;
+	}
+
+	const backlogColumn = $derived(columns.find((c) => c.isBacklog));
+	const undatedCount = $derived(source.filter((t) => !t.closed && !t.startDate && !t.dueDate).length);
+
+	/** Termin entfernen; optional zurück in die Backlog-Spalte */
+	async function unschedule(t: Item, toBacklog: boolean) {
+		const body: Record<string, unknown> = { startDate: null, dueDate: null };
+		if (toBacklog && backlogColumn) body.columnId = backlogColumn.id;
+		try {
+			await api('PATCH', `/tickets/${t.id}`, body);
+			toast.success(toBacklog ? `${t.key} zurück in den Backlog verschoben` : `${t.key} aus dem Zeitplan entfernt`);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await invalidateAll();
+	}
+
+	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString('de-DE', { timeZone: 'UTC' });
+
+	async function plan(t: Item) {
+		planOpen = false;
+		const start = planDay ?? today;
+		const s = span(t);
+		// Dauer behalten, wenn das Ticket schon Termine hat
+		const body: Record<string, unknown> = { startDate: fromDay(start), dueDate: fromDay(start + (s ? s.end - s.start : 2)) };
+		if (backlogColumns.has(t.columnId)) {
+			// Aus dem Backlog holen, sonst wäre es im Gantt gleich wieder ausgeblendet
+			const target = columns.find((c) => !c.isBacklog && !c.isDone);
+			if (target) body.columnId = target.id;
+		}
+		// Elterntickets aufklappen, damit eine eingeplante Unteraufgabe sichtbar ist
+		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
+		try {
+			await api('PATCH', `/tickets/${t.id}`, body);
+			toast.success(`${t.key} eingeplant ab ${fmtDay(start)}`);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await invalidateAll();
+	}
+
+	async function createPlanned() {
+		const title = planQuery.trim();
+		planOpen = false;
+		const start = planDay ?? today;
+		try {
+			const t = await api<{ key: string }>('POST', `/projects/${projectKey}/tickets`, {
+				title,
+				startDate: fromDay(start),
+				dueDate: fromDay(start + 2)
+			});
+			toast.success(`${t.key} angelegt und ab ${fmtDay(start)} eingeplant`);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await invalidateAll();
+	}
+
 	let scroller: HTMLDivElement;
 	let width = $state(1000);
 	function scrollToToday() {
@@ -273,6 +385,10 @@
 	</ToggleGroup.Root>
 	<Button variant="outline" size="sm" onclick={scrollToToday}><CalendarDays /> Heute</Button>
 	<Label class="ml-1 font-normal"><Checkbox bind:checked={hideClosed} /> Erledigte ausblenden</Label>
+	<Label class="ml-1 font-normal">
+		<Checkbox bind:checked={showUndated} /> Ohne Termin anzeigen
+		<span class="text-muted-foreground text-xs">({undatedCount})</span>
+	</Label>
 	{#if backlogColumns.size}
 		<Label class="ml-1 font-normal">
 			<Checkbox bind:checked={showBacklog} /> Backlog anzeigen
@@ -336,15 +452,68 @@
 						<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
 						<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
 					</a>
+					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger class="rowaction" title="Aus dem Zeitplan nehmen" aria-label="{t.key} aus dem Zeitplan nehmen">
+								<X class="size-3.5" />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content align="end" class="w-56">
+								<DropdownMenu.Label class="truncate">{t.key} {t.title}</DropdownMenu.Label>
+								<DropdownMenu.Item disabled={!t.startDate && !t.dueDate} onSelect={() => unschedule(t, false)}>
+									<CalendarX /> Aus dem Zeitplan entfernen
+								</DropdownMenu.Item>
+								{#if backlogColumn && t.columnId !== backlogColumn.id}
+									<DropdownMenu.Item onSelect={() => unschedule(t, true)}>
+										<Archive /> Zurück in den Backlog
+									</DropdownMenu.Item>
+								{/if}
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					{/if}
 				</div>
 			{/each}
-			{#if rows.length === 0}
-				<div class="label text-muted-foreground">Noch keine Tickets</div>
-			{/if}
+			<button type="button" class="label planlabel" bind:this={planAnchor} onclick={() => openPlan(null)}>
+				<span class="toggle"><Plus class="size-3.5" /></span>
+				Ticket einplanen…
+			</button>
+			<Popover.Root bind:open={planOpen}>
+				<Popover.Content class="w-96 p-0" align="start" side="top" customAnchor={planDay !== null && planCell ? planCell : planAnchor}>
+					<Command.Root>
+						<Command.Input placeholder="Ticket suchen oder neu anlegen…" bind:value={planQuery} />
+						<div class="text-muted-foreground border-b px-3 py-1.5 text-xs">
+							Einplanen ab {fmtDay(planDay ?? today)}{planDay === null ? ' (heute)' : ''}
+						</div>
+						<Command.List class="max-h-80">
+							{#if !canCreatePlan}<Command.Empty>Keine offenen, ungeplanten Tickets gefunden.</Command.Empty>{/if}
+							<Command.Group>
+								{#each planCandidates as { t, backlog, dated } (t.id)}
+									<Command.Item value={String(t.id)} keywords={[t.key, t.title]} onSelect={() => plan(t)}>
+										<span class="prio prio-{t.priority}"></span>
+										<span class="text-muted-foreground shrink-0 font-mono text-xs">{t.key}</span>
+										<span class="min-w-0 grow truncate">{t.title}</span>
+										{#if backlog}
+											<span class="bg-muted text-muted-foreground shrink-0 rounded px-1.5 text-[11px]">Backlog</span>
+										{:else if !dated}
+											<span class="text-muted-foreground shrink-0 text-[11px]">ohne Termin</span>
+										{/if}
+									</Command.Item>
+								{/each}
+							</Command.Group>
+							<!-- Außerhalb der Gruppe: eine Gruppe ohne Treffer wird komplett ausgeblendet -->
+							{#if canCreatePlan}
+								<Command.Item value="__create" keywords={[planQuery]} forceMount onSelect={createPlanned}>
+									<Plus />
+									<span class="truncate">„{planQuery.trim()}“ als neues Ticket anlegen</span>
+								</Command.Item>
+							{/if}
+						</Command.List>
+					</Command.Root>
+				</Popover.Content>
+			</Popover.Root>
 		</div>
 
 		<!-- Zeitachse -->
-		<div class="body" style="width: {range.days * px}px; height: {Math.max(1, rows.length) * ROW}px">
+		<div class="body" style="width: {range.days * px}px; height: {(rows.length + 1) * ROW}px">
 			<div class="bg">
 				{#each days as d}
 					<div class="bgday" class:weekend={isWeekend(d)}></div>
@@ -388,6 +557,28 @@
 					{/if}
 				</div>
 			{/each}
+
+			<!-- Leere Zeile zum Einplanen: Klick wählt den Starttag -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div
+				class="trow planrow"
+				style="top: {rows.length * ROW}px"
+				onclick={(e) => openPlan(e)}
+				onmousemove={(e) => {
+					const rect = e.currentTarget.getBoundingClientRect();
+					hoverDay = range.start + Math.floor((e.clientX - rect.left) / px);
+				}}
+				onmouseleave={() => (hoverDay = null)}
+				role="presentation"
+				title="Klicken, um ein Ticket ab diesem Tag einzuplanen"
+			>
+				{#if planOpen && planDay !== null}
+					<!-- Gewählter Tag bleibt markiert, solange die Suche offen ist; die Suche hängt daran -->
+					<div class="plancell selected" bind:this={planCell} style="left: {x(planDay)}px; width: {Math.max(px, 18)}px"><CalendarPlus class="size-3.5" /></div>
+				{:else if hoverDay !== null}
+					<div class="plancell" style="left: {x(hoverDay)}px; width: {Math.max(px, 18)}px"><CalendarPlus class="size-3.5" /></div>
+				{/if}
+			</div>
 
 			<svg class="arrows" width={range.days * px} height={rows.length * ROW}>
 				<defs>
@@ -622,6 +813,64 @@
 		color: var(--muted-foreground);
 		white-space: nowrap;
 		pointer-events: none;
+	}
+	/* ✕ zum Austragen erscheint erst beim Überfahren der Zeile */
+	.label :global(.rowaction) {
+		flex: 0 0 22px;
+		height: 22px;
+		margin-left: auto;
+		display: grid;
+		place-items: center;
+		border-radius: 4px;
+		color: var(--muted-foreground);
+		opacity: 0;
+	}
+	.label:hover :global(.rowaction),
+	.label :global(.rowaction:focus-visible),
+	.label :global(.rowaction[data-state='open']) {
+		opacity: 1;
+	}
+	.label :global(.rowaction:hover) {
+		background: color-mix(in srgb, var(--destructive) 12%, transparent);
+		color: var(--destructive);
+	}
+	.planlabel {
+		width: 100%;
+		/* wie die Ticketzeilen (padding-left 0.3rem), damit das Plus unter dem Pfeil steht */
+		padding-left: 0.3rem;
+		outline: none;
+		color: var(--muted-foreground);
+		font-size: 0.8rem;
+		cursor: pointer;
+		text-align: left;
+	}
+	.planlabel:hover {
+		color: var(--foreground);
+	}
+	.planlabel:focus-visible {
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ring) 50%, transparent);
+	}
+	.planrow {
+		cursor: copy;
+		border-bottom: none;
+	}
+	.planrow:hover {
+		background: color-mix(in srgb, var(--primary) 5%, transparent);
+	}
+	.plancell {
+		position: absolute;
+		top: 7px;
+		height: calc(var(--row) - 14px);
+		display: grid;
+		place-items: center;
+		border: 1px dashed color-mix(in srgb, var(--primary) 55%, transparent);
+		border-radius: 6px;
+		color: var(--primary);
+		pointer-events: none;
+	}
+	.plancell.selected {
+		border-style: solid;
+		background: color-mix(in srgb, var(--primary) 12%, transparent);
 	}
 	.handle {
 		position: absolute;

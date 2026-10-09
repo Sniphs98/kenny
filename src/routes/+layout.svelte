@@ -11,6 +11,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { cn } from '$lib/utils';
+	import { onMount } from 'svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
@@ -19,6 +20,11 @@
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
 	let { data, children } = $props();
+
+	// Markiert die fertige Hydration; E2E-Tests warten darauf, bevor sie klicken
+	onMount(() => {
+		document.documentElement.dataset.hydrated = '';
+	});
 
 	const links = [
 		{ href: '/', label: 'Projekte', icon: FolderKanban, match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets') },

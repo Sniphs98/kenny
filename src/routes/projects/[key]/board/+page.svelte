@@ -2,32 +2,29 @@
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, PRIORITY_LABELS } from '$lib/api';
-	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import BoardCard from '$lib/components/BoardCard.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import Gantt from '$lib/components/Gantt.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
-	import { Badge } from '$lib/components/ui/badge';
+	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Collapsible from '$lib/components/ui/collapsible';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Input } from '$lib/components/ui/input';
 	import * as InputGroup from '$lib/components/ui/input-group';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
-	import { openTicket } from '$lib/ticket-modal';
 	import { cn } from '$lib/utils';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
-	import Ban from '@lucide/svelte/icons/ban';
-	import Calendar from '@lucide/svelte/icons/calendar';
+	import ArrowDownUp from '@lucide/svelte/icons/arrow-down-up';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import Circle from '@lucide/svelte/icons/circle';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
-	import CornerDownRight from '@lucide/svelte/icons/corner-down-right';
-	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Rows3 from '@lucide/svelte/icons/rows-3';
 	import Search from '@lucide/svelte/icons/search';
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import UserRound from '@lucide/svelte/icons/user-round';
@@ -71,6 +68,80 @@
 		} catch {}
 	});
 
+	// --- Sortierung und Gruppierung ---
+	const SORTS = {
+		manual: 'Manuell',
+		created_desc: 'Neueste zuerst',
+		created_asc: 'Älteste zuerst',
+		updated_desc: 'Zuletzt geändert',
+		due_asc: 'Fälligkeit',
+		priority_desc: 'Priorität: hoch → niedrig',
+		priority_asc: 'Priorität: niedrig → hoch',
+		title_asc: 'Titel A–Z'
+	} as const;
+	type Sort = keyof typeof SORTS;
+
+	const GROUPS = { none: 'Keine', tag: 'Tag', assignee: 'Zuständig', priority: 'Priorität' } as const;
+	type Group = keyof typeof GROUPS;
+
+	let sortBy = $state<Sort>('manual');
+	/** Abweichende Sortierung einzelner Spalten */
+	let columnSort = $state<Record<number, Sort>>({});
+	let groupBy = $state<Group>('none');
+	const collapsedLanes = new SvelteSet<string>();
+
+	// Ansicht pro Projekt im Browser merken
+	const viewKey = $derived(`board-view:${data.project.key}`);
+	let viewLoaded = $state(false);
+	$effect(() => {
+		const key = viewKey;
+		// Nur beim Projektwechsel laden, nicht bei Änderungen an der Ansicht selbst
+		untrack(() => {
+			viewLoaded = false;
+			try {
+				const v = JSON.parse(localStorage.getItem(key) ?? '{}');
+				sortBy = v.sortBy in SORTS ? v.sortBy : 'manual';
+				groupBy = v.groupBy in GROUPS ? v.groupBy : 'none';
+				columnSort = v.columnSort && typeof v.columnSort === 'object' ? v.columnSort : {};
+				collapsedLanes.clear();
+				for (const l of Array.isArray(v.collapsed) ? v.collapsed : []) collapsedLanes.add(String(l));
+			} catch {}
+			viewLoaded = true;
+		});
+	});
+	$effect(() => {
+		const v = { sortBy, groupBy, columnSort, collapsed: [...collapsedLanes] };
+		if (!viewLoaded) return;
+		try {
+			localStorage.setItem(viewKey, JSON.stringify(v));
+		} catch {}
+	});
+
+	const sortOf = (columnId: number): Sort => columnSort[columnId] ?? sortBy;
+
+	function setColumnSort(columnId: number, value: Sort | 'board') {
+		const next = { ...columnSort };
+		if (value === 'board') delete next[columnId];
+		else next[columnId] = value;
+		columnSort = next;
+	}
+
+	const PRIO_RANK = { urgent: 0, high: 1, medium: 2, low: 3 } as const;
+	const time = (d: Date | string) => new Date(d).getTime();
+	const manual = (a: Item, b: Item) => a.position - b.position || a.number - b.number;
+
+	const comparators: Record<Sort, (a: Item, b: Item) => number> = {
+		manual,
+		created_desc: (a, b) => time(b.createdAt) - time(a.createdAt),
+		created_asc: (a, b) => time(a.createdAt) - time(b.createdAt),
+		updated_desc: (a, b) => time(b.updatedAt) - time(a.updatedAt),
+		// Ohne Fälligkeit ans Ende
+		due_asc: (a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || manual(a, b),
+		priority_desc: (a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority] || manual(a, b),
+		priority_asc: (a, b) => PRIO_RANK[b.priority] - PRIO_RANK[a.priority] || manual(a, b),
+		title_asc: (a, b) => a.title.localeCompare(b.title, 'de') || manual(a, b)
+	};
+
 	// Lokale Kopie, damit Drag & Drop sofort sichtbar ist
 	let tickets = $state<Item[]>([]);
 	$effect(() => {
@@ -93,8 +164,7 @@
 	/** Karten mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */
 	const expanded = new SvelteSet<number>();
 
-	function toggleSubtasks(e: MouseEvent, id: number) {
-		e.stopPropagation();
+	function toggleSubtasks(id: number) {
 		if (expanded.has(id)) expanded.delete(id);
 		else expanded.add(id);
 	}
@@ -118,26 +188,93 @@
 		)
 	);
 
-	function columnTickets(columnId: number) {
-		return visible.filter((t) => t.columnId === columnId).sort((a, b) => a.position - b.position);
-	}
+	/**
+	 * Swimlanes: jede Bahn hat einen Schlüssel, eine Beschriftung und die Felder,
+	 * die ein Ticket beim Hineinziehen bzw. Anlegen in dieser Bahn bekommt.
+	 */
+	type Lane = {
+		key: string;
+		label: string;
+		kind: Group;
+		color?: string;
+		userName?: string | null;
+		priority?: string;
+		match: (t: Item) => boolean;
+		preset: Record<string, unknown>;
+	};
+
+	const lanes = $derived.by((): Lane[] => {
+		if (groupBy === 'tag') {
+			return [
+				...data.tags.map((g) => ({
+					key: `tag:${g.id}`,
+					label: g.name,
+					kind: 'tag' as const,
+					color: g.color,
+					match: (t: Item) => t.tags.some((x) => x.id === g.id),
+					preset: { tags: [g.id] }
+				})),
+				{ key: 'tag:none', label: 'Ohne Tag', kind: 'tag', match: (t) => !t.tags.length, preset: { tags: [] } }
+			];
+		}
+		if (groupBy === 'assignee') {
+			const users = [...data.users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name));
+			return [
+				...users.map((u) => ({
+					key: `user:${u.id}`,
+					label: u.id === me ? `${u.name} (ich)` : u.name,
+					kind: 'assignee' as const,
+					userName: u.name,
+					match: (t: Item) => t.assigneeId === u.id,
+					preset: { assigneeId: u.id }
+				})),
+				{ key: 'user:none', label: 'Nicht zugewiesen', kind: 'assignee', userName: null, match: (t) => !t.assigneeId, preset: { assigneeId: null } }
+			];
+		}
+		if (groupBy === 'priority') {
+			return (['urgent', 'high', 'medium', 'low'] as const).map((p) => ({
+				key: `prio:${p}`,
+				label: PRIORITY_LABELS[p],
+				kind: 'priority' as const,
+				priority: p,
+				match: (t: Item) => t.priority === p,
+				preset: { priority: p }
+			}));
+		}
+		return [{ key: 'all', label: '', kind: 'none', match: () => true, preset: {} }];
+	});
+
+	/** Tickets je Bahn und Spalte, bereits sortiert */
+	const cells = $derived.by(() => {
+		const m = new Map<string, Item[]>();
+		for (const lane of lanes) {
+			const inLane = visible.filter(lane.match);
+			for (const col of data.columns) {
+				m.set(`${lane.key}|${col.id}`, inLane.filter((t) => t.columnId === col.id).sort(comparators[sortOf(col.id)]));
+			}
+		}
+		return m;
+	});
+	const cell = (laneKey: string, columnId: number) => cells.get(`${laneKey}|${columnId}`) ?? [];
+	const laneCount = (lane: Lane) => visible.filter(lane.match).length;
+	const columnCount = (columnId: number) => visible.filter((t) => t.columnId === columnId).length;
+	// Leere Bahnen ausblenden, außer es gibt gar keine Tickets
+	const shownLanes = $derived(groupBy === 'none' ? lanes : lanes.filter((l) => laneCount(l) > 0));
 
 	// --- Drag & Drop ---
-	let dragId = $state<number | null>(null);
-	let dropTarget = $state<{ columnId: number; index: number } | null>(null);
+	let drag = $state<{ id: number; lane: string } | null>(null);
+	let dropTarget = $state<{ lane: string; columnId: number; index: number } | null>(null);
 
-	function onDragStart(e: DragEvent, t: Item) {
-		dragId = t.id;
+	function onDragStart(e: DragEvent, t: Item, lane: string) {
+		drag = { id: t.id, lane };
 		e.dataTransfer!.effectAllowed = 'move';
 		e.dataTransfer!.setData('text/plain', String(t.id));
 	}
 
-	function onDragOver(e: DragEvent, columnId: number, list: HTMLElement) {
-		if (dragId === null) return;
+	function onDragOver(e: DragEvent, lane: string, columnId: number, list: HTMLElement) {
+		if (!drag) return;
 		e.preventDefault();
-		const cards = [...list.querySelectorAll<HTMLElement>('[data-card]')].filter(
-			(c) => Number(c.dataset.card) !== dragId
-		);
+		const cards = [...list.querySelectorAll<HTMLElement>('[data-card]')].filter((c) => Number(c.dataset.card) !== drag!.id);
 		let index = cards.length;
 		for (let i = 0; i < cards.length; i++) {
 			const r = cards[i].getBoundingClientRect();
@@ -146,32 +283,53 @@
 				break;
 			}
 		}
-		dropTarget = { columnId, index };
+		dropTarget = { lane, columnId, index };
+	}
+
+	/** Felder, die sich beim Wechsel der Bahn ändern */
+	function laneChange(t: Item, from: Lane, to: Lane): Record<string, unknown> {
+		if (from.key === to.key) return {};
+		if (to.kind === 'tag') {
+			// Tag der alten Bahn durch den der neuen ersetzen, andere Tags bleiben
+			if (!(to.preset.tags as number[]).length) return { tags: [] };
+			const fromTag = (from.preset.tags as number[])[0];
+			const ids = t.tags.map((g) => g.id).filter((id) => id !== fromTag);
+			return { tags: [...new Set([...ids, ...(to.preset.tags as number[])])] };
+		}
+		return to.preset;
 	}
 
 	async function onDrop(e: DragEvent) {
 		e.preventDefault();
-		if (dragId === null || !dropTarget) return;
-		const id = dragId;
-		const { columnId, index } = dropTarget;
-		dragId = null;
+		if (!drag || !dropTarget) return;
+		const { id, lane: fromLane } = drag;
+		const { lane: toLane, columnId, index } = dropTarget;
+		drag = null;
 		dropTarget = null;
 
-		// Position bezieht sich auf alle Tickets der Spalte, nicht nur die sichtbaren
-		const col = tickets
-			.filter((t) => t.columnId === columnId && t.id !== id)
-			.sort((a, b) => a.position - b.position);
-		const visibleCol = columnTickets(columnId).filter((t) => t.id !== id);
-		const anchor = visibleCol[index];
-		const position = anchor ? col.indexOf(anchor) : col.length;
-
 		const moved = tickets.find((t) => t.id === id)!;
-		col.splice(position, 0, moved);
-		col.forEach((t, i) => (t.position = i));
+		const from = lanes.find((l) => l.key === fromLane)!;
+		const to = lanes.find((l) => l.key === toLane)!;
+		const body: Record<string, unknown> = laneChange(moved, from, to);
+
+		if (sortOf(columnId) === 'manual') {
+			// Position bezieht sich auf alle Tickets der Spalte, nicht nur die sichtbaren
+			const col = tickets.filter((t) => t.columnId === columnId && t.id !== id).sort(manual);
+			const anchor = cell(toLane, columnId).filter((t) => t.id !== id)[index];
+			const position = anchor ? col.indexOf(anchor) : col.length;
+			col.splice(position, 0, moved);
+			col.forEach((t, i) => (t.position = i));
+			body.columnId = columnId;
+			body.position = position;
+		} else if (columnId !== moved.columnId) {
+			// Sortierte Spalte: Reihenfolge ergibt sich aus der Sortierung, nur der Status ändert sich
+			body.columnId = columnId;
+		}
+		if (!Object.keys(body).length) return;
 		moved.columnId = columnId;
 
 		try {
-			await api('PATCH', `/tickets/${id}`, { columnId, position });
+			await api('PATCH', `/tickets/${id}`, body);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -179,7 +337,7 @@
 	}
 
 	function onDragEnd() {
-		dragId = null;
+		drag = null;
 		dropTarget = null;
 	}
 
@@ -195,15 +353,15 @@
 		await invalidateAll();
 	}
 
-	// --- Schnell-Anlegen ---
-	let quickColumn = $state<number | null>(null);
+	// --- Schnell-Anlegen (übernimmt die Werte der Bahn, z.B. den Tag) ---
+	let quickCell = $state<string | null>(null);
 	let quickTitle = $state('');
 
-	async function quickAdd(e: SubmitEvent, columnId: number) {
+	async function quickAdd(e: SubmitEvent, lane: Lane, columnId: number) {
 		e.preventDefault();
 		if (!quickTitle.trim()) return;
 		try {
-			await api('POST', `/projects/${data.project.key}/tickets`, { title: quickTitle, columnId });
+			await api('POST', `/projects/${data.project.key}/tickets`, { ...lane.preset, title: quickTitle, columnId });
 			quickTitle = '';
 			await invalidateAll();
 		} catch (err) {
@@ -211,10 +369,122 @@
 		}
 	}
 
-	function overdue(t: Item) {
-		return !t.closed && t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10);
+	function toggleLane(key: string) {
+		if (collapsedLanes.has(key)) collapsedLanes.delete(key);
+		else collapsedLanes.add(key);
 	}
 </script>
+
+{#snippet columnHeader(col: (typeof data.columns)[number], lane: Lane | null)}
+	{@const sort = sortOf(col.id)}
+	<header class="flex items-center gap-1.5 py-1 pr-1 pl-2 text-sm">
+		{#if col.isDone}<CircleCheck class="text-success size-4" />{/if}
+		<strong class="font-semibold">{col.name}</strong>
+		<span class="text-muted-foreground text-xs font-medium">{columnCount(col.id)}</span>
+		<span class="grow"></span>
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger
+				class={cn(
+					'hover:bg-muted text-muted-foreground hover:text-foreground flex h-6 items-center gap-1 rounded-md px-1.5 text-xs',
+					columnSort[col.id] && 'text-primary bg-primary/10'
+				)}
+				title="Spalte sortieren: {SORTS[sort]}"
+				aria-label="Spalte {col.name} sortieren"
+			>
+				<ArrowDownUp class="size-3.5" />
+				{#if columnSort[col.id]}<span class="max-w-20 truncate">{SORTS[sort]}</span>{/if}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Content align="end" class="w-52">
+				<DropdownMenu.Label>Spalte „{col.name}“ sortieren</DropdownMenu.Label>
+				<DropdownMenu.RadioGroup value={columnSort[col.id] ?? 'board'} onValueChange={(v) => setColumnSort(col.id, v as Sort | 'board')}>
+					<DropdownMenu.RadioItem value="board">Wie Board ({SORTS[sortBy]})</DropdownMenu.RadioItem>
+					<DropdownMenu.Separator />
+					{#each Object.entries(SORTS) as [v, l] (v)}
+						<DropdownMenu.RadioItem value={v}>{l}</DropdownMenu.RadioItem>
+					{/each}
+				</DropdownMenu.RadioGroup>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+		{#if lane}
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				title="Ticket hinzufügen"
+				aria-label="Ticket hinzufügen"
+				onclick={() => ((quickCell = `${lane.key}|${col.id}`), (quickTitle = ''))}
+			>
+				<Plus />
+			</Button>
+		{/if}
+	</header>
+{/snippet}
+
+{#snippet columnCell(lane: Lane, col: (typeof data.columns)[number], grouped: boolean)}
+	{@const list = cell(lane.key, col.id)}
+	{@const manualSort = sortOf(col.id) === 'manual'}
+	{@const target = dropTarget?.lane === lane.key && dropTarget.columnId === col.id}
+	{@const cellKey = `${lane.key}|${col.id}`}
+	<section
+		class={cn(
+			'bg-muted/60 flex w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5 transition-shadow',
+			!grouped && 'max-h-[calc(100vh-210px)]',
+			target && !manualSort && 'ring-primary/50 ring-2'
+		)}
+	>
+		{#if !grouped}{@render columnHeader(col, lane)}{/if}
+		<div
+			class={cn('flex min-h-10 flex-col gap-1.5', !grouped && 'overflow-y-auto')}
+			role="region"
+			aria-label={grouped ? `${lane.label}: ${col.name}` : col.name}
+			ondragover={(e) => onDragOver(e, lane.key, col.id, e.currentTarget as HTMLElement)}
+			ondrop={onDrop}
+		>
+			{#each list as t, i (t.id)}
+				{#if target && manualSort && dropTarget!.index === i && drag?.id !== t.id}
+					<div class="bg-primary h-0.5 rounded-full"></div>
+				{/if}
+				<BoardCard
+					{t}
+					parent={t.parentId ? byId.get(t.parentId) : undefined}
+					subtasks={childrenOf.get(t.id) ?? []}
+					users={data.users}
+					{me}
+					expanded={expanded.has(t.id)}
+					dragging={drag?.id === t.id}
+					onToggleSubtasks={() => toggleSubtasks(t.id)}
+					onAssign={(id) => assign(t, id)}
+					ondragstart={(e) => onDragStart(e, t, lane.key)}
+					ondragend={onDragEnd}
+				/>
+			{/each}
+			{#if target && manualSort && dropTarget!.index >= list.filter((t) => t.id !== drag?.id).length}
+				<div class="bg-primary h-0.5 rounded-full"></div>
+			{/if}
+		</div>
+		{#if quickCell === cellKey}
+			<form onsubmit={(e) => quickAdd(e, lane, col.id)}>
+				<!-- svelte-ignore a11y_autofocus -->
+				<Input
+					autofocus
+					class="bg-card"
+					placeholder="Titel, Enter zum Anlegen"
+					bind:value={quickTitle}
+					onblur={() => !quickTitle && (quickCell = null)}
+					onkeydown={(e) => e.key === 'Escape' && (quickCell = null)}
+				/>
+			</form>
+		{:else}
+			<Button
+				variant="ghost"
+				size="sm"
+				class={cn('text-muted-foreground justify-start', grouped && 'opacity-0 group-hover/lane:opacity-100 focus-visible:opacity-100')}
+				onclick={() => ((quickCell = cellKey), (quickTitle = ''))}
+			>
+				<Plus /> Ticket hinzufügen
+			</Button>
+		{/if}
+	</section>
+{/snippet}
 
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
 	<InputGroup.Root class="w-60">
@@ -249,6 +519,22 @@
 	</Select.Root>
 	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> Unteraufgaben anzeigen</Label>
 	<span class="grow"></span>
+	<Select.Root type="single" value={groupBy} onValueChange={(v) => (groupBy = v as Group)}>
+		<Select.Trigger class="w-44" title="Gruppieren (Swimlanes)">
+			<span class="flex items-center gap-2"><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">Gruppe:</span>{GROUPS[groupBy]}</span>
+		</Select.Trigger>
+		<Select.Content>
+			{#each Object.entries(GROUPS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
+		</Select.Content>
+	</Select.Root>
+	<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
+		<Select.Trigger class="w-72" title="Sortierung für alle Spalten">
+			<span class="flex items-center gap-2"><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">Sortierung:</span>{SORTS[sortBy]}</span>
+		</Select.Trigger>
+		<Select.Content>
+			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
+		</Select.Content>
+	</Select.Root>
 	<Button onclick={() => dialog.open()}><Plus /> Ticket</Button>
 </div>
 
@@ -260,161 +546,60 @@
 		<span class="text-muted-foreground text-xs font-medium">{scheduled} mit Termin</span>
 	</Collapsible.Trigger>
 	<Collapsible.Content>
-		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} color={data.project.color} maxHeight="360px" />
+		<Gantt tickets={data.tickets} dependencies={data.dependencies} columns={data.columns} projectKey={data.project.key} color={data.project.color} maxHeight="360px" />
 	</Collapsible.Content>
 </Collapsible.Root>
 
-<div class="flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5">
-	{#each data.columns as col (col.id)}
-		{@const list = columnTickets(col.id)}
-		<section class="bg-muted/60 flex max-h-[calc(100vh-210px)] w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5">
-			<header class="flex items-center gap-1.5 py-1 pr-1 pl-2 text-sm">
-				{#if col.isDone}<CircleCheck class="text-success size-4" />{/if}
-				<strong class="font-semibold">{col.name}</strong>
-				<span class="text-muted-foreground text-xs font-medium">{list.length}</span>
-				<span class="grow"></span>
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					title="Ticket hinzufügen"
-					aria-label="Ticket hinzufügen"
-					onclick={() => ((quickColumn = col.id), (quickTitle = ''))}
-				>
-					<Plus />
-				</Button>
-			</header>
-			<div
-				class="flex min-h-10 flex-col gap-1.5 overflow-y-auto"
-				role="region"
-				aria-label={col.name}
-				ondragover={(e) => onDragOver(e, col.id, e.currentTarget as HTMLElement)}
-				ondrop={onDrop}
-			>
-				{#each list as t, i (t.id)}
-					{#if dropTarget?.columnId === col.id && dropTarget.index === i && dragId !== t.id}
-						<div class="bg-primary h-0.5 rounded-full"></div>
-					{/if}
-					<!-- Klick auf die Karte ist nur eine Abkürzung; per Tastatur führt der Titel-Link zum Ticket -->
-					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-					<div
-						class={cn(
-							'bg-card border-foreground/10 hover:border-foreground/25 flex cursor-grab flex-col gap-1.5 rounded-md border px-3 py-2.5 text-sm transition-colors',
-							dragId === t.id && 'opacity-40'
-						)}
-						data-card={t.id}
-						draggable="true"
-						role="listitem"
-						ondragstart={(e) => onDragStart(e, t)}
-						ondragend={onDragEnd}
-						onclick={(e) => openTicket(t.key, e)}
-					>
-						<div class="flex items-center gap-2">
-							<span class="prio prio-{t.priority}" title={PRIORITY_LABELS[t.priority]}></span>
-							<span class="text-muted-foreground grow font-mono text-xs">{t.key}</span>
-							<AssigneePicker compact users={data.users} {me} value={t.assigneeId} onchange={(id) => assign(t, id)} />
-						</div>
-						<a
-							href="/tickets/{t.key}"
-							class={cn('font-medium break-words hover:underline', t.closed && 'text-muted-foreground line-through')}
-							onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
-							draggable="false">{t.title}</a
-						>
-						{#if t.tags.length}
-							<div class="flex flex-wrap gap-1">
-								{#each t.tags as g (g.id)}<TagBadge name={g.name} color={g.color} />{/each}
-							</div>
-						{/if}
-						{#if t.parentId && byId.get(t.parentId)}
-							<div class="text-muted-foreground flex items-center gap-1 text-xs">
-								<CornerDownRight class="size-3" />
-								{byId.get(t.parentId)?.key}
-							</div>
-						{/if}
-						{#if t.subtaskCount > 0 || (t.openBlockers > 0 && !t.closed) || t.dueDate}
-							<div class="flex flex-wrap gap-1">
-								{#if t.subtaskCount > 0}
-									<button
-										type="button"
-										class="group/sub rounded-4xl"
-										data-state={expanded.has(t.id) ? 'open' : 'closed'}
-										aria-expanded={expanded.has(t.id)}
-										title={expanded.has(t.id) ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'}
-										onclick={(e) => toggleSubtasks(e, t.id)}
-									>
-										<Badge
-											variant="secondary"
-											class={cn('hover:bg-secondary/70 cursor-pointer', t.subtaskDone === t.subtaskCount && 'text-success')}
-										>
-											<ChevronRight class="transition-transform group-data-[state=open]/sub:rotate-90" />
-											<ListChecks /> {t.subtaskDone}/{t.subtaskCount}
-										</Badge>
-									</button>
-								{/if}
-								{#if t.openBlockers > 0 && !t.closed}
-									<Badge variant="secondary" class="text-warning" title="Wartet auf andere Tickets">
-										<Ban /> blockiert ({t.openBlockers})
-									</Badge>
-								{/if}
-								{#if t.dueDate}
-									<Badge variant="secondary" class={cn(overdue(t) && 'text-destructive')}>
-										<Calendar /> {new Date(t.dueDate).toLocaleDateString('de-DE')}
-									</Badge>
-								{/if}
-							</div>
-						{/if}
-						{#if expanded.has(t.id) && childrenOf.get(t.id)?.length}
-							<ul class="-mx-1 flex flex-col border-t pt-1.5">
-								{#each childrenOf.get(t.id)! as s (s.id)}
-									<li>
-										<a
-											href="/tickets/{s.key}"
-											class="hover:bg-muted flex items-center gap-1.5 rounded px-1 py-0.5 text-xs"
-											onclick={(e) => (e.stopPropagation(), openTicket(s.key, e))}
-											draggable="false"
-										>
-											{#if s.closed}
-												<CircleCheck class="text-success size-3.5 shrink-0" />
-											{:else}
-												<Circle class="text-muted-foreground size-3.5 shrink-0" />
-											{/if}
-											<span class="text-muted-foreground shrink-0 font-mono">{s.key}</span>
-											<span class={cn('truncate', s.closed && 'text-muted-foreground line-through')}>{s.title}</span>
-										</a>
-									</li>
-								{/each}
-							</ul>
-						{/if}
-					</div>
+{#if groupBy === 'none'}
+	<div class="flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5">
+		{#each data.columns as col (col.id)}
+			{@render columnCell(lanes[0], col, false)}
+		{/each}
+	</div>
+{:else}
+	<div class="overflow-x-auto px-5 pb-5">
+		<div class="flex w-max min-w-full flex-col gap-2">
+			<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
+			<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">
+				{#each data.columns as col (col.id)}
+					<div class="w-72 shrink-0">{@render columnHeader(col, null)}</div>
 				{/each}
-				{#if dropTarget?.columnId === col.id && dropTarget.index >= list.filter((t) => t.id !== dragId).length}
-					<div class="bg-primary h-0.5 rounded-full"></div>
-				{/if}
 			</div>
-			{#if quickColumn === col.id}
-				<form onsubmit={(e) => quickAdd(e, col.id)}>
-					<!-- svelte-ignore a11y_autofocus -->
-					<Input
-						autofocus
-						class="bg-card"
-						placeholder="Titel, Enter zum Anlegen"
-						bind:value={quickTitle}
-						onblur={() => !quickTitle && (quickColumn = null)}
-						onkeydown={(e) => e.key === 'Escape' && (quickColumn = null)}
-					/>
-				</form>
+			{#each shownLanes as lane (lane.key)}
+				{@const open = !collapsedLanes.has(lane.key)}
+				<div class="group/lane flex flex-col gap-1.5">
+					<button
+						type="button"
+						class="hover:bg-muted sticky left-0 flex w-fit items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold"
+						aria-expanded={open}
+						onclick={() => toggleLane(lane.key)}
+					>
+						<ChevronRight class={cn('text-muted-foreground size-4 transition-transform', open && 'rotate-90')} />
+						{#if lane.kind === 'tag' && lane.color}
+							<TagBadge name={lane.label} color={lane.color} />
+						{:else if lane.kind === 'assignee'}
+							<UserAvatar name={lane.userName} size="sm" />{lane.label}
+						{:else if lane.kind === 'priority'}
+							<span class="prio prio-{lane.priority}"></span>{lane.label}
+						{:else}
+							<span class="text-muted-foreground">{lane.label}</span>
+						{/if}
+						<span class="text-muted-foreground text-xs font-medium">{laneCount(lane)}</span>
+					</button>
+					{#if open}
+						<div class="flex items-start gap-3.5 border-b pb-3">
+							{#each data.columns as col (col.id)}
+								{@render columnCell(lane, col, true)}
+							{/each}
+						</div>
+					{/if}
+				</div>
 			{:else}
-				<Button
-					variant="ghost"
-					size="sm"
-					class="text-muted-foreground justify-start"
-					onclick={() => ((quickColumn = col.id), (quickTitle = ''))}
-				>
-					<Plus /> Ticket hinzufügen
-				</Button>
-			{/if}
-		</section>
-	{/each}
-</div>
+				<p class="text-muted-foreground px-2 py-6 text-sm">Keine Tickets für diese Filter.</p>
+			{/each}
+		</div>
+	</div>
+{/if}
 
 <TicketDialog
 	bind:this={dialog}

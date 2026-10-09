@@ -77,13 +77,14 @@
 							<span class="text-muted-foreground text-xs">neu</span>
 						</Command.Item>
 					{/each}
-					{#if canCreate}
-						<Command.Item value="__create" keywords={[query]} forceMount onSelect={create}>
-							<Plus />
-							<span class="truncate">„{query.trim()}“ anlegen</span>
-						</Command.Item>
-					{/if}
 				</Command.Group>
+				<!-- Außerhalb der Gruppe: eine Gruppe ohne Treffer wird komplett ausgeblendet -->
+				{#if canCreate}
+					<Command.Item value="__create" keywords={[query]} forceMount onSelect={create}>
+						<Plus />
+						<span class="truncate">„{query.trim()}“ anlegen</span>
+					</Command.Item>
+				{/if}
 			</Command.List>
 		</Command.Root>
 	</Popover.Content>

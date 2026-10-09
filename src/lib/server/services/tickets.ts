@@ -15,6 +15,7 @@ import {
 import { ApiError } from '../errors';
 import { getColumns, getProject } from './projects';
 import { setTicketTags, tagsByTicket, type TagDto } from './tags';
+import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
 import { oneOf, optDate, optInt, optStr, str } from './validate';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -76,6 +77,7 @@ export type TicketListItem = TicketDto & {
 	assigneeName: string | null;
 	subtaskCount: number;
 	subtaskDone: number;
+	attachmentCount: number;
 	dependsOn: number[];
 	openBlockers: number;
 };
@@ -117,6 +119,7 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 		.all();
 	const subMap = new Map(subs.map((s) => [s.parentId, s]));
 	const tags = tagsByTicket(ids);
+	const attachments = countAttachments(projectId);
 
 	return rows.map(({ t, assigneeName }) => {
 		const myDeps = deps.filter((d) => d.sourceId === t.id);
@@ -127,6 +130,7 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 			assigneeName,
 			subtaskCount: s?.total ?? 0,
 			subtaskDone: Number(s?.done ?? 0),
+			attachmentCount: attachments.get(t.id) ?? 0,
 			dependsOn: myDeps.map((d) => d.targetId),
 			openBlockers: myDeps.filter((d) => d.closedAt === null).length
 		};
@@ -194,6 +198,7 @@ export function getTicketDetail(ref: string | number) {
 		parent: parent ? present(parent, p.key, colMap.get(parent.columnId)) : null,
 		subtasks,
 		links,
+		attachments: listAttachments(t.id),
 		assignee: assignee ?? null
 	};
 }
@@ -371,9 +376,12 @@ export function reopenTicket(ref: string | number) {
 	return getTicket(t.id);
 }
 
-export function deleteTicket(ref: string | number) {
+export async function deleteTicket(ref: string | number) {
 	const t = resolveTicket(ref);
+	// Anhänge von Ticket und Unteraufgaben merken, die Zeilen löscht die Datenbank per Cascade
+	const files = storageKeysForTickets([t.id]);
 	db.delete(ticket).where(eq(ticket.id, t.id)).run();
+	await removeFiles(files);
 }
 
 /** Prüft, ob "from" (transitiv) von "to" abhängt */

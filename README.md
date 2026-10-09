@@ -28,14 +28,28 @@ Dann <http://localhost:5173> öffnen und ein Konto registrieren. Die Datenbank l
 ```bash
 npm run build
 DATABASE_URL=/pfad/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny.example.com \
-  ORIGIN=https://kenny.example.com PORT=3000 node build
+  ORIGIN=https://kenny.example.com PORT=3000 BODY_SIZE_LIMIT=30M node build
 ```
+
+`BODY_SIZE_LIMIT` muss über der maximalen Anhanggröße liegen (Standard 25 MB, `ATTACHMENT_MAX_MB`), sonst lehnt der Server größere Uploads ab. Anhänge liegen unter `data/attachments` (`ATTACHMENTS_DIR`) und gehören mit ins Backup.
 
 Der Ordner `drizzle/` (Migrationen) muss neben dem Build liegen bzw. per `MIGRATIONS_DIR` angegeben werden.
 
 ### Datenbankschema ändern
 
 Schema in `src/lib/server/db/schema.ts` anpassen, dann `npm run db:generate`. Die neue Migration wird beim nächsten Start angewendet.
+
+### Tests
+
+End-to-End-Tests mit Playwright liegen unter `tests/e2e`:
+
+```bash
+npx playwright install chromium   # einmalig
+npm run test:e2e                  # alle Tests
+npm run test:e2e:ui               # interaktiv mit Playwright-UI
+```
+
+Die Tests starten einen eigenen Dev-Server auf Port 4174 mit einer frischen Datenbank unter `data/test`; die Entwicklungsdaten bleiben unberührt. Jeder Test legt sein eigenes Projekt an, daher laufen sie parallel.
 
 ## REST-API
 
@@ -50,8 +64,10 @@ Tickets können per ID (`42`) oder Schlüssel (`WEB-12`) angesprochen werden, Pr
 | GET | `/projects` | Projekte mit Ticketzählern |
 | POST | `/projects` | Projekt anlegen: `{name, key?, description?, color?}` |
 | GET/PATCH/DELETE | `/projects/:projekt` | Projekt lesen (inkl. Spalten), ändern, löschen |
-| GET/POST | `/projects/:projekt/columns` | Spalten lesen / anlegen `{name, isDone?}` |
-| PATCH/DELETE | `/projects/:projekt/columns/:id` | Spalte ändern `{name?, isDone?, position?}` / löschen |
+| GET/POST | `/projects/:projekt/columns` | Spalten lesen / anlegen `{name, isDone?, isBacklog?}` |
+| PATCH/DELETE | `/projects/:projekt/columns/:id` | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen |
+| GET/POST | `/projects/:projekt/tags` | Tags lesen / anlegen `{name, color?}` |
+| PATCH/DELETE | `/projects/:projekt/tags/:id` | Tag ändern `{name?, color?}` / löschen |
 | GET | `/projects/:projekt/tickets?closed=false` | Tickets auflisten |
 | POST | `/projects/:projekt/tickets` | Ticket anlegen |
 | GET | `/tickets/:ticket` | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen |
@@ -62,6 +78,10 @@ Tickets können per ID (`42`) oder Schlüssel (`WEB-12`) angesprochen werden, Pr
 | POST | `/tickets/:ticket/subtasks` | Unteraufgabe anlegen (Body wie Ticket anlegen) |
 | POST | `/tickets/:ticket/links` | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}` |
 | DELETE | `/tickets/:ticket/links/:id` | Verknüpfung entfernen |
+| GET | `/tickets/:ticket/attachments` | Anhänge auflisten |
+| POST | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`) |
+| GET | `/attachments/:id` | Anhang herunterladen (`?download` erzwingt Download) |
+| DELETE | `/attachments/:id` | Anhang löschen |
 
 Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
 
@@ -76,7 +96,8 @@ Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
   "dueDate": "2026-10-17",
   "parent": "WEB-3",
   "dependsOn": ["WEB-1"],
-  "relatesTo": ["WEB-7"]
+  "relatesTo": ["WEB-7"],
+  "tags": ["Bug", "Frontend"]
 }
 ```
 
@@ -89,6 +110,9 @@ curl -X POST http://localhost:5173/api/v1/projects/WEB/tickets \
 
 curl -X POST http://localhost:5173/api/v1/tickets/WEB-12/close \
   -H "Authorization: Bearer $KENNY_TOKEN"
+
+curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=screenshot.png" \
+  -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: image/png" --data-binary @screenshot.png
 ```
 
 ## Microsoft-Anbindung

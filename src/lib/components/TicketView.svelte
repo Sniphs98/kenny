@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { api, PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import Attachments from '$lib/components/Attachments.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import * as Alert from '$lib/components/ui/alert';
@@ -249,6 +250,8 @@
 				</form>
 			</Card.Content>
 		</Card.Root>
+
+		<Attachments ticketId={t.id} attachments={data.attachments} {refresh} />
 	</div>
 
 	<Card.Root class="gap-4 py-5">

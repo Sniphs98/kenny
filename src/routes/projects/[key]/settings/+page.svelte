@@ -3,6 +3,7 @@
 	import { api, updateProject } from '$lib/api';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
+	import TagColorButton from '$lib/components/TagColorButton.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -170,9 +171,10 @@
 						ondrop={(e) => e.preventDefault()}
 						ondragend={onDragEnd}
 					>
-						<button
-							type="button"
-							class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 hover:bg-muted grid h-9 w-6 shrink-0 cursor-grab place-items-center rounded-md outline-none focus-visible:ring-3 active:cursor-grabbing"
+						<Button
+							variant="ghost"
+							size="icon"
+							class="text-muted-foreground w-6 cursor-grab active:cursor-grabbing"
 							data-grip={col.id}
 							title="Ziehen zum Sortieren (oder Pfeiltasten)"
 							aria-label="Spalte {col.name} verschieben"
@@ -180,8 +182,8 @@
 							onpointerup={() => dragId === null && (armedId = null)}
 							onkeydown={(e) => onGripKey(e, col.id)}
 						>
-							<GripVertical class="size-4" />
-						</button>
+							<GripVertical />
+						</Button>
 						<Input
 							value={col.name}
 							onchange={(e) => run(() => api('PATCH', `${base}/columns/${col.id}`, { name: e.currentTarget.value }))}
@@ -229,19 +231,11 @@
 			<ul class="flex flex-col gap-2">
 				{#each data.tags as g (g.id)}
 					<li class="flex items-center gap-2">
-						<label
-							class="relative size-9 shrink-0 cursor-pointer rounded-md border"
-							style="background: {g.color}"
-							title="Farbe ändern"
-						>
-							<input
-								type="color"
-								value={g.color}
-								class="absolute inset-0 cursor-pointer opacity-0"
-								aria-label="Farbe von {g.name}"
-								onchange={(e) => run(() => api('PATCH', `${base}/tags/${g.id}`, { color: e.currentTarget.value }))}
-							/>
-						</label>
+						<TagColorButton
+							name={g.name}
+							color={g.color}
+							onchange={(color) => run(() => api('PATCH', `${base}/tags/${g.id}`, { color }))}
+						/>
 						<Input
 							value={g.name}
 							maxlength={40}
@@ -272,7 +266,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="ring-destructive/30">
+	<Card.Root class="border-destructive/30">
 		<Card.Header class="flex items-center gap-4">
 			<div class="grow">
 				<Card.Title>Projekt löschen</Card.Title>

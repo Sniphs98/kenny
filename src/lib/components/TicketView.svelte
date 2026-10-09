@@ -329,12 +329,14 @@
 					onchange={(id) => patch({ assigneeId: id })}
 				/>
 				{#if page.data.user && t.assigneeId !== page.data.user.id}
-					<button
-						class="text-primary -mt-1 self-start text-xs font-medium hover:underline"
+					<Button
+						variant="link"
+						size="xs"
+						class="-mt-1 h-auto self-start px-0"
 						onclick={() => patch({ assigneeId: page.data.user!.id })}
 					>
 						Mir zuweisen
-					</button>
+					</Button>
 				{/if}
 			</div>
 			<div class="grid gap-2">

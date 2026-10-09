@@ -617,9 +617,10 @@
 			{#each shownLanes as lane (lane.key)}
 				{@const open = !collapsedLanes.has(lane.key)}
 				<div class="group/lane flex flex-col gap-1.5">
-					<button
-						type="button"
-						class="hover:bg-muted sticky left-0 flex w-fit items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold"
+					<Button
+						variant="ghost"
+						size="sm"
+						class="sticky left-0 w-fit gap-2 font-semibold"
 						aria-expanded={open}
 						onclick={() => toggleLane(lane.key)}
 					>
@@ -634,7 +635,7 @@
 							<span class="text-muted-foreground">{lane.label}</span>
 						{/if}
 						<span class="text-muted-foreground text-xs font-medium">{laneCount(lane)}</span>
-					</button>
+					</Button>
 					{#if open}
 						<div class="flex items-start gap-3.5 border-b pb-3">
 							{#each data.columns as col (col.id)}

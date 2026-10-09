@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
+	import Hint from '$lib/components/Hint.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as InputGroup from '$lib/components/ui/input-group';
@@ -78,15 +79,19 @@
 								class="bg-background text-foreground grow rounded-md border px-2.5 py-1.5 font-mono text-xs break-all select-all"
 								>{form.token}</code
 							>
-							<Button
-								variant="outline"
-								size="icon-sm"
-								title={m.copy()}
-								aria-label={m.copy_token()}
-								onclick={() => copy(form.token!)}
-							>
-								{#if copied}<Check />{:else}<Copy />{/if}
-							</Button>
+							<Hint text={m.copy()}>
+								{#snippet children(props)}
+									<Button
+										{...props}
+										variant="outline"
+										size="icon-sm"
+										aria-label={m.copy_token()}
+										onclick={() => copy(form.token!)}
+									>
+										{#if copied}<Check />{:else}<Copy />{/if}
+									</Button>
+								{/snippet}
+							</Hint>
 						</div>
 						<span class="text-muted-foreground text-xs">{m.copy_it_now_it_won_t_be_shown_again()}</span>
 					</Alert.Description>

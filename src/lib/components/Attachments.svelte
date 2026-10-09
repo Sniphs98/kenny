@@ -5,6 +5,7 @@
 	import type { AttachmentDto } from '$lib/contracts';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
+	import Hint from '$lib/components/Hint.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -125,10 +126,10 @@
 		{#if images.length}
 			<div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
 				{#each images as a (a.id)}
+					<!-- Kein Tooltip: der Dateiname wird beim Überfahren im Bild eingeblendet -->
 					<button
 						type="button"
 						class="group bg-muted focus-visible:ring-ring/50 relative aspect-[4/3] overflow-hidden rounded-md border outline-none focus-visible:ring-3"
-						title={a.filename}
 						onclick={() => (preview = a)}
 					>
 						<img
@@ -155,14 +156,18 @@
 							>{a.filename}</a
 						>
 						<span class="text-muted-foreground shrink-0 text-xs">{formatSize(a.size)}</span>
-						<Button
-							variant="ghost"
-							size="icon-xs"
-							class="hover:text-destructive"
-							title={m.delete_attachment()}
-							aria-label={m.delete_attachment_2({ value1: a.filename })}
-							onclick={() => (confirmDelete = a)}><Trash2 /></Button
-						>
+						<Hint text={m.delete_attachment()}>
+							{#snippet children(props)}
+								<Button
+									{...props}
+									variant="ghost"
+									size="icon-xs"
+									class="hover:text-destructive"
+									aria-label={m.delete_attachment_2({ value1: a.filename })}
+									onclick={() => (confirmDelete = a)}><Trash2 /></Button
+								>
+							{/snippet}
+						</Hint>
 					</li>
 				{/each}
 			</ul>

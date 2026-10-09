@@ -3,6 +3,7 @@
 	import { goto, invalidateAll, preloadData, refreshAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import TicketView from '$lib/components/TicketView.svelte';
+	import Hint from '$lib/components/Hint.svelte';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { openTicket } from '$lib/ticket-modal';
@@ -43,20 +44,24 @@
 					{data.project.key} / {#if data.parent}{data.parent.key} /
 					{/if}{data.ticket.key}
 				</Dialog.Title>
-				<a
-					href="/tickets/{data.ticket.key}"
-					data-full
-					class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'text-muted-foreground ml-auto' })}
-					title={m.open_as_separate_page()}
-					onclick={(e) => {
-						if (e.metaKey || e.ctrlKey) return;
-						e.preventDefault();
-						goto(`/tickets/${data.ticket.key}`);
-					}}
-				>
-					<Maximize2 />
-					{m.open_as_page()}
-				</a>
+				<Hint text={m.open_as_separate_page()} side="bottom">
+					{#snippet children(props)}
+						<a
+							{...props}
+							href="/tickets/{data.ticket.key}"
+							data-full
+							class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'text-muted-foreground ml-auto' })}
+							onclick={(e) => {
+								if (e.metaKey || e.ctrlKey) return;
+								e.preventDefault();
+								goto(`/tickets/${data.ticket.key}`);
+							}}
+						>
+							<Maximize2 />
+							{m.open_as_page()}
+						</a>
+					{/snippet}
+				</Hint>
 			</Dialog.Header>
 			<TicketView
 				{data}

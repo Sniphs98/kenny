@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import LiveUpdates from '$lib/components/LiveUpdates.svelte';
 	import TicketModal from '$lib/components/TicketModal.svelte';
+	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
 	import Users from '@lucide/svelte/icons/users';
@@ -58,3 +61,10 @@
 {@render children()}
 
 <TicketModal />
+<LiveUpdates
+	project={data.project.key}
+	onDeleted={() => {
+		toast.info(m.project_was_deleted());
+		goto('/', { invalidateAll: true });
+	}}
+/>

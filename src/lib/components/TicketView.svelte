@@ -24,6 +24,8 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { cn } from '$lib/utils';
+	import { Synced } from '$lib/synced.svelte';
+	import { untrack } from 'svelte';
 	import { playIfCompleted } from '$lib/sound';
 	import { toast } from 'svelte-sonner';
 	import AlignLeft from '@lucide/svelte/icons/align-left';
@@ -54,13 +56,12 @@
 	const t = $derived(data.ticket);
 	const base = $derived(`/tickets/${data.ticket.id}`);
 
-	let title = $state('');
-	let description = $state('');
+	// Lokale Kopien; Live-Updates überschreiben keine ungespeicherten Eingaben
+	const title = new Synced(untrack(() => data.ticket.title));
+	const description = new Synced(untrack(() => data.ticket.description));
 	let editingDesc = $state(false);
-	$effect(() => {
-		title = data.ticket.title;
-		description = data.ticket.description;
-	});
+	$effect(() => title.update(data.ticket.title));
+	$effect(() => description.update(data.ticket.description));
 
 	let newSubtask = $state('');
 	let linkType = $state<'depends_on' | 'blocks' | 'relates'>('depends_on');
@@ -82,11 +83,11 @@
 	const patch = (body: UpdateTicketInput) => run(() => updateTicket(t.id, body));
 
 	async function saveTitle() {
-		if (title.trim() && title !== t.title) await patch({ title });
+		if (title.value.trim() && title.value !== t.title) await patch({ title: title.value });
 	}
 
 	async function saveDescription() {
-		await patch({ description });
+		await patch({ description: description.value });
 		editingDesc = false;
 	}
 
@@ -137,7 +138,7 @@
 	<input
 		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
 		readonly={!data.canEdit}
-		bind:value={title}
+		bind:value={title.value}
 		onblur={saveTitle}
 		onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
 		aria-label={m.title()}
@@ -177,13 +178,13 @@
 				</Card.Header>
 				<Card.Content>
 					{#if editingDesc}
-						<Textarea disabled={!data.canEdit} bind:value={description} rows={8} />
+						<Textarea disabled={!data.canEdit} bind:value={description.value} rows={8} />
 						<div class="mt-3 flex gap-2">
 							<Button disabled={!data.canEdit} onclick={saveDescription}>{m.save()}</Button>
 							<Button
 								disabled={!data.canEdit}
 								variant="outline"
-								onclick={() => ((editingDesc = false), (description = t.description))}>{m.cancel()}</Button
+								onclick={() => ((editingDesc = false), description.reset())}>{m.cancel()}</Button
 							>
 						</div>
 					{:else if t.description}

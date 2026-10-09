@@ -2,6 +2,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
+import { LIVE_ORIGIN_HEADER, liveOrigin } from '$lib/server/live';
 import { requireActiveUser } from '$lib/server/services/access';
 import { ApiError } from '$lib/server/errors';
 import '$lib/locale-choice';
@@ -30,13 +31,16 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 };
 
 export const handle: Handle = ({ event, resolve }) =>
-	paraglideMiddleware(event.request, ({ locale }) =>
-		handleAuth({
-			event,
-			resolve: (event, options) =>
-				resolve(event, {
-					...options,
-					transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale)
-				})
-		})
+	// Tab-Kennung für Live-Updates: Meldungen über eigene Änderungen ignoriert der Tab
+	liveOrigin.run(event.request.headers.get(LIVE_ORIGIN_HEADER)?.slice(0, 64) || undefined, () =>
+		paraglideMiddleware(event.request, ({ locale }) =>
+			handleAuth({
+				event,
+				resolve: (event, options) =>
+					resolve(event, {
+						...options,
+						transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale)
+					})
+			})
+		)
 	);

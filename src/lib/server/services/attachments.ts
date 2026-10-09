@@ -7,6 +7,7 @@ import { env } from '$env/dynamic/private';
 import { db } from '../db';
 import { attachment, ticket, user, type Attachment } from '../db/schema';
 import { ApiError } from '../errors';
+import { publish } from '../live';
 import { resolveTicket } from './tickets';
 
 const DIR = env.ATTACHMENTS_DIR || 'data/attachments';
@@ -101,6 +102,7 @@ export async function addAttachments(ref: string | number, files: File[], userId
 		}
 	}
 	db.update(ticket).set({ updatedAt: new Date() }).where(eq(ticket.id, t.id)).run();
+	publish(t.projectId);
 	return created;
 }
 
@@ -135,7 +137,9 @@ export async function downloadAttachment(id: number, forceDownload = false) {
 
 export async function deleteAttachment(id: number) {
 	const a = getAttachment(id);
+	const owner = db.select({ projectId: ticket.projectId }).from(ticket).where(eq(ticket.id, a.ticketId)).get();
 	db.delete(attachment).where(eq(attachment.id, a.id)).run();
+	if (owner) publish(owner.projectId);
 	await rm(path(a.storageKey), { force: true });
 }
 

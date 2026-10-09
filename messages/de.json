@@ -317,6 +317,8 @@
 	"no_ticket_found": "Kein Ticket gefunden.",
 	"system_language": "Systemsprache",
 	"send_multipart_or_filename": "Entweder multipart/form-data mit Feld \"file\" oder ?filename=… mit der Datei als Body senden.",
+	"project_was_deleted": "Dieses Projekt wurde gelöscht.",
+	"live_updates_events": "Live-Updates als Server-Sent Events (Ereignis \"change\"; ohne project: alle Projekte)",
 	"sound_on_complete": "Ton bei Erledigt",
 	"form_not_found": "Formular nicht gefunden.",
 	"selected_project_does_not_exist": "Ein ausgewähltes Projekt gibt es nicht.",

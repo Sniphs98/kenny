@@ -4,6 +4,7 @@ import { and, asc, eq, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { boardColumn, project, projectMember, ticket } from '../db/schema';
 import { ApiError } from '../errors';
+import { publish } from '../live';
 import { removeFiles, storageKeysForProject } from './attachments';
 import { insertDefaultTags } from './tags';
 import { requireActiveUser } from './access';
@@ -99,7 +100,7 @@ export function createProject(rawInput: unknown, userId: string | null) {
 	if (db.select().from(project).where(eq(project.key, key)).get())
 		throw new ApiError(409, `Kürzel "${key}" ist bereits vergeben.`);
 
-	return db.transaction((tx) => {
+	const created = db.transaction((tx) => {
 		const p = tx
 			.insert(project)
 			.values({
@@ -118,6 +119,8 @@ export function createProject(rawInput: unknown, userId: string | null) {
 		if (userId) tx.insert(projectMember).values({ projectId: p.id, userId, role: 'admin' }).run();
 		return p;
 	});
+	publish(created.id);
+	return created;
 }
 
 export function updateProject(id: number, rawInput: unknown) {
@@ -127,6 +130,7 @@ export function updateProject(id: number, rawInput: unknown) {
 	if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 	if (input.color !== undefined) patch.color = str(input.color, 'color');
 	if (Object.keys(patch).length) db.update(project).set(patch).where(eq(project.id, id)).run();
+	publish(id);
 	return getProject(id);
 }
 
@@ -134,13 +138,14 @@ export async function deleteProject(id: number) {
 	getProject(id);
 	const files = storageKeysForProject(id);
 	db.delete(project).where(eq(project.id, id)).run();
+	publish(id, { kind: 'deleted' });
 	await removeFiles(files);
 }
 
 export function addColumn(projectId: number, rawInput: unknown) {
 	const input = parseInput(createColumnSchema, rawInput);
 	const cols = getColumns(projectId);
-	return db
+	const created = db
 		.insert(boardColumn)
 		.values({
 			projectId,
@@ -151,6 +156,8 @@ export function addColumn(projectId: number, rawInput: unknown) {
 		})
 		.returning()
 		.get();
+	publish(projectId);
+	return created;
 }
 
 export function updateColumn(projectId: number, columnId: number, rawInput: unknown) {
@@ -184,6 +191,7 @@ export function updateColumn(projectId: number, columnId: number, rawInput: unkn
 			others.forEach((c, i) => tx.update(boardColumn).set({ position: i }).where(eq(boardColumn.id, c.id)).run());
 		}
 	});
+	publish(projectId);
 	return getColumns(projectId);
 }
 
@@ -198,4 +206,5 @@ export function deleteColumn(projectId: number, columnId: number) {
 		.get();
 	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Tickets. Bitte zuerst verschieben.');
 	db.delete(boardColumn).where(eq(boardColumn.id, columnId)).run();
+	publish(projectId);
 }

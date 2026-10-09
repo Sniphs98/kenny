@@ -6,6 +6,7 @@
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { projectFormSchema } from '$lib/contracts';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
+	import LiveUpdates from '$lib/components/LiveUpdates.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -22,6 +23,8 @@
 	const { form, errors, message, enhance, reset, submitting } = superForm(
 		untrack(() => data.form),
 		{
+			// Live refreshes must not replace an unfinished project form with load defaults.
+			applyAction: 'never',
 			validationMethod: 'onsubmit',
 			validators: zod4Client(projectFormSchema)
 		}
@@ -32,6 +35,8 @@
 		open = true;
 	}
 </script>
+
+<LiveUpdates />
 
 <div class="mx-auto max-w-6xl px-5 py-8">
 	<div class="mb-6 flex items-end gap-4">

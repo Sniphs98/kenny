@@ -146,6 +146,7 @@ Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
 
 | Method           | Path                                          | Description                                                                       |
 | ---------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| GET              | `/events?project=:project`                    | Live updates via Server-Sent Events; omit `project` to watch accessible projects  |
 | GET              | `/me`                                         | Current user                                                                      |
 | GET              | `/users`                                      | All users                                                                         |
 | GET              | `/projects`                                   | Projects with ticket counts                                                       |
@@ -227,3 +228,9 @@ Instance administrators can manage accounts through **Users** in the user menu. 
 See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.
 
 Form management under **Forms** is restricted to instance administrators. Public submission links keep their configured sign-in and email requirements.
+
+### Live updates
+
+Project lists, boards, Gantt charts and ticket details refresh when another user changes data. Unsaved title and description edits are preserved. The connection status shows when the app is reconnecting; manual refresh remains available.
+
+`GET /api/v1/events` streams `change` events with `{projectId, ticket?, kind, origin?}`. Filter with `?project=KEY`. Events are restricted to accessible projects and active accounts. The stream sends a heartbeat every 25 seconds; proxies should keep connections open and disable buffering. The broadcaster operates within one Node process. Multiple instances need a shared event channel.

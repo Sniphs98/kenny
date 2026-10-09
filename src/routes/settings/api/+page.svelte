@@ -34,6 +34,7 @@
 
 	const endpoints = [
 		['GET', '/projects', m.list_projects()],
+		['GET', '/events?project=:projekt', m.live_updates_events()],
 		['POST', '/projects', m.endpoint_create_project() + ' {name, key?, description?, color?}'],
 		['GET', '/projects/:projekt/tickets?closed=false', m.list_tickets()],
 		['POST', '/projects/:projekt/tickets', m.create_ticket_tags_list_of_ids_or_names()],

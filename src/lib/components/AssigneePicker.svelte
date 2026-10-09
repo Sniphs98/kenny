@@ -15,23 +15,29 @@
 	let {
 		users,
 		value,
+		assignedName,
 		onchange,
 		me,
 		compact = false,
+		disabled = false,
 		class: className
 	}: {
 		users: User[];
 		value: string | null;
+		assignedName?: string | null;
 		onchange: (id: string | null) => void;
 		/** ID des angemeldeten Benutzers, für „Mir zuweisen“ */
 		me?: string;
 		/** Nur den Avatar als Auslöser zeigen (z.B. auf Board-Karten) */
 		compact?: boolean;
+		disabled?: boolean;
 		class?: string;
 	} = $props();
 
 	let open = $state(false);
-	const current = $derived(users.find((u) => u.id === value) ?? null);
+	const current = $derived(
+		users.find((u) => u.id === value) ?? (value && assignedName ? { id: value, name: assignedName } : null)
+	);
 	// Angemeldeten Benutzer zuerst
 	const sorted = $derived(
 		[...users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name))
@@ -48,6 +54,7 @@
 	<Hint text={compact ? (current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()) : null}>
 		{#snippet children(props)}
 			<Popover.Trigger
+				{disabled}
 				{...props}
 				class={cn(
 					compact

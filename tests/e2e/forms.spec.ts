@@ -8,6 +8,10 @@ test('Superforms creates a project and redirects to its board', async ({ page })
 	const key = `F${Date.now().toString(36).slice(-7).toUpperCase()}`;
 	await dialog.getByLabel('Name').fill('Superforms project');
 	await dialog.getByLabel('Kürzel').fill(key.toLowerCase());
+	const other = await createProject(page.request, 'External live project');
+	await expect(page.getByText(`External live project ${other.key}`, { exact: true })).toBeVisible();
+	await expect(dialog.getByLabel('Name')).toHaveValue('Superforms project');
+	await expect(dialog.getByLabel('Kürzel')).toHaveValue(key.toLowerCase());
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
 	await expect(page).toHaveURL(`/projects/${key}/board`);
 });

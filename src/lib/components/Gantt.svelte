@@ -31,6 +31,7 @@
 	type Item = TicketListItem;
 
 	let {
+		readOnly = false,
 		tickets: source,
 		dependencies,
 		columns,
@@ -41,6 +42,7 @@
 		height = $bindable(360),
 		actions
 	}: {
+		readOnly?: boolean;
 		tickets: Item[];
 		dependencies: DependencyDto[];
 		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
@@ -238,6 +240,10 @@
 	const resizeCursor = cursorAnchor();
 
 	function pointerDown(e: PointerEvent, t: Item, mode: 'move' | 'start' | 'end') {
+		if (readOnly) {
+			if (mode === 'move') openTicket(t.key);
+			return;
+		}
 		const s = span(t);
 		if (!s) return;
 		e.stopPropagation();
@@ -279,6 +285,7 @@
 
 	/** Klick in eine leere Zeile setzt Start- und Enddatum für Tickets ohne Termin */
 	async function setDates(e: MouseEvent, t: Item) {
+		if (readOnly) return;
 		if (span(t)) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const day = range.start + Math.floor((e.clientX - rect.left) / px);
@@ -312,6 +319,7 @@
 	);
 
 	function openPlan(e: MouseEvent | null) {
+		if (readOnly) return;
 		if (e) {
 			const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 			planDay = range.start + Math.floor((e.clientX - rect.left) / px);
@@ -325,6 +333,7 @@
 
 	/** Termin entfernen; optional zurück in die Backlog-Spalte */
 	async function unschedule(t: Item, toBacklog: boolean) {
+		if (readOnly) return;
 		const body: UpdateTicketInput = { startDate: null, dueDate: null };
 		if (toBacklog && backlogColumn) body.columnId = backlogColumn.id;
 		try {
@@ -341,6 +350,7 @@
 	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString(intlLocale(), { timeZone: 'UTC' });
 
 	async function plan(t: Item) {
+		if (readOnly) return;
 		planOpen = false;
 		const start = planDay ?? today;
 		const s = span(t);
@@ -381,6 +391,7 @@
 	}
 
 	async function createPlanned() {
+		if (readOnly) return;
 		const title = planQuery.trim();
 		planOpen = false;
 		const start = planDay ?? today;
@@ -482,7 +493,7 @@
 	<span class="grow"></span>
 	<span class="text-muted-foreground flex items-center gap-1.5 text-xs max-lg:hidden">
 		<Info class="size-3.5" />
-		{m.drag_bars_to_reschedule_drag_edges_to_change_duration()}
+		{readOnly ? m.um_read_only() : m.drag_bars_to_reschedule_drag_edges_to_change_duration()}
 	</span>
 	{@render actions?.()}
 </div>
@@ -547,7 +558,12 @@
 						<DropdownMenu.Root>
 							<Hint text={m.unschedule()}>
 								{#snippet children(props)}
-									<DropdownMenu.Trigger {...props} class="rowaction" aria-label={m.unschedule_2({ value1: t.key })}>
+									<DropdownMenu.Trigger
+										disabled={readOnly}
+										{...props}
+										class="rowaction"
+										aria-label={m.unschedule_2({ value1: t.key })}
+									>
 										<X class="size-3.5" />
 									</DropdownMenu.Trigger>
 								{/snippet}
@@ -569,7 +585,13 @@
 					{/if}
 				</div>
 			{/each}
-			<button type="button" class="label planlabel" bind:this={planAnchor} onclick={() => openPlan(null)}>
+			<button
+				disabled={readOnly}
+				type="button"
+				class="label planlabel"
+				bind:this={planAnchor}
+				onclick={() => openPlan(null)}
+			>
 				<span class="toggle"><Plus class="size-3.5" /></span>
 				{m.schedule_ticket()}
 			</button>
@@ -627,7 +649,7 @@
 
 			{#each rows as { t }, i (t.id)}
 				{@const s = span(t)}
-				<Hint text={s ? null : m.set_schedule_date()} anchor={rowCursor.anchor}>
+				<Hint text={s || readOnly ? null : m.set_schedule_date()} anchor={rowCursor.anchor}>
 					{#snippet children(rowProps)}
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div

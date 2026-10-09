@@ -1,7 +1,7 @@
-# Sicherheitsprobleme
+# Security policy
 
-Keine Zugangsdaten oder privaten Nutzerdaten in Issues, PRs oder Logs veröffentlichen.
+Do not publish credentials or private user data in issues, pull requests, or logs.
 
-Sicherheitslücken möglichst über den privaten Meldeweg im GitHub-Security-Tab melden, sofern dieser aktiviert ist. Andernfalls zuerst einen privaten Kontakt zum Maintainer herstellen und technische Details privat übermitteln. Das Repository enthält keinen eingerichteten separaten Meldekanal.
+Report vulnerabilities privately through the repository's GitHub Security tab when private reporting is enabled. Otherwise, contact the maintainer privately before sharing technical details. This repository does not configure a separate reporting channel.
 
-Produktive Installationen müssen einen eigenen starken `BETTER_AUTH_SECRET` verwenden. Datenbank und Anhänge gemeinsam sichern. Abhängigkeiten über Dependabot aktuell halten und CI-Fehler vor einer Veröffentlichung beheben.
+Production installations must use their own strong `BETTER_AUTH_SECRET`. Back up the database and attachments together. Keep dependencies up to date through Dependabot and resolve CI failures before publishing a release.

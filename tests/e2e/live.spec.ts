@@ -65,3 +65,48 @@ test.describe('ohne Anmeldung', () => {
 		expect(res.headers()['content-type']).toContain('application/json');
 	});
 });
+
+test('live streams enforce project access when connecting and after membership removal', async ({
+	browser,
+	request,
+	baseURL
+}) => {
+	const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+	try {
+		const signup = await context.request.post('/api/auth/sign-up/email', {
+			headers: { origin: baseURL! },
+			data: { name: 'Live reader', email: `live-${Date.now()}@example.com`, password: 'live-permissions-password' }
+		});
+		expect(signup.ok()).toBeTruthy();
+		const { user } = await signup.json();
+		const allowed = await createProject(request, 'Live accessible');
+		const revoked = await createProject(request, 'Live revoked');
+		const hidden = await createProject(request, 'Live hidden');
+		for (const p of [allowed, revoked])
+			await api(request, 'POST', `/projects/${p.key}/members`, { user: user.id, role: 'reader' });
+		expect((await context.request.get(`/api/v1/events?project=${hidden.key}`)).status()).toBe(404);
+		const page = await context.newPage();
+		await page.goto('/settings/api');
+		await page.evaluate(() => {
+			const events: { projectId: number }[] = [];
+			const stream = new EventSource('/api/v1/events');
+			Object.assign(window, { permissionEvents: events, permissionStreamReady: false, permissionStream: stream });
+			stream.onopen = () => Object.assign(window, { permissionStreamReady: true });
+			stream.addEventListener('change', (e) => events.push(JSON.parse(e.data)));
+		});
+		await expect.poll(() => page.evaluate(() => Reflect.get(window, 'permissionStreamReady'))).toBe(true);
+		await createTicket(request, hidden.key, { title: 'Private event' });
+		await createTicket(request, revoked.key, { title: 'Initially accessible' });
+		await expect.poll(() => page.evaluate(() => Reflect.get(window, 'permissionEvents').length)).toBe(1);
+		await api(request, 'DELETE', `/projects/${revoked.key}/members/${user.id}`);
+		await createTicket(request, revoked.key, { title: 'Revoked event' });
+		await createTicket(request, allowed.key, { title: 'Allowed marker' });
+		await expect.poll(() => page.evaluate(() => Reflect.get(window, 'permissionEvents').length)).toBe(2);
+		expect(
+			await page.evaluate(() => Reflect.get(window, 'permissionEvents').map((e: { projectId: number }) => e.projectId))
+		).toEqual([revoked.id, allowed.id]);
+		await page.evaluate(() => Reflect.get(window, 'permissionStream').close());
+	} finally {
+		await context.close();
+	}
+});

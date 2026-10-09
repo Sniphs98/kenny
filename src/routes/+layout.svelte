@@ -8,6 +8,7 @@
 	import { authClient } from '$lib/auth-client';
 	import { accentStyle, accentVars } from '$lib/theme';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+	import SoundToggle from '$lib/components/SoundToggle.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -19,6 +20,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
 	import KeyRound from '@lucide/svelte/icons/key-round';
+	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
@@ -104,6 +106,10 @@
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						<LanguageSwitcher />
+						<SoundToggle />
+						{#if data.user.role === 'admin'}<DropdownMenu.Item onSelect={() => goto('/admin/users')}
+								><Users />{m.um_users()}</DropdownMenu.Item
+							>{/if}
 						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
 							<KeyRound />
 							{m.api_tokens()}

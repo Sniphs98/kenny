@@ -1,29 +1,29 @@
-name: Feature vorschlagen
-description: Eine Erweiterung als umsetzbare Aufgabe beschreiben.
+name: Request a feature
+description: Describe a feature as an actionable task.
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem und Ziel
-      description: Was möchtest du erreichen, und was fehlt heute?
+      label: Problem and goal
+      description: What do you want to achieve, and what is missing today?
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: Gewünschtes Verhalten
-      description: Konkrete Beispiele für UI oder API.
+      label: Desired behavior
+      description: Provide specific UI or API examples.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Akzeptanzkriterien
-      description: Überprüfbare Bedingungen, die eine Umsetzung erfüllen muss.
+      label: Acceptance criteria
+      description: List verifiable conditions that the implementation must meet.
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Umfang, Grenzen und Alternativen
-      description: Was gehört dazu, was bleibt für später? Müssen bestehende Daten migriert werden?
+      label: Scope, limitations, and alternatives
+      description: What is in scope, what can wait, and does existing data need to be migrated?

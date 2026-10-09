@@ -1,3 +1,5 @@
+import { requireProjectAccess } from './access';
+import { projectMember } from '../db/schema';
 import { createTicketSchema, updateTicketSchema, createLinkSchema } from '$lib/contracts';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
@@ -137,7 +139,7 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 }
 
 /** Detailansicht: Ticket mit Projekt, Unteraufgaben, übergeordnetem Ticket und Verknüpfungen */
-export function getTicketDetail(ref: string | number) {
+export function getTicketDetail(ref: string | number, actorId?: string) {
 	const t = resolveTicket(ref);
 	const p = getProject(t.projectId);
 	const cols = getColumns(p.id);
@@ -159,7 +161,18 @@ export function getTicketDetail(ref: string | number) {
 		.where(or(eq(ticketLink.sourceId, t.id), eq(ticketLink.targetId, t.id)))
 		.all();
 
-	const links = linkRows.map(({ link, other, otherKey }) => {
+	const visibleLinks = actorId
+		? linkRows.filter((row) => {
+				try {
+					requireProjectAccess(actorId, row.other.projectId);
+					return true;
+				} catch (e) {
+					if (e instanceof ApiError && e.status === 404) return false;
+					throw e;
+				}
+			})
+		: linkRows;
+	const links = visibleLinks.map(({ link, other, otherKey }) => {
 		const outgoing = link.sourceId === t.id;
 		// Aus Sicht dieses Tickets beschreiben
 		const relation = link.type === 'relates' ? 'relates' : outgoing ? 'depends_on' : ('blocks' as const);
@@ -238,7 +251,7 @@ function checkDates(start: string | null, due: string | null) {
 	if (start && due && start > due) throw new ApiError(400, 'Startdatum liegt nach dem Fälligkeitsdatum.');
 }
 
-function checkAssignee(tx: Tx, id: unknown) {
+function checkAssignee(tx: Tx, id: unknown, projectId: number) {
 	if (id === null || id === undefined || id === '') return null;
 	const u = tx
 		.select({ id: user.id })
@@ -246,6 +259,13 @@ function checkAssignee(tx: Tx, id: unknown) {
 		.where(or(eq(user.id, String(id)), eq(user.email, String(id))))
 		.get();
 	if (!u) throw new ApiError(400, `Benutzer "${id}" nicht gefunden.`);
+	const active = tx.select({ active: user.active }).from(user).where(eq(user.id, u.id)).get();
+	const membership = tx
+		.select()
+		.from(projectMember)
+		.where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, u.id)))
+		.get();
+	if (!active?.active || !membership) throw new ApiError(400, 'Zuständige müssen aktive Projektmitglieder sein.');
 	return u.id;
 }
 
@@ -285,7 +305,7 @@ export function createTicket(projectRef: string | number, rawInput: unknown, use
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId: checkParent(tx, { projectId: p.id }, input.parentId ?? input.parent),
-				assigneeId: checkAssignee(tx, input.assigneeId ?? input.assignee),
+				assigneeId: checkAssignee(tx, input.assigneeId ?? input.assignee, p.id),
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -296,11 +316,11 @@ export function createTicket(projectRef: string | number, rawInput: unknown, use
 
 		const dependsOn = input.dependsOn ?? [];
 		if (!Array.isArray(dependsOn)) throw new ApiError(400, 'Feld "dependsOn" muss eine Liste sein.');
-		for (const ref of dependsOn) insertLink(tx, t, String(ref), 'depends_on');
+		for (const ref of dependsOn) insertLink(tx, t, String(ref), 'depends_on', userId);
 
 		const relatesTo = input.relatesTo ?? [];
 		if (!Array.isArray(relatesTo)) throw new ApiError(400, 'Feld "relatesTo" muss eine Liste sein.');
-		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates');
+		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates', userId);
 
 		if (input.tags !== undefined) setTicketTags(tx, t.id, p.id, input.tags);
 
@@ -322,7 +342,7 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 		if (input.startDate !== undefined) patch.startDate = optDate(input.startDate, 'startDate');
 		if (input.dueDate !== undefined) patch.dueDate = optDate(input.dueDate, 'dueDate');
 		if (input.assigneeId !== undefined || input.assignee !== undefined)
-			patch.assigneeId = checkAssignee(tx, input.assigneeId ?? input.assignee);
+			patch.assigneeId = checkAssignee(tx, input.assigneeId ?? input.assignee, t.projectId);
 		if (input.parentId !== undefined || input.parent !== undefined)
 			patch.parentId = checkParent(tx, t, input.parentId ?? input.parent);
 		checkDates(
@@ -416,8 +436,9 @@ function dependsTransitively(tx: Tx, from: number, to: number) {
 	return false;
 }
 
-function insertLink(tx: Tx, source: Ticket, targetRef: string, type: LinkType) {
+function insertLink(tx: Tx, source: Ticket, targetRef: string, type: LinkType, actorId?: string | null) {
 	const target = resolveTicket(targetRef, tx);
+	if (actorId) requireProjectAccess(actorId, target.projectId, 'member');
 	if (target.id === source.id) throw new ApiError(400, 'Ein Ticket kann nicht mit sich selbst verknüpft werden.');
 	if (type === 'depends_on' && dependsTransitively(tx, target.id, source.id))
 		throw new ApiError(400, 'Diese Abhängigkeit würde einen Zyklus erzeugen.');
@@ -444,14 +465,16 @@ function insertLink(tx: Tx, source: Ticket, targetRef: string, type: LinkType) {
  * - blocks: dieses Ticket ist Voraussetzung für das Ziel
  * - relates: einfache Verlinkung
  */
-export function addLink(ref: string | number, rawInput: unknown) {
+export function addLink(ref: string | number, rawInput: unknown, actorId?: string) {
 	const input = parseInput(createLinkSchema, rawInput);
 	const t = resolveTicket(ref);
+	if (actorId)
+		requireProjectAccess(actorId, resolveTicket(String(input.target ?? input.targetId ?? '')).projectId, 'member');
 	const type = oneOf(input.type ?? 'relates', [...LINK_TYPES, 'blocks'] as const, 'type');
 	const targetRef = str(String(input.target ?? input.targetId ?? ''), 'target');
 	const link = db.transaction((tx) => {
-		if (type === 'blocks') return insertLink(tx, resolveTicket(targetRef, tx), String(t.id), 'depends_on');
-		return insertLink(tx, t, targetRef, type);
+		if (type === 'blocks') return insertLink(tx, resolveTicket(targetRef, tx), String(t.id), 'depends_on', actorId);
+		return insertLink(tx, t, targetRef, type, actorId);
 	});
 	publish(t.projectId);
 	return link;
@@ -476,8 +499,4 @@ export function listDependencies(projectId: number) {
 		.innerJoin(src, eq(src.id, ticketLink.sourceId))
 		.where(and(eq(src.projectId, projectId), eq(ticketLink.type, 'depends_on')))
 		.all();
-}
-
-export function listUsers() {
-	return db.select({ id: user.id, name: user.name, email: user.email }).from(user).orderBy(asc(user.name)).all();
 }

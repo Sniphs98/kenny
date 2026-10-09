@@ -22,6 +22,7 @@
 	import { cn } from '$lib/utils';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { playIfCompleted } from '$lib/sound';
 	import { toast } from 'svelte-sonner';
 	import ArrowDownUp from '@lucide/svelte/icons/arrow-down-up';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
@@ -292,6 +293,7 @@
 	let dropTarget = $state<{ lane: string; columnId: number; index: number } | null>(null);
 
 	function onDragStart(e: DragEvent, t: Item, lane: string) {
+		if (!data.canEdit) return;
 		drag = { id: t.id, lane };
 		e.dataTransfer!.effectAllowed = 'move';
 		e.dataTransfer!.setData('text/plain', String(t.id));
@@ -354,10 +356,11 @@
 			body.columnId = columnId;
 		}
 		if (!Object.keys(body).length) return;
+		const wasClosed = moved.closed;
 		moved.columnId = columnId;
 
 		try {
-			await updateTicket(id, body);
+			playIfCompleted(wasClosed, await updateTicket(id, body));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -442,7 +445,7 @@
 				</DropdownMenu.RadioGroup>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
-		{#if lane}
+		{#if lane && data.canEdit}
 			<Hint text={m.add_ticket()}>
 				{#snippet children(props)}
 					<Button
@@ -485,6 +488,7 @@
 					<div class="bg-primary h-0.5 rounded-full"></div>
 				{/if}
 				<BoardCard
+					readOnly={!data.canEdit}
 					{t}
 					parent={t.parentId ? byId.get(t.parentId) : undefined}
 					subtasks={childrenOf.get(t.id) ?? []}
@@ -514,7 +518,7 @@
 					onkeydown={(e) => e.key === 'Escape' && (quickCell = null)}
 				/>
 			</form>
-		{:else}
+		{:else if data.canEdit}
 			<Button
 				variant="ghost"
 				size="sm"
@@ -531,6 +535,7 @@
 	</section>
 {/snippet}
 
+{#if !data.canEdit}<p class="text-muted-foreground px-5 pt-3 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
 	<InputGroup.Root class="w-60">
 		<InputGroup.Addon><Search /></InputGroup.Addon>
@@ -596,7 +601,7 @@
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>
 	</Select.Root>
-	<Button onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
+	<Button disabled={!data.canEdit} onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
 </div>
 
 <Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">
@@ -609,6 +614,7 @@
 	</Collapsible.Trigger>
 	<Collapsible.Content>
 		<Gantt
+			readOnly={!data.canEdit}
 			tickets={data.tickets}
 			dependencies={data.dependencies}
 			columns={data.columns}

@@ -130,7 +130,7 @@ export async function downloadAttachment(id: number, forceDownload = false) {
 			'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${encoded}"; filename*=UTF-8''${encoded}`,
 			'x-content-type-options': 'nosniff',
 			'content-security-policy': "default-src 'none'; sandbox",
-			'cache-control': 'private, max-age=86400'
+			'cache-control': 'private, no-store'
 		}
 	});
 }

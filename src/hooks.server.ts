@@ -3,6 +3,8 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
 import { LIVE_ORIGIN_HEADER, liveOrigin } from '$lib/server/live';
+import { requireActiveUser } from '$lib/server/services/access';
+import { ApiError } from '$lib/server/errors';
 import '$lib/locale-choice';
 import { paraglideMiddleware } from '$lib/paraglide/server.js';
 
@@ -11,8 +13,12 @@ const PUBLIC_PATHS = ['/login', '/api/'];
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 	if (session) {
-		event.locals.user = session.user;
-		event.locals.session = session.session;
+		try {
+			event.locals.user = { ...session.user, ...requireActiveUser(session.user.id) };
+			event.locals.session = session.session;
+		} catch (e) {
+			if (!(e instanceof ApiError)) throw e;
+		}
 	}
 
 	const path = event.url.pathname;

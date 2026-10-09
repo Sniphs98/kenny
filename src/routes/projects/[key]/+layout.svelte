@@ -7,16 +7,22 @@
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
+	import Users from '@lucide/svelte/icons/users';
 	import Settings from '@lucide/svelte/icons/settings';
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
 	let { data, children } = $props();
 
-	const tabs = [
+	const tabs = $derived([
 		{ href: 'board', label: m.board(), icon: SquareKanban },
 		{ href: 'gantt', label: m.gantt(), icon: ChartGantt },
-		{ href: 'settings', label: m.settings(), icon: Settings }
-	];
+		...(data.canManage
+			? [
+					{ href: 'members', label: m.um_members(), icon: Users },
+					{ href: 'settings', label: m.settings(), icon: Settings }
+				]
+			: [])
+	]);
 	const open = $derived(data.tickets.filter((t) => !t.closed).length);
 </script>
 

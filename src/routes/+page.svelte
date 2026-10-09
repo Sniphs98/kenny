@@ -23,6 +23,8 @@
 	const { form, errors, message, enhance, reset, submitting } = superForm(
 		untrack(() => data.form),
 		{
+			// Live refreshes must not replace an unfinished project form with load defaults.
+			applyAction: 'never',
 			validationMethod: 'onsubmit',
 			validators: zod4Client(projectFormSchema)
 		}

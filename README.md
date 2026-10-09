@@ -70,6 +70,8 @@ Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-
 
 ### Docker and production
 
+Container builds use the official Node.js 22 image through its Amazon ECR Public mirror to avoid anonymous Docker Hub pull limits. The Node.js version is pinned in `Dockerfile` and `.nvmrc`.
+
 Kenny is distributed as a Docker container. The image includes the Node production server and migrations. It runs as the `node` user; the database and attachments share a persistent volume under `/app/data`.
 
 ```bash

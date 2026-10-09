@@ -28,6 +28,14 @@ it('upgrades populated databases from every earlier migration and can restart id
 			expect(client.prepare('SELECT title FROM ticket').get()).toEqual({ title: 'Existing ticket' });
 			expect(client.prepare('SELECT is_backlog FROM board_column').get()).toEqual({ is_backlog: 0 });
 			expect(client.prepare('SELECT * FROM attachment').all()).toEqual([]);
+			// Formular löschen lässt eingereichte Tickets bestehen und leert nur die Herkunft
+			client.exec("INSERT INTO intake_form (name, token) VALUES ('Support', 'token')");
+			client.exec('UPDATE ticket SET intake_form_id = 1');
+			client.exec('DELETE FROM intake_form');
+			expect(client.prepare('SELECT title, intake_form_id FROM ticket').get()).toEqual({
+				title: 'Existing ticket',
+				intake_form_id: null
+			});
 			expect(client.pragma('foreign_key_check')).toEqual([]);
 			expect(client.prepare('SELECT count(*) AS n FROM __drizzle_migrations').get()).toEqual({
 				n: journal.entries.length
@@ -48,7 +56,10 @@ it('preserves shared project access and chooses the oldest existing account duri
 		client.exec(
 			'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)'
 		);
-		for (const entry of journal.entries.slice(0, -1)) {
+		for (const entry of journal.entries.slice(
+			0,
+			journal.entries.findIndex((entry) => entry.tag === '0004_shiny_eternals')
+		)) {
 			client.exec(readFileSync(`drizzle/${entry.tag}.sql`, 'utf8'));
 			client.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run('fixture', entry.when);
 		}

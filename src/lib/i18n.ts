@@ -188,6 +188,32 @@ const errorTranslations = [
 			'^Entweder multipart/form-data mit Feld "file" oder \\?filename=… mit der Datei als Body senden\\.$'
 		),
 		translate: (_values: string[]) => m.send_multipart_or_filename()
+	},
+	{ pattern: new RegExp('^Formular nicht gefunden\\.$'), translate: (_values: string[]) => m.form_not_found() },
+	{
+		pattern: new RegExp('^Ein ausgewähltes Projekt gibt es nicht\\.$'),
+		translate: (_values: string[]) => m.selected_project_does_not_exist()
+	},
+	{
+		pattern: new RegExp('^Zu viele Einreichungen\\. Bitte später erneut versuchen\\.$'),
+		translate: (_values: string[]) => m.too_many_submissions()
+	},
+	{
+		pattern: new RegExp('^Für dieses Formular ist eine Anmeldung nötig\\.$'),
+		translate: (_values: string[]) => m.form_requires_login()
+	},
+	{ pattern: new RegExp('^Bitte ein Projekt auswählen\\.$'), translate: (_values: string[]) => m.choose_a_project() },
+	{
+		pattern: new RegExp('^Bitte eine E-Mail-Adresse angeben\\.$'),
+		translate: (_values: string[]) => m.enter_an_email()
+	},
+	{
+		pattern: new RegExp('^Bitte mindestens ein Projekt auswählen\\.$'),
+		translate: (_values: string[]) => m.choose_at_least_one_project()
+	},
+	{
+		pattern: new RegExp('^Bitte eine gültige E-Mail-Adresse angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_valid_email()
 	}
 ];
 

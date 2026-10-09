@@ -12,6 +12,7 @@
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Toaster } from '$lib/components/ui/sonner';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { cn } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import { ModeWatcher } from 'mode-watcher';
@@ -62,63 +63,65 @@
 <ModeWatcher />
 <Toaster richColors position="bottom-right" />
 
-<div class="contents" style={accentStyle(projectColor)}>
-	{#if data.user}
-		<header class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur">
-			<a href="/" class="mr-3 flex items-center gap-2 font-semibold tracking-tight">
-				<span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
-					<SquareKanban class="size-4" strokeWidth={2.25} />
-				</span>
-				Kenny
-			</a>
-			<nav class="flex gap-1">
-				{#each links as l (l.href)}
-					<a
-						href={l.href}
-						class={cn(
-							'text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
-							l.match(page.url.pathname) && 'bg-muted text-foreground'
-						)}
+<Tooltip.Provider delayDuration={400} disableHoverableContent ignoreNonKeyboardFocus>
+	<div class="contents" style={accentStyle(projectColor)}>
+		{#if data.user}
+			<header class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur">
+				<a href="/" class="mr-3 flex items-center gap-2 font-semibold tracking-tight">
+					<span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
+						<SquareKanban class="size-4" strokeWidth={2.25} />
+					</span>
+					Kenny
+				</a>
+				<nav class="flex gap-1">
+					{#each links as l (l.href)}
+						<a
+							href={l.href}
+							class={cn(
+								'text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+								l.match(page.url.pathname) && 'bg-muted text-foreground'
+							)}
+						>
+							<l.icon class="size-4" />
+							<span class="max-sm:hidden">{l.label}</span>
+						</a>
+					{/each}
+				</nav>
+				<span class="grow"></span>
+				<ThemeToggle />
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger
+						class="hover:bg-muted flex items-center gap-2 rounded-md py-1 pr-2 pl-1 text-sm font-medium outline-none"
 					>
-						<l.icon class="size-4" />
-						<span class="max-sm:hidden">{l.label}</span>
-					</a>
-				{/each}
-			</nav>
-			<span class="grow"></span>
-			<ThemeToggle />
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger
-					class="hover:bg-muted flex items-center gap-2 rounded-md py-1 pr-2 pl-1 text-sm font-medium outline-none"
-				>
-					<UserAvatar name={data.user.name} size="sm" />
-					<span class="max-sm:hidden">{data.user.name}</span>
-					<ChevronDown class="text-muted-foreground size-3.5" />
-				</DropdownMenu.Trigger>
-				<DropdownMenu.Content align="end" class="w-56">
-					<DropdownMenu.Label class="font-normal">
-						<div class="font-medium">{data.user.name}</div>
-						<div class="text-muted-foreground truncate text-xs">{data.user.email}</div>
-					</DropdownMenu.Label>
-					<DropdownMenu.Separator />
-					<LanguageSwitcher />
-					<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
-						<KeyRound />
-						{m.api_tokens()}
-					</DropdownMenu.Item>
-					<DropdownMenu.Separator />
-					<DropdownMenu.Item onSelect={logout}>
-						<LogOut />
-						{m.sign_out()}
-					</DropdownMenu.Item>
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
-		</header>
-	{:else}
-		<div class="fixed top-3.5 right-5 z-30"><ThemeToggle /></div>
-	{/if}
+						<UserAvatar name={data.user.name} size="sm" />
+						<span class="max-sm:hidden">{data.user.name}</span>
+						<ChevronDown class="text-muted-foreground size-3.5" />
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end" class="w-56">
+						<DropdownMenu.Label class="font-normal">
+							<div class="font-medium">{data.user.name}</div>
+							<div class="text-muted-foreground truncate text-xs">{data.user.email}</div>
+						</DropdownMenu.Label>
+						<DropdownMenu.Separator />
+						<LanguageSwitcher />
+						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
+							<KeyRound />
+							{m.api_tokens()}
+						</DropdownMenu.Item>
+						<DropdownMenu.Separator />
+						<DropdownMenu.Item onSelect={logout}>
+							<LogOut />
+							{m.sign_out()}
+						</DropdownMenu.Item>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</header>
+		{:else}
+			<div class="fixed top-3.5 right-5 z-30"><ThemeToggle /></div>
+		{/if}
 
-	<main>
-		{@render children()}
-	</main>
-</div>
+		<main>
+			{@render children()}
+		</main>
+	</div>
+</Tooltip.Provider>

@@ -120,7 +120,9 @@ test('membership UI adds readers and exposes a read-only board and ticket view',
 		await expect(row).toBeVisible();
 		const viewer = await reader.context.newPage();
 		await open(viewer, `/projects/${p.key}/board`);
-		await expect(viewer.getByText('You have read-only access to this project.')).toBeVisible();
+		await expect(
+			viewer.getByRole('paragraph').filter({ hasText: 'You have read-only access to this project.' })
+		).toBeVisible();
 		await expect(viewer.getByRole('button', { name: 'Ticket', exact: true })).toBeDisabled();
 		await expect(viewer.locator('[data-card]')).toHaveAttribute('draggable', 'false');
 		await expect(viewer.getByRole('link', { name: 'Settings', exact: true })).toHaveCount(0);

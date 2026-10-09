@@ -109,7 +109,6 @@
 	"links": "Links",
 	"done_2": "done",
 	"remove_link": "Remove link",
-	"ticket_e_g_1": "Ticket, e.g. {value1}-1",
 	"link": "Link",
 	"reopen": "Reopen",
 	"complete": "Complete",
@@ -312,5 +311,10 @@
 	"collapse_subtasks": "Collapse subtasks",
 	"expand_subtasks": "Expand subtasks",
 	"set_schedule_date": "Click to set schedule dates",
-	"deleted_tag": "Deleted tag “{name}”"
+	"deleted_tag": "Deleted tag “{name}”",
+	"choose_ticket": "Choose ticket…",
+	"search_ticket_number_or_title": "Search number or title…",
+	"no_ticket_found": "No ticket found.",
+	"system_language": "System language",
+	"language_follows_system": "Follows the language of your browser or operating system."
 }

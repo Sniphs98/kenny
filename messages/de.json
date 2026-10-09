@@ -109,7 +109,6 @@
 	"links": "Verknüpfungen",
 	"done_2": "erledigt",
 	"remove_link": "Verknüpfung entfernen",
-	"ticket_e_g_1": "Ticket, z.B. {value1}-1",
 	"link": "Verknüpfen",
 	"reopen": "Wieder öffnen",
 	"complete": "Abschließen",
@@ -312,5 +311,10 @@
 	"collapse_subtasks": "Unteraufgaben zuklappen",
 	"expand_subtasks": "Unteraufgaben aufklappen",
 	"set_schedule_date": "Klicken, um Termin zu setzen",
-	"deleted_tag": "Tag „{name}“ gelöscht"
+	"deleted_tag": "Tag „{name}“ gelöscht",
+	"choose_ticket": "Ticket wählen…",
+	"search_ticket_number_or_title": "Nummer oder Titel suchen…",
+	"no_ticket_found": "Kein Ticket gefunden.",
+	"system_language": "Systemsprache",
+	"language_follows_system": "Folgt der Sprache deines Browsers bzw. Betriebssystems."
 }

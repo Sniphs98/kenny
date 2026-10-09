@@ -18,6 +18,7 @@
 	import Paperclip from '@lucide/svelte/icons/paperclip';
 
 	let {
+		readOnly = false,
 		t,
 		parent,
 		subtasks,
@@ -30,6 +31,7 @@
 		ondragstart,
 		ondragend
 	}: {
+		readOnly?: boolean;
 		t: TicketListItem;
 		parent?: TicketListItem;
 		/** Unteraufgaben für die aufklappbare Liste */
@@ -69,12 +71,13 @@
 <div
 	class={cn(
 		// shrink-0: In der scrollenden Spalte sonst zusammengedrückt (overflow-hidden setzt die Mindesthöhe auf 0)
-		'bg-card border-foreground/10 hover:border-foreground/25 flex shrink-0 cursor-grab flex-col gap-2 overflow-hidden rounded-md border px-3 py-2.5 text-sm transition-colors',
+		'bg-card border-foreground/10 hover:border-foreground/25 flex shrink-0 flex-col gap-2 overflow-hidden rounded-md border px-3 py-2.5 text-sm transition-colors',
+		readOnly ? 'cursor-pointer' : 'cursor-grab',
 		blocked && 'border-l-warning border-l-[3px]',
 		dragging && 'opacity-40'
 	)}
 	data-card={t.id}
-	draggable="true"
+	draggable={!readOnly}
 	role="listitem"
 	{ondragstart}
 	{ondragend}
@@ -151,7 +154,15 @@
 			</Hint>
 		{/if}
 		<span class="ml-auto">
-			<AssigneePicker compact {users} {me} value={t.assigneeId} onchange={onAssign} />
+			<AssigneePicker
+				assignedName={t.assigneeName}
+				disabled={readOnly}
+				compact
+				{users}
+				{me}
+				value={t.assigneeId}
+				onchange={onAssign}
+			/>
 		</span>
 	</div>
 	{#if t.subtaskCount > 0}

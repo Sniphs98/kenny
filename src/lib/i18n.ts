@@ -6,6 +6,22 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
+	{ pattern: /^Konto gesperrt oder nicht verfügbar\.$/, translate: () => m.um_error_account() },
+	{ pattern: /^Administratorrechte erforderlich\.$/, translate: () => m.um_error_admin() },
+	{ pattern: /^Projekt nicht gefunden oder kein Zugriff\.$/, translate: () => m.um_error_project() },
+	{ pattern: /^Unzureichende Projektberechtigungen\.$/, translate: () => m.um_error_permissions() },
+	{ pattern: /^Benutzer nicht gefunden\.$/, translate: () => m.um_error_user() },
+	{
+		pattern: /^Der letzte aktive Administrator kann nicht entfernt werden\.$/,
+		translate: () => m.um_error_last_admin()
+	},
+	{ pattern: /^Benutzer ist bereits Projektmitglied\.$/, translate: () => m.um_error_existing_member() },
+	{ pattern: /^Projektmitglied nicht gefunden\.$/, translate: () => m.um_error_member() },
+	{
+		pattern: /^Der letzte Projektadministrator kann nicht entfernt werden\.$/,
+		translate: () => m.um_error_last_project_admin()
+	},
+	{ pattern: /^Zuständige müssen aktive Projektmitglieder sein\.$/, translate: () => m.um_error_assignee() },
 	{
 		pattern: new RegExp('^Bitte eine Farbe wie #6366f1 angeben\\.$'),
 		translate: (_values: string[]) => m.enter_a_color_such_as_6366f1()

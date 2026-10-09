@@ -2,6 +2,14 @@ import { localizeError, intlLocale } from '$lib/i18n';
 import { m } from '$lib/paraglide/messages.js';
 import { z } from 'zod';
 import {
+	managedUserSchema,
+	updateUserSchema,
+	memberSchema,
+	addMemberSchema,
+	updateMemberSchema,
+	type UpdateUserInput,
+	type AddMemberInput,
+	type ProjectRole,
 	createProjectSchema,
 	updateProjectSchema,
 	createTicketSchema,
@@ -103,4 +111,22 @@ export function initials(name: string | null | undefined) {
 		.join('')
 		.slice(0, 2)
 		.toUpperCase();
+}
+
+export async function updateUser(user: string, input: UpdateUserInput) {
+	return managedUserSchema.parse(await api('PATCH', `/admin/users/${ref(user)}`, updateUserSchema.parse(input)));
+}
+export async function addProjectMember(project: string, input: AddMemberInput) {
+	return memberSchema.parse(await api('POST', `/projects/${ref(project)}/members`, addMemberSchema.parse(input)));
+}
+export async function changeProjectMember(project: string, user: string, role: ProjectRole | null) {
+	return z
+		.object({ ok: z.literal(true) })
+		.parse(
+			await api(
+				role === null ? 'DELETE' : 'PATCH',
+				`/projects/${ref(project)}/members/${ref(user)}`,
+				role === null ? undefined : updateMemberSchema.parse({ role })
+			)
+		);
 }

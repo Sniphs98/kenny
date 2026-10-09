@@ -2,6 +2,7 @@ import { localizeError } from '$lib/i18n';
 import { json, type RequestEvent, type RequestHandler } from '@sveltejs/kit';
 import type { ZodType } from 'zod';
 import { ApiError } from './errors';
+import { authorizeResource } from './services/access';
 import { requireApiUser } from './api-auth';
 
 type ApiUser = Awaited<ReturnType<typeof requireApiUser>>;
@@ -14,6 +15,9 @@ export function apiHandler(
 	return async (event) => {
 		try {
 			const user = await requireApiUser(event);
+			const route = event.route.id ?? '';
+			const settingsResource = route === '/api/v1/projects/[project]' || /\/(columns|tags|members)(\/|$)/.test(route);
+			authorizeResource(user.id, event.request.method, event.params, settingsResource);
 			const result = await fn(event, user);
 			if (result instanceof Response) return result;
 			const body = opts.responseSchema ? opts.responseSchema.parse(result) : result;

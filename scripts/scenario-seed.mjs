@@ -154,6 +154,8 @@ export async function seedScenario(baseUrl, scenario, { log = () => {} } = {}) {
 	let tickets = 0;
 	for (const p of scenario.projects ?? []) {
 		await call('POST', '/api/v1/projects', { name: p.name, key: p.key, color: p.color, description: p.description });
+		for (const user of scenario.users.slice(1))
+			await call('POST', `/api/v1/projects/${p.key}/members`, { user: user.email, role: 'member' });
 		for (const tag of p.tags ?? []) await call('POST', `/api/v1/projects/${p.key}/tags`, tag);
 
 		/** @type {Map<string, string>} Szenario-Ref → Ticketschlüssel, z.B. "login" → "WEB-3" */

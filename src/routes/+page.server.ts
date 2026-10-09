@@ -5,7 +5,10 @@ import { projectFormSchema } from '$lib/contracts';
 import { ApiError } from '$lib/server/errors';
 import { createProject, listProjects } from '$lib/server/services/projects';
 
-export const load = async () => ({ projects: listProjects(), form: await superValidate(zod4(projectFormSchema)) });
+export const load = async ({ locals }) => ({
+	projects: listProjects(locals.user!.id),
+	form: await superValidate(zod4(projectFormSchema))
+});
 
 export const actions = {
 	default: async ({ request, locals }) => {

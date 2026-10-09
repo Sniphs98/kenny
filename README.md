@@ -23,6 +23,27 @@ npm run dev
 
 Dann <http://localhost:5173> öffnen und ein Konto registrieren. Die Datenbank liegt unter `data/kenny.db`, Migrationen werden beim Start automatisch ausgeführt.
 
+### Testszenarien
+
+Statt Daten von Hand anzulegen, startet `dev:scenario` die App mit einem vorbefüllten Stand. Jedes Szenario hat eine eigene Datenbank unter `data/scenarios/<name>/`; `data/kenny.db` bleibt unberührt, und eine `.env` ist dafür nicht nötig.
+
+```bash
+npm run dev:scenario -- list           # verfügbare Szenarien
+npm run dev:scenario -- demo           # beim ersten Start befüllen, danach mit den vorhandenen Daten starten
+npm run dev:scenario -- demo --reset   # Szenario frisch neu erzeugen
+npm run dev:scenario -- demo --port 5180
+```
+
+| Szenario | Inhalt                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------- |
+| `leer`   | Nur ein Benutzer, keine Projekte                                                            |
+| `demo`   | Zwei Projekte, drei Benutzer, ~30 Tickets mit Tags, Unteraufgaben, Abhängigkeiten, Anhängen |
+| `gantt`  | Zeitplan mit Abhängigkeitsketten, einem Terminkonflikt und Tickets ohne Termin              |
+
+Angemeldet wird mit dem ersten Benutzer des Szenarios, z. B. `anna@example.com` mit dem Passwort `kenny-demo`. Datumsangaben sind relativ zum heutigen Tag, damit Gantt und überfällige Tickets immer passen.
+
+Szenarien liegen als kleine Dateien unter `scenarios/` und werden beim ersten Start über die REST-API der laufenden App befüllt (`scripts/scenario-seed.mjs`). Dadurch gelten dieselben Regeln wie in der Oberfläche, und die Szenarien hängen nicht von der Datenbank ab. Ein neues Szenario ist eine weitere Datei in `scenarios/`; ungültige Verweise, Spalten, Tags oder Datumsbereiche werden vor dem Befüllen gemeldet. Bei `NODE_ENV=production` bricht der Befehl ab.
+
 ### Docker und Produktion
 
 Kenny wird als Docker-Container ausgeliefert. Das Image enthält den Node-Produktionsserver und die Migrationen. Es läuft als Benutzer `node`; Datenbank und Anhänge liegen gemeinsam im persistenten Volume unter `/app/data`.

@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
+		"dev:scenario": "node scripts/scenario.mjs",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "npm run i18n:compile && svelte-kit sync",

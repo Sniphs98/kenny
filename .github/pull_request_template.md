@@ -1,15 +1,15 @@
-## Problem und Änderung
+## Problem and changes
 
-<!-- Auslöser und neues Verhalten beschreiben. Issue verknüpfen: Closes #123 -->
+<!-- Describe the trigger and resulting behavior. Link the issue: Closes #123 -->
 
-## Prüfung
+## Verification
 
-<!-- Ausgeführte Kommandos und passende neue Tests nennen. -->
+<!-- List the commands run and any relevant new tests. -->
 
-- [ ] Akzeptanzkriterien aus dem Issue erfüllt
-- [ ] `npm run verify` erfolgreich
-- [ ] Relevante E2E-/Container-Prüfungen erfolgreich
-- [ ] Bei Bugfixes: Regressionstest ergänzt
-- [ ] Bei API-Änderungen: Zod-Verträge, Client und Tests aktualisiert
-- [ ] Bei Schemaänderungen: Migration ergänzt und Upgrade geprüft
-- [ ] Dokumentation aktualisiert, falls Verhalten oder Betrieb geändert wird
+- [ ] Issue acceptance criteria met
+- [ ] `npm run verify` passed
+- [ ] Relevant E2E/container checks passed
+- [ ] For bug fixes: regression test added
+- [ ] For API changes: Zod contracts, client, and tests updated
+- [ ] For schema changes: migration added and upgrade verified
+- [ ] Documentation updated if behavior or operation changed

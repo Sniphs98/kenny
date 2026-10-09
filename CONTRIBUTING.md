@@ -1,56 +1,56 @@
-# Beiträge zu Kenny
+# Contributing to Kenny
 
-## Einrichtung
+## Setup
 
-Node-Version aus `.nvmrc` verwenden, dann `npm ci`. Für die Entwicklung `.env.example` nach `.env` kopieren und einen eigenen `BETTER_AUTH_SECRET` setzen. Mit `npm run dev` starten. Architektur und Regeln stehen in `AGENTS.md`.
+Use the Node.js version in `.nvmrc`, then run `npm ci`. For development, copy `.env.example` to `.env` and set your own `BETTER_AUTH_SECRET`. Start the app with `npm run dev`. See `AGENTS.md` for architecture and development rules.
 
-## Issue → Branch → Pull Request
+## Issue → branch → pull request
 
-1. Bug oder Feature über das passende Issue-Formular beschreiben. Akzeptanzkriterien und Auswirkungen auf vorhandene Daten festhalten.
-2. Einen Branch wie `feat/ticket-filter` oder `fix/date-validation` anlegen.
-3. Verhalten in den Services umsetzen, Zod-Verträge und typisierten Client aktualisieren, passende Tests ergänzen.
-4. Prüfungen ausführen und einen PR gegen `main` öffnen. Issue mit `Closes #123` verknüpfen.
-5. CI und Review abwarten; anschließend per Squash mergen.
+1. Describe the bug or feature using the appropriate issue form. Include acceptance criteria and any impact on existing data.
+2. Create a branch such as `feat/ticket-filter` or `fix/date-validation`.
+3. Implement behavior in the services, update Zod contracts and the typed client, and add relevant tests.
+4. Run the checks and open a PR against `main`. Link the issue with `Closes #123`.
+5. Wait for CI and review, then squash merge.
 
-PR-Titel folgen Conventional Commits, zum Beispiel `feat(tickets): add filtering` oder `fix(api): reject invalid dates`. Eine Action prüft den Titel.
+PR titles follow Conventional Commits, for example `feat(tickets): add filtering` or `fix(api): reject invalid dates`. A GitHub Action validates the title.
 
-## Prüfbefehle
+## Verification commands
 
-| Befehl                                        | Zweck                                                                |
-| --------------------------------------------- | -------------------------------------------------------------------- |
-| `npm run verify`                              | Guard, Format, Lint, Typen, Unit-/Service-/Migrationstests und Build |
-| `npm run format`                              | Formatierung anwenden                                                |
-| `npm test`                                    | Schnelle Unit-Tests                                                  |
-| `npm run test:integration`                    | Services mit echter SQLite und Migration-Upgrades                    |
-| `npm run test:ci`                             | Alle Unit-/Integrationstests mit verbindlichen Coverage-Grenzen      |
-| `npm run test:coverage`                       | Coverage-Bericht unter `coverage/`                                   |
-| `npm run test:e2e:production`                 | Build und Playwright gegen den Node-Produktionsserver                |
-| `npm run docker:build && npm run docker:test` | Container inklusive Login, API, Uploads und Persistenz nach Neustart |
+| Command                                       | Purpose                                                                 |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| `npm run verify`                              | Guard, formatting, lint, types, unit/service/migration tests, and build |
+| `npm run format`                              | Apply formatting                                                        |
+| `npm test`                                    | Fast unit tests                                                         |
+| `npm run test:integration`                    | Services with real SQLite and migration upgrades                        |
+| `npm run test:ci`                             | All unit/integration tests with enforced coverage thresholds            |
+| `npm run test:coverage`                       | Coverage report under `coverage/`                                       |
+| `npm run test:e2e:production`                 | Build and Playwright tests against the Node production server           |
+| `npm run docker:build && npm run docker:test` | Container login, API, uploads, and persistence after restart            |
 
-Einmalig `npx playwright install chromium` ausführen. E2E-Tests löschen ausschließlich `data/test`, starten ihren eigenen Server auf Port 4174 und verwenden einen eigenen Testbenutzer. Vitest verwendet eine In-Memory-Datenbank. Docker-Tests erzeugen einen eigenen Container und ein eigenes Volume und entfernen beide anschließend.
+Run `npx playwright install chromium` once. E2E tests delete only `data/test`, start their own server on port 4174, and use a dedicated test user. Vitest uses an in-memory database. Docker tests create their own container and volume and remove both afterward.
 
-Die Coverage-Grenzen schützen die Ausgangsbasis (60 % Zeilen, jeweils 50 % Statements/Branches/Funktionen); für gemeinsame Verträge gelten 100 % Zeilen/Statements/Funktionen und 80 % Branches. Diese Coverage umfasst Vitest, nicht die Browser- und Container-Tests.
+Coverage thresholds protect the baseline: 60% lines and 50% each for statements, branches, and functions. Shared contracts require 100% lines, statements, and functions, and 80% branches. This coverage applies to Vitest, not browser or container tests.
 
-Bugfixes brauchen einen Regressionstest. Neue fachliche Regeln brauchen positive und negative Testfälle; API-Änderungen entsprechende HTTP-Tests. Einen fehlgeschlagenen Test untersuchen, statt ihn zu entfernen oder die Prüfung abzuschwächen.
+Bug fixes need a regression test. New business rules need positive and negative test cases; API changes need corresponding HTTP tests. Investigate failed tests instead of removing them or weakening the checks.
 
-Generierte UI-Basiskomponenten unter `src/lib/components/ui/` sind vom Formatter und ESLint ausgenommen; die Typprüfung erfasst sie weiterhin. Ihre Änderungen benötigen besondere Aufmerksamkeit im Review.
+Generated UI primitives under `src/lib/components/ui/` are excluded from formatting and ESLint, but remain covered by type checking. Review changes to these components carefully.
 
-## GitHub-Konfiguration
+## GitHub configuration
 
-Die Dateien richten Workflows und Vorlagen ein. Unter `.github/rulesets/main.json` liegt außerdem ein importierbares Ruleset für ein Solo-Repository (ohne verpflichtendes Fremdreview). Es muss in GitHub importiert oder per API aktiviert werden; die Datei selbst aktiviert keinen Branch-Schutz. Nach dem Push müssen die Repository-Einstellungen zusätzlich aktiviert werden:
+The repository includes workflows and templates. `.github/rulesets/main.json` also contains an importable ruleset for a solo repository without mandatory reviews by another person. Import it in GitHub or activate it through the API; the file alone does not enable branch protection. After pushing, configure the repository settings:
 
-- Ruleset für `main`: Pull Requests, erfolgreiche Checks `Quality checks`, `Production E2E`, `Docker smoke test` und `Conventional PR title`, aktuelle Basis vor dem Merge, keine Force-Pushes oder Löschungen.
-- Mindestens ein Review, sobald eine zweite Person reviewen kann; veraltete Reviews bei neuen Änderungen verwerfen. Für ein Solo-Repository kein unerfüllbares Fremdreview erzwingen.
-- Squash-Merge mit PR-Titel als Commit-Titel verwenden.
-- Dependabot-Warnungen und verfügbares Secret-Scanning/Push-Protection aktivieren.
-- GHCR-Paket nach der ersten Veröffentlichung bei Bedarf öffentlich stellen. Ein öffentliches Repository macht ein neues Paket nicht automatisch öffentlich.
+- Ruleset for `main`: require pull requests, successful `Quality checks`, `Production E2E`, `Docker smoke test`, and `Conventional PR title` checks, and an up-to-date branch before merging; prohibit force pushes and branch deletion.
+- Require at least one review once another contributor can review, and dismiss stale reviews after new changes. Do not impose an impossible external-review requirement on a solo repository.
+- Use squash merging with the PR title as the commit title.
+- Enable Dependabot alerts and any available secret scanning and push protection.
+- If needed, make the GHCR package public after the first release. A public repository does not automatically make a new package public.
 
-CI läuft ohne Produktionsgeheimnisse. `npm audit --audit-level=high` blockiert hohe und kritische Advisories. Niedrigere Befunde bleiben sichtbar und sollten über Dependency-PRs bearbeitet werden. Der lokale Hygiene-Guard ergänzt Secret-Scanning, ersetzt aber keinen vollständigen Secret-Scanner.
+CI runs without production secrets. `npm audit --audit-level=high` blocks high and critical advisories. Lower-severity findings remain visible and should be addressed through dependency PRs. The local repository hygiene guard complements secret scanning; it does not replace a full secret scanner.
 
-## Docker-Releases
+## Docker releases
 
-Nach einem grünen Merge auf `main` einen Tag wie `v0.1.0` auf den gewünschten Commit setzen und pushen. Der Release-Workflow prüft den gesamten Code einschließlich Container erneut und veröffentlicht erst danach `ghcr.io/sniphs98/kenny:0.1.0` und einen Commit-Tag. Stabile Versionen erhalten zusätzlich `latest`, Vorabversionen nicht. Zunächst wird Linux amd64 unterstützt.
+After a green merge to `main`, create and push a tag such as `v0.1.0` on the desired commit. The release workflow checks the entire codebase, including the container, before publishing `ghcr.io/sniphs98/kenny:0.1.0` and a commit tag. Stable releases also receive `latest`; prereleases do not. Linux amd64 is currently supported.
 
-Ein manuell gestarteter Release-Workflow baut und prüft ohne Veröffentlichung. Für einen Rollback einen früheren Container-Tag oder Digest verwenden. Datenbank und Anhänge vorher sichern; ein Image-Rollback macht bereits angewandte Datenbankmigrationen nicht rückgängig.
+A manually triggered release workflow builds and tests without publishing. To roll back, use a previous container tag or digest. Back up the database and attachments first; rolling back an image does not reverse applied database migrations.
 
-Es gibt keinen automatischen Produktions-Deploy. UI-Texte werden mit ParaglideJS gepflegt; neue Nachrichten in `messages/de.json` und `messages/en.json` ergänzen. Schema- und API-Feldnamen sowie vom Benutzer gespeicherte Inhalte bleiben sprachunabhängig.
+There is no automatic production deployment. UI messages use ParaglideJS; add new messages to `messages/de.json` and `messages/en.json`. Schema and API field names, as well as user-created content, remain independent of the UI language.

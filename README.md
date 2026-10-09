@@ -70,6 +70,8 @@ Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-
 
 ### Docker and production
 
+Container builds use the official Node.js 22 image through its Amazon ECR Public mirror to avoid anonymous Docker Hub pull limits. The Node.js version is pinned in `Dockerfile` and `.nvmrc`.
+
 Kenny is distributed as a Docker container. The image includes the Node production server and migrations. It runs as the `node` user; the database and attachments share a persistent volume under `/app/data`.
 
 ```bash
@@ -124,6 +126,17 @@ npm run docker:test               # Container, API, uploads, and persistence aft
 Unit tests live under `tests/unit`, service and migration tests under `tests/integration`, and browser and HTTP tests under `tests/e2e`. Service tests use in-memory SQLite. Playwright starts its own built Node server on port 4174 with a fresh database under `data/test`, leaving development data untouched. Each test creates its own project.
 
 GitHub Actions checks pull requests and `main` automatically. Shared Zod contracts live in `src/lib/contracts`; forms use Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) describes the issue/PR workflow, and [AGENTS.md](AGENTS.md) contains the rules for AI-assisted changes. The English and German UI uses ParaglideJS.
+
+## Submission forms
+
+Under **Forms** (`/settings/forms`) you can create links that let other people submit tickets, for example customers or colleagues without a Kenny account.
+
+- **One project or a choice:** A form with one project is a fixed link for that project. With several projects, the submitter picks the project.
+- **Sign-in:** Each form is either public or requires sign-in. Signed-in submissions are created as the signed-in user.
+- **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the ticket sidebar.
+- **Links:** `/submit/<token>` with a random token. Generating a new link or deactivating the form makes the old link stop working. Deleting a form keeps its tickets.
+- Submitted tickets land in the first open column of the project.
+- **Spam protection:** a hidden honeypot field (bot submissions are silently dropped) and a limit of 10 anonymous submissions per IP address and 10 minutes. The limit is kept in memory of the Node process.
 
 ## REST API
 
@@ -213,6 +226,8 @@ src/routes/tickets/[key]/   Ticket details
 Instance administrators can manage accounts through **Users** in the user menu. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
 
 See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.
+
+Form management under **Forms** is restricted to instance administrators. Public submission links keep their configured sign-in and email requirements.
 
 ### Live updates
 

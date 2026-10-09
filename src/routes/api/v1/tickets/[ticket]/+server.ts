@@ -4,8 +4,11 @@ import { deleteTicket, getTicketDetail, updateTicket } from '$lib/server/service
 
 export const GET = apiHandler(
 	(e, user) => {
-		const { ticket, parent, subtasks, links, attachments, assignee } = getTicketDetail(e.params.ticket!, user.id);
-		return { ...ticket, parent, subtasks, links, attachments, assignee };
+		const { ticket, parent, subtasks, links, attachments, assignee, submission } = getTicketDetail(
+			e.params.ticket!,
+			user.id
+		);
+		return { ...ticket, parent, subtasks, links, attachments, assignee, submission };
 	},
 	{ responseSchema: ticketDetailSchema }
 );

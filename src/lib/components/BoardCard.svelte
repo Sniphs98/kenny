@@ -3,6 +3,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { PRIORITY_LABELS } from '$lib/api';
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
+	import Hint from '$lib/components/Hint.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import type { TicketListItem } from '$lib/contracts';
 	import { openTicket } from '$lib/ticket-modal';
@@ -81,14 +82,15 @@
 >
 	{#if parent}
 		<div class="-mb-0.5 flex items-start gap-2">
-			<div
-				class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs"
-				title={m.subtask_of({ value1: parent.key, value2: parent.title })}
-			>
-				<CornerDownRight class="size-3 shrink-0" />
-				<span class="shrink-0 font-mono">{parent.key}</span>
-				<span class="truncate">{parent.title}</span>
-			</div>
+			<Hint text={m.subtask_of({ value1: parent.key, value2: parent.title })}>
+				{#snippet children(props)}
+					<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
+						<CornerDownRight class="size-3 shrink-0" />
+						<span class="shrink-0 font-mono">{parent.key}</span>
+						<span class="truncate">{parent.title}</span>
+					</div>
+				{/snippet}
+			</Hint>
 			{@render tagList()}
 		</div>
 	{/if}
@@ -105,36 +107,48 @@
 		{#if !parent}{@render tagList()}{/if}
 	</div>
 	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
-		<span class="flex items-center gap-1.5" title={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
-			<span class="prio prio-{t.priority}"></span>
-			<span class="font-mono">{t.key}</span>
-		</span>
+		<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
+			{#snippet children(props)}
+				<span {...props} class="flex items-center gap-1.5">
+					<span class="prio prio-{t.priority}"></span>
+					<span class="font-mono">{t.key}</span>
+				</span>
+			{/snippet}
+		</Hint>
 		{#if t.dueDate}
-			<span
-				class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}
-				title={m.due_on({
+			<Hint
+				text={m.due_on({
 					value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
 					value2: overdue ? m.overdue_suffix() : ''
 				})}
 			>
-				<Calendar />
-				{shortDate(t.dueDate)}
-			</span>
+				{#snippet children(props)}
+					<span {...props} class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}>
+						<Calendar />
+						{shortDate(t.dueDate!)}
+					</span>
+				{/snippet}
+			</Hint>
 		{/if}
 		{#if blocked}
-			<span
-				class="text-warning flex items-center gap-1"
-				title={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}
-			>
-				<Ban />
-				{t.openBlockers}
-			</span>
+			<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
+				{#snippet children(props)}
+					<span {...props} class="text-warning flex items-center gap-1">
+						<Ban />
+						{t.openBlockers}
+					</span>
+				{/snippet}
+			</Hint>
 		{/if}
 		{#if t.attachmentCount > 0}
-			<span class="flex items-center gap-1" title={m.attachment_s({ value1: t.attachmentCount })}>
-				<Paperclip />
-				{t.attachmentCount}
-			</span>
+			<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
+				{#snippet children(props)}
+					<span {...props} class="flex items-center gap-1" data-attachments>
+						<Paperclip />
+						{t.attachmentCount}
+					</span>
+				{/snippet}
+			</Hint>
 		{/if}
 		<span class="ml-auto">
 			<AssigneePicker compact {users} {me} value={t.assigneeId} onchange={onAssign} />
@@ -142,26 +156,30 @@
 	</div>
 	{#if t.subtaskCount > 0}
 		<div class="-mx-3 -mb-2.5 border-t">
-			<button
-				type="button"
-				class="text-muted-foreground hover:bg-muted/60 hover:text-foreground flex w-full items-center gap-1.5 px-3 py-1.5 text-xs"
-				aria-expanded={expanded}
-				title={expanded ? m.collapse_subtasks() : m.expand_subtasks()}
-				onclick={(e) => (e.stopPropagation(), onToggleSubtasks())}
-			>
-				<ChevronRight class={cn('size-3.5 transition-transform', expanded && 'rotate-90')} />
-				<ListChecks class="size-3.5" />
-				<span>{m.subtasks()}</span>
-				<span class="bg-muted ml-auto h-1 w-12 overflow-hidden rounded-full">
-					<span
-						class={cn('block h-full rounded-full', t.subtaskDone === t.subtaskCount ? 'bg-success' : 'bg-primary')}
-						style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"
-					></span>
-				</span>
-				<span class={cn('tabular-nums', t.subtaskDone === t.subtaskCount && 'text-success')}
-					>{t.subtaskDone}/{t.subtaskCount}</span
-				>
-			</button>
+			<Hint text={expanded ? m.collapse_subtasks() : m.expand_subtasks()}>
+				{#snippet children(props)}
+					<button
+						{...props}
+						type="button"
+						class="text-muted-foreground hover:bg-muted/60 hover:text-foreground flex w-full items-center gap-1.5 px-3 py-1.5 text-xs"
+						aria-expanded={expanded}
+						onclick={(e) => (e.stopPropagation(), onToggleSubtasks())}
+					>
+						<ChevronRight class={cn('size-3.5 transition-transform', expanded && 'rotate-90')} />
+						<ListChecks class="size-3.5" />
+						<span>{m.subtasks()}</span>
+						<span class="bg-muted ml-auto h-1 w-12 overflow-hidden rounded-full">
+							<span
+								class={cn('block h-full rounded-full', t.subtaskDone === t.subtaskCount ? 'bg-success' : 'bg-primary')}
+								style="width: {(t.subtaskDone / t.subtaskCount) * 100}%"
+							></span>
+						</span>
+						<span class={cn('tabular-nums', t.subtaskDone === t.subtaskCount && 'text-success')}
+							>{t.subtaskDone}/{t.subtaskCount}</span
+						>
+					</button>
+				{/snippet}
+			</Hint>
 			{#if expanded && subtasks.length}
 				<ul class="flex flex-col px-2 pb-1.5">
 					{#each subtasks as s (s.id)}

@@ -5,6 +5,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { createTicket, updateTicket } from '$lib/api';
 	import { openTicket } from '$lib/ticket-modal';
+	import Hint from '$lib/components/Hint.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Label } from '$lib/components/ui/label';
@@ -503,33 +504,42 @@
 			{#each rows as { t, depth, childCount } (t.id)}
 				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
-						<button
-							type="button"
-							class="toggle"
-							class:open={expanded.has(t.id)}
-							aria-expanded={expanded.has(t.id)}
-							title="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})"
-							onclick={() => toggle(t.id)}
-						>
-							<ChevronRight class="size-3.5" />
-						</button>
+						<Hint text="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})">
+							{#snippet children(props)}
+								<button
+									{...props}
+									type="button"
+									class="toggle"
+									class:open={expanded.has(t.id)}
+									aria-expanded={expanded.has(t.id)}
+									aria-label="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})"
+									onclick={() => toggle(t.id)}
+								>
+									<ChevronRight class="size-3.5" />
+								</button>
+							{/snippet}
+						</Hint>
 					{:else}
 						<span class="toggle"></span>
 					{/if}
-					<a class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)} title={t.title}>
-						<span class="prio prio-{t.priority}"></span>
-						<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
-						<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
-					</a>
+					<Hint text={t.title} side="right">
+						{#snippet children(props)}
+							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
+								<span class="prio prio-{t.priority}"></span>
+								<span class="text-muted-foreground font-mono text-xs">{t.key}</span>
+								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
+							</a>
+						{/snippet}
+					</Hint>
 					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
 						<DropdownMenu.Root>
-							<DropdownMenu.Trigger
-								class="rowaction"
-								title={m.unschedule()}
-								aria-label={m.unschedule_2({ value1: t.key })}
-							>
-								<X class="size-3.5" />
-							</DropdownMenu.Trigger>
+							<Hint text={m.unschedule()}>
+								{#snippet children(props)}
+									<DropdownMenu.Trigger {...props} class="rowaction" aria-label={m.unschedule_2({ value1: t.key })}>
+										<X class="size-3.5" />
+									</DropdownMenu.Trigger>
+								{/snippet}
+							</Hint>
 							<DropdownMenu.Content align="end" class="w-56">
 								<DropdownMenu.Label class="truncate">{t.key} {t.title}</DropdownMenu.Label>
 								<DropdownMenu.Item disabled={!t.startDate && !t.dueDate} onSelect={() => unschedule(t, false)}>

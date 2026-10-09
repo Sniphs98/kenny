@@ -8,6 +8,7 @@
 	import BoardCard from '$lib/components/BoardCard.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import Gantt from '$lib/components/Gantt.svelte';
+	import Hint from '$lib/components/Hint.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -412,17 +413,21 @@
 		<span class="text-muted-foreground text-xs font-medium">{columnCount(col.id)}</span>
 		<span class="grow"></span>
 		<DropdownMenu.Root>
-			<DropdownMenu.Trigger
-				class={cn(
-					'hover:bg-muted text-muted-foreground hover:text-foreground flex h-6 items-center gap-1 rounded-md px-1.5 text-xs',
-					columnSort[col.id] && 'text-primary bg-primary/10'
-				)}
-				title={m.sort_column({ value1: SORTS[sort] })}
-				aria-label={m.sort_column_2({ value1: col.name })}
-			>
-				<ArrowDownUp class="size-3.5" />
-				{#if columnSort[col.id]}<span class="max-w-20 truncate">{SORTS[sort]}</span>{/if}
-			</DropdownMenu.Trigger>
+			<Hint text={m.sort_column({ value1: SORTS[sort] })}>
+				{#snippet children(props)}
+					<DropdownMenu.Trigger
+						{...props}
+						class={cn(
+							'hover:bg-muted text-muted-foreground hover:text-foreground flex h-6 items-center gap-1 rounded-md px-1.5 text-xs',
+							columnSort[col.id] && 'text-primary bg-primary/10'
+						)}
+						aria-label={m.sort_column_2({ value1: col.name })}
+					>
+						<ArrowDownUp class="size-3.5" />
+						{#if columnSort[col.id]}<span class="max-w-20 truncate">{SORTS[sort]}</span>{/if}
+					</DropdownMenu.Trigger>
+				{/snippet}
+			</Hint>
 			<DropdownMenu.Content align="end" class="w-52">
 				<DropdownMenu.Label>{m.sort_column_3({ value1: col.name })}</DropdownMenu.Label>
 				<DropdownMenu.RadioGroup
@@ -438,15 +443,19 @@
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 		{#if lane}
-			<Button
-				variant="ghost"
-				size="icon-xs"
-				title={m.add_ticket()}
-				aria-label={m.add_ticket()}
-				onclick={() => ((quickCell = `${lane.key}|${col.id}`), (quickTitle = ''))}
-			>
-				<Plus />
-			</Button>
+			<Hint text={m.add_ticket()}>
+				{#snippet children(props)}
+					<Button
+						{...props}
+						variant="ghost"
+						size="icon-xs"
+						aria-label={m.add_ticket()}
+						onclick={() => ((quickCell = `${lane.key}|${col.id}`), (quickTitle = ''))}
+					>
+						<Plus />
+					</Button>
+				{/snippet}
+			</Hint>
 		{/if}
 	</header>
 {/snippet}
@@ -556,25 +565,33 @@
 	<Label class="ml-1 font-normal"><Checkbox bind:checked={showSubtasks} /> {m.show_subtasks()}</Label>
 	<span class="grow"></span>
 	<Select.Root type="single" value={groupBy} onValueChange={(v) => (groupBy = v as Group)}>
-		<Select.Trigger class="w-44" title={m.group_swimlanes()}>
-			<span class="flex items-center gap-2"
-				><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">{m.group()}</span>{GROUPS[
-					groupBy
-				]}</span
-			>
-		</Select.Trigger>
+		<Hint text={m.group_swimlanes()}>
+			{#snippet children(props)}
+				<Select.Trigger {...props} class="w-44">
+					<span class="flex items-center gap-2"
+						><Rows3 class="text-muted-foreground" /><span class="text-muted-foreground">{m.group()}</span>{GROUPS[
+							groupBy
+						]}</span
+					>
+				</Select.Trigger>
+			{/snippet}
+		</Hint>
 		<Select.Content>
 			{#each Object.entries(GROUPS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>
 	</Select.Root>
 	<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
-		<Select.Trigger class="w-72" title={m.sort_all_columns()}>
-			<span class="flex items-center gap-2"
-				><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">{m.sort()}</span>{SORTS[
-					sortBy
-				]}</span
-			>
-		</Select.Trigger>
+		<Hint text={m.sort_all_columns()}>
+			{#snippet children(props)}
+				<Select.Trigger {...props} class="w-72">
+					<span class="flex items-center gap-2"
+						><ArrowDownUp class="text-muted-foreground" /><span class="text-muted-foreground">{m.sort()}</span>{SORTS[
+							sortBy
+						]}</span
+					>
+				</Select.Trigger>
+			{/snippet}
+		</Hint>
 		<Select.Content>
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>

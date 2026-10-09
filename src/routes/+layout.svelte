@@ -19,6 +19,7 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
+	import Inbox from '@lucide/svelte/icons/inbox';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -31,15 +32,18 @@
 		document.documentElement.dataset.hydrated = '';
 	});
 
-	const links = [
-		{
-			href: '/',
-			label: m.projects(),
-			icon: FolderKanban,
-			match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
-		},
-		{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings') }
-	];
+	const links = $derived(
+		[
+			{
+				href: '/',
+				label: m.projects(),
+				icon: FolderKanban,
+				match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
+			},
+			{ href: '/settings/forms', label: m.forms(), icon: Inbox, match: (p: string) => p.startsWith('/settings/forms') },
+			{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') }
+		].filter((link) => link.href !== '/settings/forms' || data.user?.role === 'admin')
+	);
 
 	// In Projekten (und deren Tickets) wird die Projektfarbe zur Primärfarbe.
 	// Der Wrapper sorgt für das erste Rendern, <html> für Dialoge/Popover, die in <body> gerendert werden.

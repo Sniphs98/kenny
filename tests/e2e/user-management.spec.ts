@@ -30,6 +30,17 @@ test('project roles protect every resource and do not allow signup to elevate pr
 	const outsider = await register(browser, baseURL!, 'Access outsider');
 	try {
 		expect((await member.context.request.get('/api/v1/admin/users')).status()).toBe(403);
+		expect((await member.context.request.get('/settings/forms')).status()).toBe(403);
+		for (const action of ['save', 'regenerate', 'delete']) {
+			expect(
+				(
+					await member.context.request.post(`/settings/forms?/${action}`, {
+						headers: { origin: baseURL! },
+						form: { id: '1' }
+					})
+				).status()
+			).toBe(403);
+		}
 		await member.context.request.post('/api/auth/update-user', {
 			headers: { origin: baseURL! },
 			data: { role: 'admin' }

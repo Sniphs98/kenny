@@ -9,6 +9,28 @@ Project and ticket management with Kanban boards and Gantt charts.
 - **REST API** for creating, updating, and completing tickets using personal API tokens
 - **User accounts** with [Better Auth](https://better-auth.com) (email/password authentication and optional Microsoft sign-in)
 
+## Screenshots
+
+The screenshots show the English interface with sample project data.
+
+### Project overview
+
+Track ticket counts and progress across projects.
+
+![Project overview showing three projects and their progress](docs/screenshots/projects.png)
+
+### Kanban board
+
+Organize tickets by status, with priorities, assignees, tags, and subtasks visible on each card.
+
+![Kanban board with tickets organized into To do, In progress, Review, and Done columns](docs/screenshots/kanban.png)
+
+### Gantt timeline
+
+Plan ticket schedules and see dependencies and scheduling conflicts.
+
+![Gantt timeline showing scheduled tickets, dependency arrows, and a scheduling conflict](docs/screenshots/gantt.png)
+
 ## Tech stack
 
 SvelteKit 2 (Svelte 5), TypeScript, SQLite through `better-sqlite3`, Drizzle ORM, Better Auth, and `adapter-node`.

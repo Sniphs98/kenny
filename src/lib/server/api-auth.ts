@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from './db';
 import { apiToken, user } from './db/schema';
+import { requireActiveUser } from './services/access';
 import { ApiError } from './errors';
 
 const TOKEN_PREFIX = 'kny_';
@@ -12,6 +13,7 @@ export function hashToken(token: string) {
 }
 
 export async function createApiToken(userId: string, name: string) {
+	requireActiveUser(userId);
 	const token = TOKEN_PREFIX + randomBytes(24).toString('base64url');
 	const [row] = await db
 		.insert(apiToken)
@@ -25,7 +27,7 @@ export async function createApiToken(userId: string, name: string) {
  * oder über einen Header "Authorization: Bearer kny_...".
  */
 export async function requireApiUser(event: RequestEvent) {
-	if (event.locals.user) return event.locals.user;
+	if (event.locals.user) return requireActiveUser(event.locals.user.id);
 
 	const header = event.request.headers.get('authorization') ?? '';
 	const match = header.match(/^Bearer\s+(\S+)$/i);
@@ -39,5 +41,5 @@ export async function requireApiUser(event: RequestEvent) {
 	await db.update(apiToken).set({ lastUsedAt: new Date() }).where(eq(apiToken.id, row.id));
 	const u = await db.query.user.findFirst({ where: eq(user.id, row.userId) });
 	if (!u) throw new ApiError(401, 'Benutzer zum Token existiert nicht mehr.');
-	return u;
+	return requireActiveUser(u.id);
 }

@@ -20,6 +20,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
 	import KeyRound from '@lucide/svelte/icons/key-round';
+	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
@@ -106,6 +107,9 @@
 						<DropdownMenu.Separator />
 						<LanguageSwitcher />
 						<SoundToggle />
+						{#if data.user.role === 'admin'}<DropdownMenu.Item onSelect={() => goto('/admin/users')}
+								><Users />{m.um_users()}</DropdownMenu.Item
+							>{/if}
 						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
 							<KeyRound />
 							{m.api_tokens()}

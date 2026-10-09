@@ -3,8 +3,8 @@ import { apiHandler, readJson } from '$lib/server/api';
 import { deleteTicket, getTicketDetail, updateTicket } from '$lib/server/services/tickets';
 
 export const GET = apiHandler(
-	(e) => {
-		const { ticket, parent, subtasks, links, attachments, assignee } = getTicketDetail(e.params.ticket!);
+	(e, user) => {
+		const { ticket, parent, subtasks, links, attachments, assignee } = getTicketDetail(e.params.ticket!, user.id);
 		return { ...ticket, parent, subtasks, links, attachments, assignee };
 	},
 	{ responseSchema: ticketDetailSchema }

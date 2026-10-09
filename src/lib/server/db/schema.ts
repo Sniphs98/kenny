@@ -175,3 +175,19 @@ export type Ticket = typeof ticket.$inferSelect;
 export type TicketLink = typeof ticketLink.$inferSelect;
 export type Tag = typeof tag.$inferSelect;
 export type Attachment = typeof attachment.$inferSelect;
+
+/** Explicit access grants, independent of the authentication provider. */
+export const projectMember = sqliteTable(
+	'project_member',
+	{
+		projectId: integer('project_id')
+			.notNull()
+			.references(() => project.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		role: text('role', { enum: ['admin', 'member', 'reader'] }).notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.projectId, t.userId] }), index('project_member_user_idx').on(t.userId)]
+);

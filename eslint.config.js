@@ -39,7 +39,11 @@ export default ts.config(
 			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
 		}
 	},
-	{ files: ['**/*.svelte'], languageOptions: { globals: { App: 'readonly' }, parserOptions: { parser: ts.parser } } },
+	{
+		// *.svelte.ts (Runes in Modulen) laufen ebenfalls über den Svelte-Parser und brauchen den TS-Parser
+		files: ['**/*.svelte', '**/*.svelte.ts'],
+		languageOptions: { globals: { App: 'readonly' }, parserOptions: { parser: ts.parser } }
+	},
 	{
 		files: ['src/lib/contracts/**/*.ts'],
 		rules: {

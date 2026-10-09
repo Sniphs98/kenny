@@ -15,6 +15,7 @@ import {
 	type Ticket
 } from '../db/schema';
 import { ApiError } from '../errors';
+import { publish } from '../live';
 import { getColumns, getProject } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
@@ -305,7 +306,9 @@ export function createTicket(projectRef: string | number, rawInput: unknown, use
 
 		return t;
 	});
-	return getTicket(created.id);
+	const result = getTicket(created.id);
+	publish(p.id, { ticket: result.key });
+	return result;
 }
 
 export function updateTicket(ref: string | number, rawInput: unknown) {
@@ -338,7 +341,9 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 			moveTicket(tx, t, col, optInt(input.position, 'position'));
 		}
 	});
-	return getTicket(t.id);
+	const result = getTicket(t.id);
+	publish(t.projectId, { ticket: result.key });
+	return result;
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */
@@ -368,7 +373,9 @@ export function closeTicket(ref: string | number) {
 	const col = getColumns(t.projectId).find((c) => c.isDone);
 	if (!col) throw new ApiError(409, 'Das Projekt hat keine Spalte, die als "erledigt" markiert ist.');
 	db.transaction((tx) => moveTicket(tx, t, col, null));
-	return getTicket(t.id);
+	const result = getTicket(t.id);
+	publish(t.projectId, { ticket: result.key });
+	return result;
 }
 
 export function reopenTicket(ref: string | number) {
@@ -376,7 +383,9 @@ export function reopenTicket(ref: string | number) {
 	const col = getColumns(t.projectId).find((c) => !c.isDone);
 	if (!col) throw new ApiError(409, 'Das Projekt hat keine offene Spalte.');
 	db.transaction((tx) => moveTicket(tx, t, col, null));
-	return getTicket(t.id);
+	const result = getTicket(t.id);
+	publish(t.projectId, { ticket: result.key });
+	return result;
 }
 
 export async function deleteTicket(ref: string | number) {
@@ -384,6 +393,7 @@ export async function deleteTicket(ref: string | number) {
 	// Anhänge von Ticket und Unteraufgaben merken, die Zeilen löscht die Datenbank per Cascade
 	const files = storageKeysForTickets([t.id]);
 	db.delete(ticket).where(eq(ticket.id, t.id)).run();
+	publish(t.projectId);
 	await removeFiles(files);
 }
 
@@ -443,6 +453,7 @@ export function addLink(ref: string | number, rawInput: unknown) {
 		if (type === 'blocks') return insertLink(tx, resolveTicket(targetRef, tx), String(t.id), 'depends_on');
 		return insertLink(tx, t, targetRef, type);
 	});
+	publish(t.projectId);
 	return link;
 }
 
@@ -453,6 +464,7 @@ export function removeLink(ref: string | number, linkId: number) {
 		.where(and(eq(ticketLink.id, linkId), or(eq(ticketLink.sourceId, t.id), eq(ticketLink.targetId, t.id))))
 		.run();
 	if (res.changes === 0) throw new ApiError(404, 'Verknüpfung nicht gefunden.');
+	publish(t.projectId);
 }
 
 /** Alle Abhängigkeiten innerhalb eines Projekts (für die Pfeile im Gantt-Chart) */

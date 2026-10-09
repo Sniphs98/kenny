@@ -25,7 +25,7 @@
 	import Archive from '@lucide/svelte/icons/archive';
 	import CalendarX from '@lucide/svelte/icons/calendar-x';
 	import X from '@lucide/svelte/icons/x';
-	import { tick, type Snippet } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	type Item = TicketListItem;
@@ -80,7 +80,11 @@
 	// Lokale Kopie, damit Ziehen von Balken sofort sichtbar ist
 	let tickets = $state<Item[]>([]);
 	$effect(() => {
-		tickets = source.map((t) => ({ ...t }));
+		const next = source;
+		// Während des Ziehens kein Live-Update übernehmen, sonst folgt der Balken nicht mehr der Maus.
+		// untrack: Das Ende des Ziehens allein löst kein Zurücksetzen aus (erst die neuen Daten).
+		if (untrack(() => dragging)) return;
+		tickets = next.map((t) => ({ ...t }));
 	});
 
 	/** Tickets mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */

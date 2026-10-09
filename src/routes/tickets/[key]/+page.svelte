@@ -1,4 +1,5 @@
 <script lang="ts">
+	import LiveUpdates from '$lib/components/LiveUpdates.svelte';
 	import TicketView from '$lib/components/TicketView.svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb';
 
@@ -26,5 +27,10 @@
 		</Breadcrumb.List>
 	</Breadcrumb.Root>
 
-	<TicketView {data} />
+	<!-- Neu aufbauen bei anderem Ticket, damit keine ungespeicherten Eingaben mitwandern -->
+	{#key data.ticket.id}
+		<TicketView {data} />
+	{/key}
 </div>
+
+<LiveUpdates project={data.project.key} />

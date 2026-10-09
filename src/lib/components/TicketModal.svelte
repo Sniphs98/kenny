@@ -6,6 +6,7 @@
 	import Hint from '$lib/components/Hint.svelte';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import { LIVE_EVENT } from '$lib/live-client';
 	import { openTicket } from '$lib/ticket-modal';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 
@@ -27,6 +28,22 @@
 			replaceState('', { ticket: result.data as App.PageState['ticket'] });
 		}
 	}
+
+	/** Nur das Ticket im Modal neu laden; ist es inzwischen gelöscht, Modal schließen */
+	async function reloadTicket() {
+		if (!data) return;
+		const result = await preloadData(`/tickets/${data.ticket.key}`);
+		if (result.type === 'loaded' && result.status === 200)
+			replaceState('', { ticket: result.data as App.PageState['ticket'] });
+		else if (result.type === 'loaded' && result.status === 404) close();
+	}
+
+	// Live-Update: der Hintergrund ist schon neu geladen (LiveUpdates), hier das offene Ticket
+	$effect(() => {
+		const onLive = () => void reloadTicket();
+		window.addEventListener(LIVE_EVENT, onLive);
+		return () => window.removeEventListener(LIVE_EVENT, onLive);
+	});
 
 	/** Links auf andere Tickets im Modal öffnen statt die Seite zu wechseln */
 	function onclick(e: MouseEvent) {
@@ -63,14 +80,17 @@
 					{/snippet}
 				</Hint>
 			</Dialog.Header>
-			<TicketView
-				{data}
-				{refresh}
-				onDeleted={async () => {
-					close();
-					await invalidateAll();
-				}}
-			/>
+			<!-- Neu aufbauen bei anderem Ticket, damit keine ungespeicherten Eingaben mitwandern -->
+			{#key data.ticket.id}
+				<TicketView
+					{data}
+					{refresh}
+					onDeleted={async () => {
+						close();
+						await invalidateAll();
+					}}
+				/>
+			{/key}
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

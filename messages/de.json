@@ -316,5 +316,7 @@
 	"search_ticket_number_or_title": "Nummer oder Titel suchen…",
 	"no_ticket_found": "Kein Ticket gefunden.",
 	"system_language": "Systemsprache",
-	"send_multipart_or_filename": "Entweder multipart/form-data mit Feld \"file\" oder ?filename=… mit der Datei als Body senden."
+	"send_multipart_or_filename": "Entweder multipart/form-data mit Feld \"file\" oder ?filename=… mit der Datei als Body senden.",
+	"project_was_deleted": "Dieses Projekt wurde gelöscht.",
+	"live_updates_events": "Live-Updates als Server-Sent Events (Ereignis \"change\"; ohne project: alle Projekte)"
 }

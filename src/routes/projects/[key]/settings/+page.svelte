@@ -14,6 +14,8 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { cn } from '$lib/utils';
+	import { Synced } from '$lib/synced.svelte';
+	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -21,14 +23,13 @@
 
 	let { data } = $props();
 
-	let name = $state('');
-	let description = $state('');
-	let color = $state('');
-	$effect(() => {
-		name = data.project.name;
-		description = data.project.description;
-		color = data.project.color;
-	});
+	// Lokale Kopien; Live-Updates (z. B. Ticketänderungen anderer) überschreiben keine ungespeicherten Eingaben
+	const name = new Synced(untrack(() => data.project.name));
+	const description = new Synced(untrack(() => data.project.description));
+	const color = new Synced(untrack(() => data.project.color));
+	$effect(() => name.update(data.project.name));
+	$effect(() => description.update(data.project.description));
+	$effect(() => color.update(data.project.color));
 	let newColumn = $state('');
 	let newTag = $state('');
 	let confirmDelete = $state(false);
@@ -47,7 +48,10 @@
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
-		await run(() => updateProject(data.project.key, { name, description, color }), m.project_saved());
+		await run(
+			() => updateProject(data.project.key, { name: name.value, description: description.value, color: color.value }),
+			m.project_saved()
+		);
 	}
 
 	// --- Spalten per Drag & Drop sortieren (nur am Griff, damit die Eingabefelder bedienbar bleiben) ---
@@ -133,15 +137,15 @@
 			<form class="grid gap-4" onsubmit={save}>
 				<div class="grid gap-2">
 					<Label for="name">{m.name()}</Label>
-					<Input id="name" bind:value={name} required />
+					<Input id="name" bind:value={name.value} required />
 				</div>
 				<div class="grid gap-2">
 					<Label>{m.color()}</Label>
-					<ColorPicker bind:value={color} />
+					<ColorPicker bind:value={color.value} />
 				</div>
 				<div class="grid gap-2">
 					<Label for="desc">{m.description()}</Label>
-					<Textarea id="desc" bind:value={description} rows={3} />
+					<Textarea id="desc" bind:value={description.value} rows={3} />
 				</div>
 				<div><Button type="submit">{m.save()}</Button></div>
 			</form>

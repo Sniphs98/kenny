@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { tag, ticketTag, type Tag } from '../db/schema';
 import { ApiError } from '../errors';
+import { publish } from '../live';
 import { getProject } from './projects';
 import { optStr, str } from './validate';
 
@@ -69,7 +70,11 @@ export function createTag(projectRef: string | number, rawInput: unknown) {
 	const p = getProject(projectRef);
 	const name = str(input.name, 'name', { max: 40 });
 	if (findByName(db, p.id, name)) throw new ApiError(409, `Tag "${name}" gibt es bereits.`);
-	return presentTag(insertTag(db, p.id, name, input.color !== undefined ? checkColor(input.color) : undefined));
+	const created = presentTag(
+		insertTag(db, p.id, name, input.color !== undefined ? checkColor(input.color) : undefined)
+	);
+	publish(p.id);
+	return created;
 }
 
 export function updateTag(projectRef: string | number, tagId: number, rawInput: unknown) {
@@ -84,6 +89,7 @@ export function updateTag(projectRef: string | number, tagId: number, rawInput: 
 	}
 	if (input.color !== undefined) patch.color = checkColor(input.color);
 	if (Object.keys(patch).length) db.update(tag).set(patch).where(eq(tag.id, t.id)).run();
+	publish(p.id);
 	return presentTag(getTag(p.id, t.id));
 }
 
@@ -92,6 +98,7 @@ export function deleteTag(projectRef: string | number, tagId: number) {
 	db.delete(tag)
 		.where(eq(tag.id, getTag(p.id, tagId).id))
 		.run();
+	publish(p.id);
 }
 
 export function insertDefaultTags(tx: Tx, projectId: number) {

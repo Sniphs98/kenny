@@ -1,4 +1,5 @@
 import { localizeError, intlLocale } from '$lib/i18n';
+import { clientId, LIVE_ORIGIN_HEADER } from '$lib/live-client';
 import { m } from '$lib/paraglide/messages.js';
 import { z } from 'zod';
 import {
@@ -21,7 +22,11 @@ const errorSchema = z.object({ error: z.string() });
 export async function api(method: string, path: string, body?: unknown): Promise<unknown> {
 	const res = await fetch(`/api/v1${path}`, {
 		method,
-		headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+		// Tab-Kennung: Live-Updates über die eigene Änderung ignoriert dieser Tab
+		headers: {
+			[LIVE_ORIGIN_HEADER]: clientId,
+			...(body !== undefined ? { 'content-type': 'application/json' } : {})
+		},
 		body: body !== undefined ? JSON.stringify(body) : undefined
 	});
 	const data = await res.json().catch(() => ({}));
@@ -51,7 +56,7 @@ export async function getTicket(ticket: string | number) {
 export async function upload(path: string, files: File[]): Promise<unknown> {
 	const body = new FormData();
 	for (const f of files) body.append('file', f);
-	const res = await fetch(`/api/v1${path}`, { method: 'POST', body });
+	const res = await fetch(`/api/v1${path}`, { method: 'POST', body, headers: { [LIVE_ORIGIN_HEADER]: clientId } });
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok)
 		throw new Error(

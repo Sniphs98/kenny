@@ -107,31 +107,32 @@ Basis-URL: `/api/v1`. Schreibende JSON-Endpunkte validieren Eingaben mit Zod; un
 
 Tickets können per ID (`42`) oder Schlüssel (`WEB-12`) angesprochen werden, Projekte per ID oder Kürzel.
 
-| Methode          | Pfad                                          | Beschreibung                                                                  |
-| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
-| GET              | `/me`                                         | Eigener Benutzer                                                              |
-| GET              | `/users`                                      | Alle Benutzer                                                                 |
-| GET              | `/projects`                                   | Projekte mit Ticketzählern                                                    |
-| POST             | `/projects`                                   | Projekt anlegen: `{name, key?, description?, color?}`                         |
-| GET/PATCH/DELETE | `/projects/:projekt`                          | Projekt lesen (inkl. Spalten), ändern, löschen                                |
-| GET/POST         | `/projects/:projekt/columns`                  | Spalten lesen / anlegen `{name, isDone?, isBacklog?}`                         |
-| PATCH/DELETE     | `/projects/:projekt/columns/:id`              | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen             |
-| GET/POST         | `/projects/:projekt/tags`                     | Tags lesen / anlegen `{name, color?}`                                         |
-| PATCH/DELETE     | `/projects/:projekt/tags/:id`                 | Tag ändern `{name?, color?}` / löschen                                        |
-| GET              | `/projects/:projekt/tickets?closed=false`     | Tickets auflisten                                                             |
-| POST             | `/projects/:projekt/tickets`                  | Ticket anlegen                                                                |
-| GET              | `/tickets/:ticket`                            | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen                      |
-| PATCH            | `/tickets/:ticket`                            | Ticket ändern                                                                 |
-| DELETE           | `/tickets/:ticket`                            | Ticket löschen (inkl. Unteraufgaben)                                          |
-| POST             | `/tickets/:ticket/close`                      | Abschließen (verschiebt in die erste „Erledigt“-Spalte)                       |
-| POST             | `/tickets/:ticket/reopen`                     | Wieder öffnen                                                                 |
-| POST             | `/tickets/:ticket/subtasks`                   | Unteraufgabe anlegen (Body wie Ticket anlegen)                                |
-| POST             | `/tickets/:ticket/links`                      | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`  |
-| DELETE           | `/tickets/:ticket/links/:id`                  | Verknüpfung entfernen                                                         |
-| GET              | `/tickets/:ticket/attachments`                | Anhänge auflisten                                                             |
-| POST             | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`) |
-| GET              | `/attachments/:id`                            | Anhang herunterladen (`?download` erzwingt Download)                          |
-| DELETE           | `/attachments/:id`                            | Anhang löschen                                                                |
+| Methode          | Pfad                                          | Beschreibung                                                                     |
+| ---------------- | --------------------------------------------- | -------------------------------------------------------------------------------- |
+| GET              | `/me`                                         | Eigener Benutzer                                                                 |
+| GET              | `/events?project=:projekt`                    | Live-Updates als Server-Sent Events (ohne `project`: alle Projekte), siehe unten |
+| GET              | `/users`                                      | Alle Benutzer                                                                    |
+| GET              | `/projects`                                   | Projekte mit Ticketzählern                                                       |
+| POST             | `/projects`                                   | Projekt anlegen: `{name, key?, description?, color?}`                            |
+| GET/PATCH/DELETE | `/projects/:projekt`                          | Projekt lesen (inkl. Spalten), ändern, löschen                                   |
+| GET/POST         | `/projects/:projekt/columns`                  | Spalten lesen / anlegen `{name, isDone?, isBacklog?}`                            |
+| PATCH/DELETE     | `/projects/:projekt/columns/:id`              | Spalte ändern `{name?, isDone?, isBacklog?, position?}` / löschen                |
+| GET/POST         | `/projects/:projekt/tags`                     | Tags lesen / anlegen `{name, color?}`                                            |
+| PATCH/DELETE     | `/projects/:projekt/tags/:id`                 | Tag ändern `{name?, color?}` / löschen                                           |
+| GET              | `/projects/:projekt/tickets?closed=false`     | Tickets auflisten                                                                |
+| POST             | `/projects/:projekt/tickets`                  | Ticket anlegen                                                                   |
+| GET              | `/tickets/:ticket`                            | Ticket mit Unteraufgaben, Elternticket und Verknüpfungen                         |
+| PATCH            | `/tickets/:ticket`                            | Ticket ändern                                                                    |
+| DELETE           | `/tickets/:ticket`                            | Ticket löschen (inkl. Unteraufgaben)                                             |
+| POST             | `/tickets/:ticket/close`                      | Abschließen (verschiebt in die erste „Erledigt“-Spalte)                          |
+| POST             | `/tickets/:ticket/reopen`                     | Wieder öffnen                                                                    |
+| POST             | `/tickets/:ticket/subtasks`                   | Unteraufgabe anlegen (Body wie Ticket anlegen)                                   |
+| POST             | `/tickets/:ticket/links`                      | Verknüpfen: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`     |
+| DELETE           | `/tickets/:ticket/links/:id`                  | Verknüpfung entfernen                                                            |
+| GET              | `/tickets/:ticket/attachments`                | Anhänge auflisten                                                                |
+| POST             | `/tickets/:ticket/attachments?filename=x.png` | Anhang hochladen, Datei als Body (oder `multipart/form-data` mit Feld `file`)    |
+| GET              | `/attachments/:id`                            | Anhang herunterladen (`?download` erzwingt Download)                             |
+| DELETE           | `/attachments/:id`                            | Anhang löschen                                                                   |
 
 Felder beim Anlegen/Ändern eines Tickets (alle außer `title` optional):
 
@@ -164,6 +165,15 @@ curl -X POST http://localhost:5173/api/v1/tickets/WEB-12/close \
 curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=screenshot.png" \
   -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: image/png" --data-binary @screenshot.png
 ```
+
+### Live-Updates
+
+Board, Gantt, Projektübersicht, Ticket-Seite und ein offenes Ticket-Modal aktualisieren sich ohne Neuladen, wenn jemand anderes etwas ändert, egal ob über die Oberfläche, die REST-API oder ein Skript mit API-Token. Dazu hält der Browser eine Verbindung zu `GET /api/v1/events` (Server-Sent Events) offen; jede Änderung eines Projekts wird als Ereignis `change` mit `{ projectId, ticket?, kind, origin? }` gemeldet, alle 25 Sekunden kommt ein Lebenszeichen.
+
+- Gemeldet wird in den Services nach erfolgreichem Speichern (`src/lib/server/live.ts`), damit API, Formulare und Oberfläche gleich behandelt werden.
+- Jeder Browser-Tab schickt bei Änderungen den Header `x-kenny-client` mit und ignoriert Meldungen über seine eigenen Änderungen.
+- Ungespeicherte Eingaben (Titel, Beschreibung, Projekteinstellungen, Tag-Farbe) und ein laufendes Ziehen im Gantt werden durch Live-Updates nicht überschrieben (`src/lib/synced.svelte.ts`).
+- Einschränkung: Die Meldungen werden im Speicher des Node-Prozesses verteilt. Laufen mehrere Instanzen hinter einem Load Balancer, braucht es einen gemeinsamen Kanal (z. B. Postgres `LISTEN/NOTIFY` oder Redis). Ein Reverse Proxy darf `text/event-stream` nicht puffern; Kenny setzt dafür `X-Accel-Buffering: no`.
 
 ## Microsoft-Anbindung
 

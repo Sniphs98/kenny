@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { PRIORITY_LABELS } from '$lib/api';
 	import { INTAKE_MAX_FILES, PRIORITIES, intakeSubmissionSchema, type IntakeFieldMode } from '$lib/contracts';
 	import { localizeError } from '$lib/i18n';
+	import { EMBED_RESIZE_MESSAGE } from '$lib/embed';
 	import { accentStyle, accentVars } from '$lib/theme';
+	import { cn } from '$lib/utils';
 	import { m } from '$lib/paraglide/messages.js';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import FileDrop from '$lib/components/FileDrop.svelte';
@@ -61,6 +64,19 @@
 		return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
 	});
 
+	/** Eingebettet per iframe (?embed): ohne Seitenhintergrund, Höhe an die einbettende Seite melden */
+	const embedded = $derived(page.url.searchParams.has('embed'));
+	let root = $state<HTMLElement>();
+	$effect(() => {
+		if (!embedded || !root || window.parent === window) return;
+		const el = root;
+		const post = () =>
+			window.parent.postMessage({ type: EMBED_RESIZE_MESSAGE, height: Math.ceil(el.offsetHeight) }, '*');
+		const observer = new ResizeObserver(post);
+		observer.observe(el);
+		return () => observer.disconnect();
+	});
+
 	function toggleTag(name: string, on: boolean) {
 		$form.tags = on ? [...$form.tags, name] : $form.tags.filter((t) => t !== name);
 	}
@@ -77,21 +93,33 @@
 
 <svelte:head><title>{intake.name} · Kenny</title></svelte:head>
 
-<!-- Drei Zeilen: Kopf über der Karte, die Karte selbst sitzt in der Bildschirmmitte -->
+<!-- Drei Zeilen: Kopf über der Karte, die Karte selbst sitzt in der Bildschirmmitte.
+     Eingebettet: nur Titel und Karte, so hoch wie der Inhalt. -->
 <div
-	class="grid min-h-screen grid-rows-[1fr_auto_1fr] justify-items-center bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4"
+	bind:this={root}
+	class={cn(
+		'grid justify-items-center',
+		embedded
+			? 'p-1'
+			: 'min-h-screen grid-rows-[1fr_auto_1fr] bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4'
+	)}
 	style={accentStyle(accent)}
+	data-embedded={embedded || undefined}
 >
 	<div class="contents">
-		<div class="mb-6 flex w-full max-w-lg flex-col items-center justify-end self-end text-center">
-			<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
-				<Inbox class="size-5" />
-			</span>
-			<h1 class="mt-4 text-2xl font-semibold tracking-tight">{intake.name}</h1>
-			<p class="text-muted-foreground mt-1 text-sm">
-				{#if data.signedInAs}{m.signed_in_as({ name: data.signedInAs })}{:else}{m.submit_ticket()}{/if}
-			</p>
-		</div>
+		{#if embedded}
+			<h1 class="mb-3 w-full max-w-lg text-lg font-semibold tracking-tight">{intake.name}</h1>
+		{:else}
+			<div class="mb-6 flex w-full max-w-lg flex-col items-center justify-end self-end text-center">
+				<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
+					<Inbox class="size-5" />
+				</span>
+				<h1 class="mt-4 text-2xl font-semibold tracking-tight">{intake.name}</h1>
+				<p class="text-muted-foreground mt-1 text-sm">
+					{#if data.signedInAs}{m.signed_in_as({ name: data.signedInAs })}{:else}{m.submit_ticket()}{/if}
+				</p>
+			</div>
+		{/if}
 
 		<Card.Root class="w-full max-w-lg">
 			<Card.Content>

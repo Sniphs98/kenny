@@ -250,3 +250,39 @@ test('Einreichungsseite: Karte mittig, Primärfarbe vom gewählten Projekt', asy
 	await guest.getByRole('option', { name: `Grün ${b.key}` }).click();
 	await expect(submit).toHaveCSS('background-color', 'rgb(21, 128, 61)');
 });
+
+test('Einbettungscode: Formular auf einer fremden Seite einreichen, App selbst nicht einbettbar', async ({
+	page,
+	browser,
+	baseURL,
+	request
+}) => {
+	const p = await createProject(request, 'Einbetten');
+	const name = `Eingebettet ${p.key}`;
+	await createIntakeForm(page, name, { projects: [`Einbetten ${p.key}`], email: 'Ausgeblendet' });
+
+	await card(page, name).getByRole('button', { name: 'Einbetten' }).click();
+	const code = await page.getByRole('dialog').getByRole('textbox', { name: 'Einbettungscode' }).inputValue();
+	expect(code).toContain('?embed');
+
+	// Nur die Formularseite darf in fremden Seiten erscheinen
+	const app = await request.get('/settings/forms');
+	expect(app.headers()['x-frame-options']).toBe('DENY');
+	expect(app.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
+	const formPage = await request.get(new URL(code.match(/src="([^"]+)"/)![1]).pathname);
+	expect(formPage.headers()['x-frame-options']).toBeUndefined();
+
+	// Fremde Webseite mit dem kopierten Code
+	const host = await anonymous(browser, baseURL);
+	await host.setContent(`<!doctype html><html><body><h1>Meine Seite</h1>${code}</body></html>`);
+	const iframe = host.locator('iframe');
+	const frame = host.frameLocator('iframe');
+	await expect(frame.getByRole('heading', { name })).toBeVisible();
+	// Höhe passt sich dem Inhalt an (Standard ohne Skript: 640 px)
+	await expect.poll(async () => (await iframe.boundingBox())?.height).not.toBe(640);
+
+	await frame.getByLabel('Titel').fill('Von der Webseite');
+	await frame.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(frame.getByRole('status')).toContainText(`${p.key}-1`);
+	expect((await getTicket(request, `${p.key}-1`)).title).toBe('Von der Webseite');
+});

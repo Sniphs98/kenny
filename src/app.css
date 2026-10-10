@@ -129,6 +129,11 @@
 	body {
 		@apply bg-background text-foreground font-sans antialiased;
 	}
+	/* Eingebettete Formulare (iframe): die Webseite drumherum bestimmt den Hintergrund */
+	html:has([data-embedded]),
+	html:has([data-embedded]) body {
+		background: transparent;
+	}
 }
 
 /* Prioritäts-Punkte (Board, Gantt, Ticket) */

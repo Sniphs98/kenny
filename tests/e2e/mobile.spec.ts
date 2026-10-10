@@ -61,6 +61,9 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 	await expect.poll(async () => (await getTicket(request, t.key)).title).toBe('Saved on mobile');
 	const dates = dialog.locator('input[type=date]');
 	await expect(dates).toHaveCount(2);
+	// Native date fields are named by their visible labels
+	await expect(dialog.getByLabel('Start', { exact: true })).toHaveAttribute('type', 'date');
+	await expect(dialog.getByLabel('Fällig', { exact: true })).toHaveAttribute('type', 'date');
 	await dates.first().fill(day(1));
 	await expect.poll(async () => (await getTicket(request, t.key)).startDate).toBe(day(1));
 	await expect(dates.last()).toHaveAttribute('min', day(1));
@@ -69,6 +72,11 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 	await dates.last().fill(day(0));
 	await expect(dates.last()).toHaveValue(day(3));
 	expect((await getTicket(request, t.key)).dueDate).toBe(day(3));
+	// A start after the due date is rejected by the server; the field shows the stored date again
+	await dates.first().fill(day(5));
+	await expect(page.getByText('Startdatum liegt nach dem Fälligkeitsdatum.')).toBeVisible();
+	await expect(dates.first()).toHaveValue(day(1));
+	expect((await getTicket(request, t.key)).startDate).toBe(day(1));
 	await dialog.getByRole('button', { name: 'Schließen', exact: true }).tap();
 	await expect(dialog).toBeHidden();
 	await page.getByRole('navigation', { name: 'Projektnavigation' }).getByRole('link', { name: 'Gantt' }).tap();

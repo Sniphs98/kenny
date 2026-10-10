@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { intlLocale } from '$lib/i18n';
 	import { m } from '$lib/paraglide/messages.js';
@@ -20,7 +21,8 @@
 	}: {
 		/** Datum als YYYY-MM-DD oder null */
 		value: string | null;
-		onchange: (value: string | null) => void;
+		/** Darf ein Promise liefern (z.B. Speichern); danach zeigt das Feld wieder den tatsächlichen Wert */
+		onchange: (value: string | null) => unknown;
 		/** Frühestes wählbares Datum (YYYY-MM-DD), z.B. der Start bei „Fällig“ */
 		min?: string | null;
 		placeholder?: string;
@@ -63,15 +65,20 @@
 		{disabled}
 		value={value ?? ''}
 		min={min ?? undefined}
-		aria-label={placeholder}
+		aria-label={id ? undefined : placeholder}
 		class={cn('bg-background border-input h-11 w-full min-w-0 rounded-md border px-2.5', className)}
-		onchange={(e) => {
-			if (!e.currentTarget.validity.valid) {
-				e.currentTarget.reportValidity();
-				e.currentTarget.value = value ?? '';
+		onchange={async (e) => {
+			const input = e.currentTarget;
+			if (!input.validity.valid) {
+				input.reportValidity();
+				input.value = value ?? '';
 				return;
 			}
-			onchange(e.currentTarget.value || null);
+			// Lehnt der Server die Änderung ab (z.B. Start nach Fälligkeit), bleibt value unverändert;
+			// das native Feld hat den abgelehnten Wert aber schon übernommen und wird zurückgesetzt.
+			await onchange(input.value || null);
+			await tick();
+			input.value = value ?? '';
 		}}
 	/>
 {:else}

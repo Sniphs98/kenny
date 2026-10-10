@@ -19,6 +19,12 @@ test('Strg+K öffnet die Suche; Tickets finden und öffnen', async ({ page, requ
 	const trigger = page.locator('[data-command-trigger]');
 	await expect(trigger).toContainText('Strg K');
 	await expect(trigger).toHaveAttribute('aria-keyshortcuts', 'Control+K');
+	// Auf breiten Bildschirmen mittig in der Kopfzeile, breit und mit Abstand zur Navigation
+	const box = (await trigger.boundingBox())!;
+	const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!;
+	expect(Math.abs(box.x + box.width / 2 - page.viewportSize()!.width / 2)).toBeLessThan(2);
+	expect(box.width).toBeGreaterThanOrEqual(400);
+	expect(box.x).toBeGreaterThan(nav.x + nav.width);
 
 	await page.keyboard.press('Control+k');
 	await expect(palette(page)).toBeVisible();

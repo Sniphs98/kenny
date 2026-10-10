@@ -197,7 +197,9 @@
 	type="button"
 	class={cn(
 		'border-input bg-muted/40 text-muted-foreground hover:bg-muted flex h-8 w-60 items-center gap-2 rounded-lg border px-2.5 text-sm transition-colors',
-		'max-lg:w-auto max-lg:border-transparent max-lg:bg-transparent max-lg:px-2'
+		'max-lg:w-auto max-lg:border-transparent max-lg:bg-transparent max-lg:px-2',
+		// Ab 1280 px mittig in der Kopfzeile und breiter (gemessen: passt neben Navigation und langen Namen)
+		'xl:absolute xl:left-1/2 xl:h-9 xl:w-[26rem] xl:-translate-x-1/2'
 	)}
 	aria-keyshortcuts={mac ? 'Meta+K' : 'Control+K'}
 	aria-label={m.command_open()}

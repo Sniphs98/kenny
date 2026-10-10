@@ -134,6 +134,9 @@ Under **Forms** (`/settings/forms`) you can create links that let other people s
 - **One project or a choice:** A form with one project is a fixed link for that project. With several projects, the submitter picks the project.
 - **Sign-in:** Each form is either public or requires sign-in. Signed-in submissions are created as the signed-in user.
 - **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the ticket sidebar.
+- **Fields:** The title is always required. Description, priority, start, due date, tags and attachments can each be hidden, optional or required. Values for hidden fields are ignored.
+- **Tags:** Submitters can only pick existing tags of the chosen project. Optionally, a form allows only selected tags; deleted tags disappear from the selection automatically.
+- **Attachments:** Up to 5 files per submission, chosen, dragged in or pasted with Ctrl+V (screenshots). Submitters see a preview and can remove files before submitting. The usual size limit (`ATTACHMENT_MAX_MB`, default 25 MB) applies.
 - **Links:** `/submit/<token>` with a random token. Generating a new link or deactivating the form makes the old link stop working. Deleting a form keeps its tickets.
 - Submitted tickets land in the first open column of the project.
 - **Spam protection:** a hidden honeypot field (bot submissions are silently dropped) and a limit of 10 anonymous submissions per IP address and 10 minutes. The limit is kept in memory of the Node process.

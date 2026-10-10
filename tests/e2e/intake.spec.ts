@@ -1,7 +1,16 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { createProject, getTicket, open } from './helpers';
 
-type FormOptions = { projects: string[]; requireLogin?: boolean; email?: 'Ausgeblendet' | 'Optional' | 'Pflichtfeld' };
+type Mode = 'Ausgeblendet' | 'Optional' | 'Pflichtfeld';
+type FormOptions = {
+	projects: string[];
+	requireLogin?: boolean;
+	email?: Mode;
+	/** Feldbezeichnung → Modus, z.B. { Priorität: 'Pflichtfeld' } */
+	fields?: Record<string, Mode>;
+	/** Nur diese Tags erlauben */
+	allowedTags?: string[];
+};
 
 /** Formular über die Einstellungsseite anlegen und den Link zurückgeben */
 async function createIntakeForm(page: Page, name: string, options: FormOptions) {
@@ -11,9 +20,15 @@ async function createIntakeForm(page: Page, name: string, options: FormOptions) 
 	await dialog.getByLabel('Name').fill(name);
 	for (const project of options.projects) await dialog.getByRole('checkbox', { name: project }).click();
 	if (options.requireLogin) await dialog.getByRole('checkbox', { name: 'Anmeldung erforderlich' }).click();
-	if (options.email) {
-		await dialog.getByRole('button').filter({ hasText: 'Optional' }).click();
-		await page.getByRole('option', { name: options.email, exact: true }).click();
+	const choose = async (select: string, mode: Mode) => {
+		await dialog.getByRole('button', { name: select, exact: true }).click();
+		await page.getByRole('option', { name: mode, exact: true }).click();
+	};
+	if (options.email) await choose('E-Mail-Feld', options.email);
+	for (const [field, mode] of Object.entries(options.fields ?? {})) await choose(field, mode);
+	if (options.allowedTags) {
+		await dialog.getByRole('checkbox', { name: 'Nur ausgewählte Tags erlauben' }).click();
+		for (const tag of options.allowedTags) await dialog.getByRole('checkbox', { name: tag, exact: true }).click();
 	}
 	await dialog.getByRole('button', { name: 'Speichern' }).click();
 	await expect(dialog).toBeHidden();
@@ -136,4 +151,70 @@ test('Neu erzeugter Link und deaktiviertes Formular sperren alte Aufrufe', async
 	await page.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click();
 	await expect(card(page, name)).toContainText('Deaktiviert');
 	expect((await guest.goto(newLink))?.status()).toBe(404);
+});
+
+test('Einstellbare Felder: Priorität, Fälligkeit, erlaubte Tags und Anhänge beim Einreichen', async ({
+	page,
+	browser,
+	baseURL,
+	request
+}) => {
+	const p = await createProject(request, 'Felder');
+	const name = `Felder ${p.key}`;
+	const link = await createIntakeForm(page, name, {
+		projects: [`Felder ${p.key}`],
+		fields: {
+			Beschreibung: 'Ausgeblendet',
+			Priorität: 'Pflichtfeld',
+			Fällig: 'Optional',
+			Tags: 'Optional',
+			Anhänge: 'Optional'
+		},
+		allowedTags: ['Bug', 'Story']
+	});
+	await expect(card(page, name).locator('[data-fields]')).toHaveText(
+		'Felder: Titel*, Priorität*, Fällig, Tags, Anhänge'
+	);
+
+	const guest = await anonymous(browser, baseURL);
+	await guest.goto(link);
+	await expect(guest.getByLabel('Beschreibung')).toHaveCount(0);
+	await expect(guest.getByLabel('Start', { exact: true })).toHaveCount(0);
+
+	await guest.getByLabel('Titel').fill('Mit allen Feldern');
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('alert')).toContainText('Bitte eine Priorität wählen.');
+
+	await guest.getByRole('button').filter({ hasText: 'Priorität wählen…' }).click();
+	await guest.getByRole('option', { name: 'Hoch' }).click();
+	// Nur die erlaubten Tags
+	await expect(guest.getByRole('button', { name: 'Feature', exact: true })).toHaveCount(0);
+	await guest.getByRole('button', { name: 'Bug', exact: true }).click();
+
+	// Dateien auswählen, eine wieder entfernen und einen Screenshot einfügen
+	await guest.locator('#s-attachments').setInputFiles([
+		{ name: 'fehler.txt', mimeType: 'text/plain', buffer: Buffer.from('Log') },
+		{ name: 'falsch.txt', mimeType: 'text/plain', buffer: Buffer.from('Weg') }
+	]);
+	const files = guest.locator('[data-file-list] li');
+	await expect(files).toHaveCount(2);
+	await guest.getByRole('button', { name: 'falsch.txt entfernen' }).click();
+	await expect(files).toHaveCount(1);
+	await guest.getByLabel('Titel').focus();
+	await guest.evaluate(() => {
+		const data = new DataTransfer();
+		data.items.add(new File([new Uint8Array([137, 80, 78, 71])], 'image.png', { type: 'image/png' }));
+		document.activeElement!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+	});
+	await expect(files).toHaveCount(2);
+	await expect(files.locator('img')).toHaveAttribute('alt', /^Screenshot .+\.png$/);
+	await expect(guest.getByLabel('Titel')).toHaveValue('Mit allen Feldern');
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
+
+	const detail = await getTicket(request, `${p.key}-1`);
+	expect(detail).toMatchObject({ title: 'Mit allen Feldern', priority: 'high', description: '' });
+	expect(detail.tags.map((t: { name: string }) => t.name)).toEqual(['Bug']);
+	const names = detail.attachments.map((a: { filename: string }) => a.filename).sort();
+	expect(names).toEqual([expect.stringMatching(/^Screenshot .+\.png$/), 'fehler.txt']);
 });

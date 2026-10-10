@@ -7,6 +7,7 @@ import { ApiError } from '$lib/server/errors';
 import { createForm, deleteForm, listForms, regenerateToken, updateForm } from '$lib/server/services/intake';
 import { requireAdmin } from '$lib/server/services/access';
 import { listProjects } from '$lib/server/services/projects';
+import { listTags } from '$lib/server/services/tags';
 
 function authorize(userId: string) {
 	try {
@@ -20,8 +21,14 @@ function authorize(userId: string) {
 export const load = async ({ locals }) => {
 	authorize(locals.user!.id);
 	return {
-		forms: listForms(),
-		projects: listProjects().map(({ id, key, name, color }) => ({ id, key, name, color })),
+		forms: listForms(locals.user!.id),
+		projects: listProjects().map(({ id, key, name, color }) => ({
+			id,
+			key,
+			name,
+			color,
+			tags: listTags(id).map(({ id, name, color }) => ({ id, name, color }))
+		})),
 		form: await superValidate(zod4(intakeFormSchema))
 	};
 };
@@ -44,7 +51,7 @@ export const actions = {
 		if (!form.valid) return fail(400, { form });
 		const id = Number(url.searchParams.get('id'));
 		try {
-			if (id) updateForm(id, form.data);
+			if (id) updateForm(id, form.data, locals.user!.id);
 			else createForm(form.data, locals.user!.id);
 		} catch (e) {
 			if (e instanceof ApiError) return fail(e.status, { form: { ...form, message: e.message } });
@@ -55,7 +62,7 @@ export const actions = {
 	regenerate: async ({ request, locals }) => {
 		authorize(locals.user!.id);
 		try {
-			regenerateToken(await formId(request));
+			regenerateToken(await formId(request), locals.user!.id);
 		} catch (e) {
 			return failed(e);
 		}
@@ -63,7 +70,7 @@ export const actions = {
 	delete: async ({ request, locals }) => {
 		authorize(locals.user!.id);
 		try {
-			deleteForm(await formId(request));
+			deleteForm(await formId(request), locals.user!.id);
 		} catch (e) {
 			return failed(e);
 		}

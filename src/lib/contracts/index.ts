@@ -127,6 +127,15 @@ export const ticketListItemSchema = ticketDtoSchema.extend({
 	dependsOn: z.array(id),
 	openBlockers: z.number().int()
 });
+/** Suche über alle sichtbaren Projekte; assignee: "me", "none", Benutzer-ID oder E-Mail */
+export const ticketSearchSchema = z.strictObject({
+	project: z.string().trim().min(1).max(120).optional(),
+	query: z.string().trim().max(200).optional(),
+	assignee: z.string().trim().min(1).max(320).optional(),
+	closed: z.boolean().optional(),
+	limit: z.number().int().min(1).max(200).optional()
+});
+export const ticketSearchResultSchema = z.object({ total: z.number().int(), tickets: z.array(ticketListItemSchema) });
 export const attachmentSchema = z.object({
 	id,
 	ticketId: id,
@@ -165,6 +174,9 @@ export type TagDto = z.output<typeof tagSchema>;
 export type BoardColumnDto = z.output<typeof columnSchema>;
 export type TicketDto = z.output<typeof ticketDtoSchema>;
 export type TicketListItem = z.output<typeof ticketListItemSchema>;
+export type TicketDetail = z.output<typeof ticketDetailSchema>;
+export type TicketSearchInput = z.input<typeof ticketSearchSchema>;
+export type TicketSearchResult = z.output<typeof ticketSearchResultSchema>;
 export type AttachmentDto = z.output<typeof attachmentSchema>;
 export type DependencyDto = z.output<typeof dependencySchema>;
 

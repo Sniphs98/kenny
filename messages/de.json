@@ -434,5 +434,12 @@
 	"copy_code": "Code kopieren",
 	"embed_code_copied": "Code kopiert",
 	"embed_requires_public": "Formulare mit Anmeldung lassen sich nicht einbetten, weil die Anmeldung im eingebetteten Fenster nicht funktioniert. Teile stattdessen den Link.",
-	"embed_inactive_hint": "Das Formular ist deaktiviert und wird erst nach dem Aktivieren angezeigt."
+	"embed_inactive_hint": "Das Formular ist deaktiviert und wird erst nach dem Aktivieren angezeigt.",
+	"mcp_title": "KI-Assistenten (MCP)",
+	"mcp_description": "Verbinde einen KI-Assistenten über das Model Context Protocol. Er kann Projekte auflisten, Tickets suchen und Ticketdetails lesen, aber nichts ändern, und sieht nur, was du auch sehen darfst. Die Anmeldung erfolgt mit einem deiner API-Tokens.",
+	"mcp_endpoint": "MCP-Endpunkt (Streamable HTTP)",
+	"mcp_copy_url": "MCP-URL kopieren",
+	"mcp_url_copied": "MCP-URL kopiert",
+	"mcp_example_config": "Beispiel: Client-Konfiguration",
+	"mcp_example_claude_code": "Beispiel: Claude Code"
 }

@@ -32,6 +32,15 @@
 		setTimeout(() => (copied = false), 1500);
 	}
 
+	const mcpUrl = $derived(`${origin}/api/v1/mcp`);
+	let copiedMcp = $state(false);
+	async function copyMcpUrl() {
+		await navigator.clipboard.writeText(mcpUrl);
+		copiedMcp = true;
+		toast.success(m.mcp_url_copied());
+		setTimeout(() => (copiedMcp = false), 1500);
+	}
+
 	const endpoints = [
 		['GET', '/projects', m.list_projects()],
 		['GET', '/events?project=:projekt', m.live_updates_events()],
@@ -139,6 +148,47 @@
 					</Table.Body>
 				</Table.Root>
 			{/if}
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>{m.mcp_title()}</Card.Title>
+			<Card.Description>{m.mcp_description()}</Card.Description>
+		</Card.Header>
+		<Card.Content class="gap-4">
+			<div class="flex flex-col gap-1.5">
+				<span class="text-sm font-medium">{m.mcp_endpoint()}</span>
+				<div class="flex items-center gap-2">
+					<code
+						class="bg-muted grow rounded-md px-2.5 py-1.5 font-mono text-xs break-all select-all"
+						data-testid="mcp-url">{mcpUrl}</code
+					>
+					<Hint text={m.copy()}>
+						{#snippet children(props)}
+							<Button {...props} variant="outline" size="icon-sm" aria-label={m.mcp_copy_url()} onclick={copyMcpUrl}>
+								{#if copiedMcp}<Check />{:else}<Copy />{/if}
+							</Button>
+						{/snippet}
+					</Hint>
+				</div>
+			</div>
+
+			<h3 class="mt-2 text-sm font-semibold">{m.mcp_example_config()}</h3>
+			<pre class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`{
+  "mcpServers": {
+    "kenny": {
+      "type": "http",
+      "url": "${mcpUrl}",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}`}</pre>
+
+			<h3 class="mt-2 text-sm font-semibold">{m.mcp_example_claude_code()}</h3>
+			<pre
+				class="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs">{`claude mcp add --transport http kenny ${mcpUrl} \\
+  --header "Authorization: Bearer $KENNY_TOKEN"`}</pre>
 		</Card.Content>
 	</Card.Root>
 

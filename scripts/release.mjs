@@ -2,6 +2,7 @@
 // Aufruf im Release-Workflow:  node scripts/release.mjs <notes-file> [tag]
 // Ohne Tag wird die Version berechnet; mit Tag (manuelles Release) gelten dessen Version und Notizen.
 // Schreibt release (true/false), version, tag und prerelease nach $GITHUB_OUTPUT.
+// RELEASE_IMAGE und RELEASE_IMAGE_DIGEST (optional) nennen das veröffentlichte Docker-Image in den Notizen.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -69,9 +70,9 @@ export function nextVersion(previous, bump) {
 /**
  * Release-Notizen in Markdown, gruppiert nach Art der Änderung
  * @param {Commit[]} commits
- * @param {{ previous?: string | null; tag?: string; repository?: string }} [options]
+ * @param {{ previous?: string | null; tag?: string; repository?: string; image?: { name: string; digest?: string } }} [options]
  */
-export function releaseNotes(commits, { previous, tag, repository } = {}) {
+export function releaseNotes(commits, { previous, tag, repository, image } = {}) {
 	/** @type {[string, (c: ParsedCommit) => boolean][]} */
 	const sections = [
 		['Breaking changes', (c) => c.breaking],
@@ -90,9 +91,44 @@ export function releaseNotes(commits, { previous, tag, repository } = {}) {
 		.map(([title, match]) => /** @type {[string, ParsedCommit[]]} */ ([title, parsed.filter(match)]))
 		.filter(([, list]) => list.length)
 		.map(([title, list]) => `## ${title}\n\n${list.map(line).join('\n')}`);
+	if (image && tag) parts.unshift(imageSection(image, tag.replace(/^v/, ''), repository));
 	if (previous && tag && repository)
 		parts.push(`**Full changelog:** https://github.com/${repository}/compare/${previous}...${tag}`);
 	return parts.join('\n\n') + '\n';
+}
+
+/**
+ * Veröffentlichtes Docker-Image: Pull-Befehl, unveränderlicher Digest und Paketseite
+ * @param {{ name: string; digest?: string }} image
+ * @param {string} version
+ * @param {string} [repository]
+ */
+function imageSection({ name, digest }, version, repository) {
+	const details = [
+		digest ? `Digest: \`${digest}\`` : null,
+		repository ? `[Package on GitHub](https://github.com/${repository}/pkgs/container/${name.split('/').pop()})` : null
+	].filter(Boolean);
+	return [
+		'## Docker image',
+		'',
+		'```sh',
+		`docker pull ${name}:${version}`,
+		'```',
+		...(details.length ? ['', details.join(' · ')] : [])
+	].join('\n');
+}
+
+/**
+ * Image aus der Umgebung des Release-Workflows; nur gültige Werte gelangen in die Notizen
+ * @param {NodeJS.ProcessEnv} env
+ */
+export function imageFromEnv(env) {
+	const name = env.RELEASE_IMAGE;
+	if (!name) return undefined;
+	if (!/^ghcr\.io\/[a-z0-9._-]+\/[a-z0-9._-]+$/.test(name)) throw new Error(`Invalid image name: ${name}`);
+	const digest = env.RELEASE_IMAGE_DIGEST || undefined;
+	if (digest && !/^sha256:[0-9a-f]{64}$/.test(digest)) throw new Error(`Invalid image digest: ${digest}`);
+	return { name, digest };
 }
 
 // --- Git und GitHub Actions -----------------------------------------------------------------
@@ -148,7 +184,12 @@ function main([notesFile, manualTag]) {
 	}
 	writeFileSync(
 		notesFile,
-		releaseNotes(commits, { previous, tag: `v${version}`, repository: process.env.GITHUB_REPOSITORY })
+		releaseNotes(commits, {
+			previous,
+			tag: `v${version}`,
+			repository: process.env.GITHUB_REPOSITORY,
+			image: imageFromEnv(process.env)
+		})
 	);
 	output('release', 'true');
 	output('version', version);

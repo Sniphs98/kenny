@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bumpFor, nextVersion, parseCommit, releaseNotes } from '../../scripts/release.mjs';
+import { bumpFor, imageFromEnv, nextVersion, parseCommit, releaseNotes } from '../../scripts/release.mjs';
 
 const c = (subject: string, body = '') => ({ subject, body });
 
@@ -64,6 +64,43 @@ describe('release notes', () => {
 				'**Full changelog:** https://github.com/Sniphs98/kenny/compare/v0.1.0...v0.2.0',
 				''
 			].join('\n')
+		);
+	});
+
+	it('names the published Docker image first', () => {
+		const digest = `sha256:${'a1'.repeat(32)}`;
+		const notes = releaseNotes([c('fix: keep cards visible (#15)')], {
+			previous: 'v0.2.0',
+			tag: 'v0.2.1',
+			repository: 'Sniphs98/kenny',
+			image: { name: 'ghcr.io/sniphs98/kenny', digest }
+		});
+		const fence = '```';
+		expect(notes).toContain(
+			[
+				'## Docker image',
+				'',
+				`${fence}sh`,
+				'docker pull ghcr.io/sniphs98/kenny:0.2.1',
+				fence,
+				'',
+				`Digest: \`${digest}\` · [Package on GitHub](https://github.com/Sniphs98/kenny/pkgs/container/kenny)`,
+				'',
+				'## Fixes'
+			].join('\n')
+		);
+		expect(notes.startsWith('## Docker image')).toBe(true);
+	});
+
+	it('only accepts valid image names and digests from the workflow', () => {
+		expect(imageFromEnv({})).toBeUndefined();
+		expect(imageFromEnv({ RELEASE_IMAGE: 'ghcr.io/sniphs98/kenny' })).toEqual({
+			name: 'ghcr.io/sniphs98/kenny',
+			digest: undefined
+		});
+		expect(() => imageFromEnv({ RELEASE_IMAGE: 'ghcr.io/x/y; rm -rf /' })).toThrow(/Invalid image name/);
+		expect(() => imageFromEnv({ RELEASE_IMAGE: 'ghcr.io/x/y', RELEASE_IMAGE_DIGEST: 'sha256:`whoami`' })).toThrow(
+			/Invalid image digest/
 		);
 	});
 });

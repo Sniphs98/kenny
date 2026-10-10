@@ -84,9 +84,11 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 	const planner = page.locator('[data-slot=popover-content]');
 	await expect(planner).toBeVisible();
 	const plannerBounds = await planner.boundingBox();
-	expect(plannerBounds!.width).toBeLessThanOrEqual(375 - 32);
+	// Bounding boxes are floats (e.g. 343.0000114 for 343px); allow sub-pixel noise only
+	const subPixel = 0.01;
+	expect(plannerBounds!.width).toBeLessThanOrEqual(375 - 32 + subPixel);
 	expect(plannerBounds!.x).toBeGreaterThanOrEqual(0);
-	expect(plannerBounds!.x + plannerBounds!.width).toBeLessThanOrEqual(375);
+	expect(plannerBounds!.x + plannerBounds!.width).toBeLessThanOrEqual(375 + subPixel);
 	await fitsViewport(page);
 	await page.keyboard.press('Escape');
 	await page.getByRole('button', { name: 'Benutzermenü' }).tap();

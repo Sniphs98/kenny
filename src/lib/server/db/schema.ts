@@ -46,7 +46,7 @@ export const boardColumn = sqliteTable(
 );
 
 export { PRIORITIES, type Priority } from '$lib/contracts';
-import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES } from '$lib/contracts';
+import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES, type IntakeFields } from '$lib/contracts';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -183,6 +183,13 @@ export const intakeForm = sqliteTable('intake_form', {
 	token: text('token').notNull().unique(),
 	requireLogin: integer('require_login', { mode: 'boolean' }).notNull().default(false),
 	emailMode: text('email_mode', { enum: INTAKE_EMAIL_MODES }).notNull().default('optional'),
+	/** Welche Ticketfelder angeboten werden (ausgeblendet/optional/Pflicht); fehlende Felder nutzen die Standardwerte */
+	fields: text('fields', { mode: 'json' })
+		.$type<Partial<IntakeFields>>()
+		.notNull()
+		.default(sql`'{}'`),
+	/** Nur die Tags aus intake_form_tag anbieten statt aller Tags der Projekte */
+	restrictTags: integer('restrict_tags', { mode: 'boolean' }).notNull().default(false),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
 	createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
@@ -200,6 +207,20 @@ export const intakeFormProject = sqliteTable(
 			.references(() => project.id, { onDelete: 'cascade' })
 	},
 	(t) => [primaryKey({ columns: [t.formId, t.projectId] }), index('intake_form_project_project_idx').on(t.projectId)]
+);
+
+/** Erlaubte Tags eines Formulars (nur bei restrictTags); gelöschte Tags verschwinden per Cascade */
+export const intakeFormTag = sqliteTable(
+	'intake_form_tag',
+	{
+		formId: integer('form_id')
+			.notNull()
+			.references(() => intakeForm.id, { onDelete: 'cascade' }),
+		tagId: integer('tag_id')
+			.notNull()
+			.references(() => tag.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.formId, t.tagId] }), index('intake_form_tag_tag_idx').on(t.tagId)]
 );
 
 export type Project = typeof project.$inferSelect;

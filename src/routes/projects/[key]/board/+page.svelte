@@ -697,4 +697,5 @@
 	users={data.users}
 	tags={data.tags}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
+	canCreate={data.canEdit}
 />

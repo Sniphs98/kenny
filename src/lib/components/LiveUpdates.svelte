@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { refreshAll } from '$app/navigation';
+	import { navigating } from '$app/state';
 	import { clientId, LIVE_EVENT } from '$lib/live-client';
 
 	// Live-Updates per Server-Sent Events: Änderungen anderer (Tabs, Personen, API) laden die
@@ -26,6 +27,8 @@
 		const reload = () => {
 			clearTimeout(timer);
 			timer = setTimeout(async () => {
+				// Während einer Navigation nicht neu laden: das bräche sie ab, und die Zielseite lädt ohnehin frisch
+				if (navigating.to) return;
 				await refreshAll();
 				window.dispatchEvent(new CustomEvent(LIVE_EVENT));
 			}, DEBOUNCE_MS);

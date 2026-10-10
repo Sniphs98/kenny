@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { createProject, getTicket, open } from './helpers';
+import { api, createProject, getTicket, open } from './helpers';
 
 type Mode = 'Ausgeblendet' | 'Optional' | 'Pflichtfeld';
 type FormOptions = {
@@ -217,4 +217,34 @@ test('Einstellbare Felder: Priorität, Fälligkeit, erlaubte Tags und Anhänge b
 	expect(detail.tags.map((t: { name: string }) => t.name)).toEqual(['Bug']);
 	const names = detail.attachments.map((a: { filename: string }) => a.filename).sort();
 	expect(names).toEqual([expect.stringMatching(/^Screenshot .+\.png$/), 'fehler.txt']);
+});
+
+test('Einreichungsseite: Karte mittig, Primärfarbe vom gewählten Projekt', async ({
+	page,
+	browser,
+	baseURL,
+	request
+}) => {
+	const a = await createProject(request, 'Rot');
+	const b = await createProject(request, 'Grün');
+	await api(request, 'PATCH', `/projects/${a.key}`, { color: '#dc2626' });
+	await api(request, 'PATCH', `/projects/${b.key}`, { color: '#15803d' });
+	const link = await createIntakeForm(page, `Farben ${a.key}`, { projects: [`Rot ${a.key}`, `Grün ${b.key}`] });
+
+	const guest = await anonymous(browser, baseURL);
+	await guest.setViewportSize({ width: 1280, height: 1000 });
+	await guest.goto(link);
+	const box = (await guest.locator('[data-slot="card"]').boundingBox())!;
+	expect(Math.abs(box.y + box.height / 2 - 500)).toBeLessThan(4);
+
+	const submit = guest.getByRole('button', { name: 'Einreichen' });
+	await guest.getByRole('button').filter({ hasText: 'Projekt wählen…' }).click();
+	await guest.getByRole('option', { name: `Rot ${a.key}` }).click();
+	await expect(submit).toHaveCSS('background-color', 'rgb(220, 38, 38)');
+	await guest
+		.getByRole('button')
+		.filter({ hasText: `Rot ${a.key}` })
+		.click();
+	await guest.getByRole('option', { name: `Grün ${b.key}` }).click();
+	await expect(submit).toHaveCSS('background-color', 'rgb(21, 128, 61)');
 });

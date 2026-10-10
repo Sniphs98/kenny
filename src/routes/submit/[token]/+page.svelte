@@ -5,6 +5,7 @@
 	import { PRIORITY_LABELS } from '$lib/api';
 	import { INTAKE_MAX_FILES, PRIORITIES, intakeSubmissionSchema, type IntakeFieldMode } from '$lib/contracts';
 	import { localizeError } from '$lib/i18n';
+	import { accentStyle, accentVars } from '$lib/theme';
 	import { m } from '$lib/paraglide/messages.js';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import FileDrop from '$lib/components/FileDrop.svelte';
@@ -51,6 +52,15 @@
 		});
 	});
 
+	// Farbe des (gewählten) Projekts als Primärfarbe; <html> für Auswahllisten, die in <body> gerendert werden
+	const accent = $derived(project?.color);
+	$effect(() => {
+		const root = document.documentElement;
+		const vars = accentVars(accent);
+		for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+		return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
+	});
+
 	function toggleTag(name: string, on: boolean) {
 		$form.tags = on ? [...$form.tags, name] : $form.tags.filter((t) => t !== name);
 	}
@@ -67,11 +77,13 @@
 
 <svelte:head><title>{intake.name} · Kenny</title></svelte:head>
 
+<!-- Drei Zeilen: Kopf über der Karte, die Karte selbst sitzt in der Bildschirmmitte -->
 <div
-	class="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4"
+	class="grid min-h-screen grid-rows-[1fr_auto_1fr] justify-items-center bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_60%)] p-4"
+	style={accentStyle(accent)}
 >
-	<div class="w-full max-w-lg">
-		<div class="mb-6 text-center">
+	<div class="contents">
+		<div class="mb-6 flex w-full max-w-lg flex-col items-center justify-end self-end text-center">
 			<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
 				<Inbox class="size-5" />
 			</span>
@@ -81,7 +93,7 @@
 			</p>
 		</div>
 
-		<Card.Root>
+		<Card.Root class="w-full max-w-lg">
 			<Card.Content>
 				{#if submitted !== null}
 					<div class="flex flex-col items-center gap-3 py-4 text-center" role="status">

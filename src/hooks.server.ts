@@ -5,6 +5,7 @@ import { auth } from '$lib/server/auth';
 import { LIVE_ORIGIN_HEADER, liveOrigin } from '$lib/server/live';
 import { requireActiveUser } from '$lib/server/services/access';
 import { ApiError } from '$lib/server/errors';
+import { protectFraming } from '$lib/server/framing';
 import '$lib/locale-choice';
 import { paraglideMiddleware } from '$lib/paraglide/server.js';
 
@@ -27,7 +28,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		redirect(303, `/login?redirect=${encodeURIComponent(path + event.url.search)}`);
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+	protectFraming(path, response.headers);
+	return response;
 };
 
 export const handle: Handle = ({ event, resolve }) =>

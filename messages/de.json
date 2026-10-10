@@ -426,5 +426,13 @@
 	"choose_projects_first": "Zuerst Projekte auswählen.",
 	"tag_not_allowed": "Tag {name} ist in diesem Formular nicht erlaubt.",
 	"tag_not_in_form_projects": "Ein ausgewählter Tag gehört zu keinem Projekt des Formulars.",
-	"remove_file": "{name} entfernen"
+	"remove_file": "{name} entfernen",
+	"embed": "Einbetten",
+	"embed_title": "„{name}“ einbetten",
+	"embed_description": "Füge diesen Code in deine Webseite ein. Das Formular passt seine Höhe automatisch an; ohne das Skript bleibt es 640 px hoch.",
+	"embed_code": "Einbettungscode",
+	"copy_code": "Code kopieren",
+	"embed_code_copied": "Code kopiert",
+	"embed_requires_public": "Formulare mit Anmeldung lassen sich nicht einbetten, weil die Anmeldung im eingebetteten Fenster nicht funktioniert. Teile stattdessen den Link.",
+	"embed_inactive_hint": "Das Formular ist deaktiviert und wird erst nach dem Aktivieren angezeigt."
 }

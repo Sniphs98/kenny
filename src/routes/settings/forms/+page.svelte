@@ -5,6 +5,7 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { INTAKE_FIELDS, intakeFieldsSchema, intakeFormSchema, type IntakeFormDto } from '$lib/contracts';
+	import { embedCode } from '$lib/embed';
 	import { localizeError } from '$lib/i18n';
 	import { m } from '$lib/paraglide/messages.js';
 	import Hint from '$lib/components/Hint.svelte';
@@ -17,8 +18,10 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
+	import Code from '@lucide/svelte/icons/code';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Inbox from '@lucide/svelte/icons/inbox';
@@ -55,6 +58,7 @@
 	let editing = $state<number | null>(null);
 	let confirmDelete = $state<IntakeFormDto | null>(null);
 	let confirmRegenerate = $state<IntakeFormDto | null>(null);
+	let embedding = $state<IntakeFormDto | null>(null);
 
 	const { form, errors, message, enhance, submitting, reset } = superForm(
 		untrack(() => data.form),
@@ -120,6 +124,12 @@
 	}
 
 	const link = (f: IntakeFormDto) => `${page.url.origin}/submit/${f.token}`;
+	const code = $derived(embedding ? embedCode(page.url.origin, embedding.token, embedding.name) : '');
+
+	async function copyCode() {
+		await navigator.clipboard.writeText(code);
+		toast.success(m.embed_code_copied());
+	}
 
 	async function copy(f: IntakeFormDto) {
 		await navigator.clipboard.writeText(link(f));
@@ -201,6 +211,7 @@
 				<Button variant="ghost" size="sm" onclick={() => (confirmRegenerate = f)}
 					><RefreshCw /> {m.regenerate_link()}</Button
 				>
+				<Button variant="ghost" size="sm" onclick={() => (embedding = f)}><Code /> {m.embed()}</Button>
 				<span class="grow"></span>
 				<Button variant="ghost" size="sm" class="hover:text-destructive" onclick={() => (confirmDelete = f)}
 					><Trash2 /> {m.delete()}</Button
@@ -320,6 +331,34 @@
 				<Button type="submit" disabled={$submitting}>{m.save()}</Button>
 			</Dialog.Footer>
 		</form>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root open={!!embedding} onOpenChange={(o) => !o && (embedding = null)}>
+	<Dialog.Content class="sm:max-w-2xl">
+		<Dialog.Header>
+			<Dialog.Title>{m.embed_title({ name: embedding?.name ?? '' })}</Dialog.Title>
+			<Dialog.Description
+				>{embedding?.requireLogin ? m.embed_requires_public() : m.embed_description()}</Dialog.Description
+			>
+		</Dialog.Header>
+		{#if !embedding?.requireLogin}
+			<Textarea
+				readonly
+				value={code}
+				rows={10}
+				class="font-mono text-xs"
+				aria-label={m.embed_code()}
+				onfocus={(e) => e.currentTarget.select()}
+			/>
+			{#if embedding && !embedding.active}
+				<p class="text-muted-foreground text-sm">{m.embed_inactive_hint()}</p>
+			{/if}
+		{/if}
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (embedding = null)}>{m.close()}</Button>
+			{#if !embedding?.requireLogin}<Button onclick={copyCode}><Copy /> {m.copy_code()}</Button>{/if}
+		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
 

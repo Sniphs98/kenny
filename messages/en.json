@@ -426,5 +426,13 @@
 	"choose_projects_first": "Select projects first.",
 	"tag_not_allowed": "Tag {name} is not allowed in this form.",
 	"tag_not_in_form_projects": "A selected tag does not belong to any project of the form.",
-	"remove_file": "Remove {name}"
+	"remove_file": "Remove {name}",
+	"embed": "Embed",
+	"embed_title": "Embed “{name}”",
+	"embed_description": "Paste this code into your website. The form adjusts its height automatically; without the script it stays 640 px tall.",
+	"embed_code": "Embed code",
+	"copy_code": "Copy code",
+	"embed_code_copied": "Code copied",
+	"embed_requires_public": "Forms that require sign-in cannot be embedded because signing in does not work inside an embedded frame. Share the link instead.",
+	"embed_inactive_hint": "The form is deactivated and only shows up once it is active again."
 }

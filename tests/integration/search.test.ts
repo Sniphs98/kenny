@@ -39,6 +39,20 @@ describe('ticket search for the command palette', () => {
 		expect(keys('owner', 'gibt es nicht')).toEqual([]);
 	});
 
+	it('finds every word anywhere, after matches of the whole phrase', () => {
+		const web = createProject({ name: 'Web', key: 'WEB' }, 'owner');
+		createTicket(web.key, { title: 'Rechnung als PDF exportieren' }, 'owner');
+		createTicket(web.key, { title: 'Export', description: 'Die Rechnung soll auch als PDF gehen' }, 'owner');
+		createTicket(web.key, { title: 'Rechnung exportieren', description: 'Rechnung exportieren wie bisher' }, 'owner');
+		createTicket(web.key, { title: 'Nur Rechnung' }, 'owner');
+
+		// Ganzer Ausdruck zuerst, dann alle Wörter im Titel, dann Wörter auch aus der Beschreibung
+		expect(keys('owner', 'rechnung exportieren')).toEqual(['WEB-3', 'WEB-1']);
+		expect(keys('owner', 'rechnung pdf')).toEqual(['WEB-1', 'WEB-2']);
+		// Schlüssel zählt als Wort
+		expect(keys('owner', 'web-4 rechnung')).toEqual(['WEB-4']);
+	});
+
 	it('only finds tickets of projects the user can see', () => {
 		const web = createProject({ name: 'Web', key: 'WEB' }, 'owner');
 		const secret = createProject({ name: 'Geheim', key: 'SEC' }, 'owner');

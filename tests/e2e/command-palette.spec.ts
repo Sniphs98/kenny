@@ -50,6 +50,24 @@ test('Strg+K öffnet die Suche; Tickets finden und öffnen', async ({ page, requ
 	await expect(palette(page)).toBeHidden();
 });
 
+test('Suche findet Wörter aus der Beschreibung und zeigt einen Ausschnitt', async ({ page, request }) => {
+	const p = await createProject(request, 'Inhalt');
+	// Eindeutiges Wort pro Lauf, damit Tickets anderer Tests nicht mitgefunden werden
+	const word = `zahnrad${p.key.toLowerCase()}`;
+	await createTicket(request, p.key, {
+		title: 'Wartung planen',
+		description: `Vor dem Termin muss das ${word} geschmiert und danach geprüft werden.`
+	});
+	await open(page, '/');
+	await page.keyboard.press('Control+k');
+	await page.keyboard.type(`${word} geprüft`);
+	const result = palette(page).getByRole('option').filter({ hasText: 'Wartung planen' });
+	await expect(result.locator('[data-snippet]')).toContainText(`muss das ${word} geschmiert`);
+	await expect(result.locator('[data-snippet] mark')).toHaveText([word, 'geprüft']);
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(`/tickets/${p.key}-1`);
+});
+
 test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', async ({ page, request }) => {
 	const p = await createProject(request, 'Befehle');
 	await open(page, `/projects/${p.key}/settings`);

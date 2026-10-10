@@ -4,6 +4,7 @@
 	import { listProjects, searchTickets } from '$lib/api';
 	import type { TicketListItem } from '$lib/contracts';
 	import { requestNewTicket } from '$lib/new-ticket.svelte';
+	import { highlight, searchTokens, snippet, type Part } from '$lib/search';
 	import { m } from '$lib/paraglide/messages.js';
 	import * as Command from '$lib/components/ui/command';
 	import { cn } from '$lib/utils';
@@ -122,6 +123,13 @@
 		{ id: 'system', label: m.command_theme({ mode: m.system() }), icon: Monitor, run: () => setMode('system') }
 	];
 
+	const tokens = $derived(searchTokens(query.trim()));
+	/** Ausschnitt aus der Beschreibung, wenn der Titel nicht alle Suchwörter enthält */
+	const excerpt = (t: TicketListItem) => {
+		const title = `${t.key} ${t.title}`.toLowerCase();
+		return tokens.every((w) => title.includes(w)) ? null : snippet(t.description, tokens);
+	};
+
 	const matches = (a: Action) => {
 		const q = query.trim().toLowerCase();
 		return !q || a.label.toLowerCase().includes(q) || !!a.hint?.toLowerCase().includes(q);
@@ -190,6 +198,11 @@
 	}
 </script>
 
+<!-- Suchwörter hervorheben, ohne HTML aus Tickettexten einzufügen -->
+{#snippet marked(parts: Part[])}{#each parts as part, i (i)}{#if part.hit}<mark
+				class="text-foreground rounded-sm bg-amber-200/70 px-px dark:bg-amber-400/30">{part.text}</mark
+			>{:else}{part.text}{/if}{/each}{/snippet}
+
 <svelte:window {onkeydown} />
 
 <!-- Suchleiste in der Kopfzeile: öffnet die Palette, zeigt das Tastenkürzel -->
@@ -226,9 +239,23 @@
 		{#if query.trim()}
 			<Command.Group heading={m.command_tickets()}>
 				{#each tickets as t (t.id)}
-					<Command.Item value={`ticket-${t.key}`} onSelect={() => run(() => goto(`/tickets/${t.key}`))}>
-						<span class="text-muted-foreground w-16 shrink-0 font-mono text-xs">{t.key}</span>
-						<span class={cn('truncate', t.closed && 'text-muted-foreground line-through')}>{t.title}</span>
+					{@const found = excerpt(t)}
+					<Command.Item
+						value={`ticket-${t.key}`}
+						class="items-start"
+						onSelect={() => run(() => goto(`/tickets/${t.key}`))}
+					>
+						<span class="text-muted-foreground w-16 shrink-0 pt-px font-mono text-xs"
+							>{@render marked(highlight(t.key, tokens))}</span
+						>
+						<span class="grid min-w-0 gap-0.5">
+							<span class={cn('truncate', t.closed && 'text-muted-foreground line-through')}
+								>{@render marked(highlight(t.title, tokens))}</span
+							>
+							{#if found}
+								<span class="text-muted-foreground line-clamp-2 text-xs" data-snippet>{@render marked(found)}</span>
+							{/if}
+						</span>
 					</Command.Item>
 				{:else}
 					<div class="text-muted-foreground flex items-center gap-2 px-2 py-2 text-sm">

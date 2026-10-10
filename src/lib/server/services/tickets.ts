@@ -20,6 +20,7 @@ import {
 import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
+import { searchTokens } from '$lib/search';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
@@ -163,7 +164,7 @@ export function searchTickets(userId: string, rawInput: unknown): TicketSearchRe
 	const candidates = projects
 		.flatMap((p) => listTickets(p.id, { closed: input.closed }))
 		.filter((t) => assigneeId === undefined || t.assigneeId === assigneeId);
-	// Mit Suchbegriff nach Treffergüte: Schlüssel genau, Schlüssel-Anfang, Titel-Anfang, Titel, Beschreibung
+	// Mit Suchbegriff nach Treffergüte: ganzer Ausdruck vor einzelnen Wörtern (siehe searchRank)
 	const tickets = !query
 		? candidates
 		: candidates
@@ -174,15 +175,24 @@ export function searchTickets(userId: string, rawInput: unknown): TicketSearchRe
 	return { total: tickets.length, tickets: tickets.slice(0, input.limit ?? 50) };
 }
 
-/** Treffergüte eines Tickets für einen (kleingeschriebenen) Suchbegriff; 0 = kein Treffer */
+/**
+ * Treffergüte eines Tickets für einen (kleingeschriebenen) Suchbegriff; 0 = kein Treffer.
+ * Der ganze Ausdruck zählt mehr als einzelne Wörter: Schlüssel genau, Schlüssel-Anfang, Titel-Anfang,
+ * Titel, Beschreibung; danach alle Wörter im Schlüssel oder Titel, zuletzt alle Wörter irgendwo.
+ */
 function searchRank(t: TicketListItem, query: string) {
 	const key = t.key.toLowerCase();
 	const title = t.title.toLowerCase();
-	if (key === query) return 5;
-	if (key.startsWith(query)) return 4;
-	if (title.startsWith(query)) return 3;
-	if (title.includes(query)) return 2;
-	return t.description.toLowerCase().includes(query) ? 1 : 0;
+	const description = t.description.toLowerCase();
+	if (key === query) return 7;
+	if (key.startsWith(query)) return 6;
+	if (title.startsWith(query)) return 5;
+	if (title.includes(query)) return 4;
+	if (description.includes(query)) return 3;
+	const tokens = searchTokens(query);
+	if (tokens.length < 2) return 0;
+	if (tokens.every((w) => key.includes(w) || title.includes(w))) return 2;
+	return tokens.every((w) => key.includes(w) || title.includes(w) || description.includes(w)) ? 1 : 0;
 }
 
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */

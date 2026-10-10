@@ -30,24 +30,26 @@
 
 <div class="bg-card border-b px-5 pt-5">
 	<div class="flex items-center gap-3">
-		<span class="bg-primary-soft text-primary grid size-10 place-items-center rounded-lg text-sm font-semibold">
+		<span
+			class="bg-primary-soft text-primary grid size-10 shrink-0 place-items-center rounded-lg text-sm font-semibold"
+		>
 			{data.project.key.slice(0, 2)}
 		</span>
-		<div>
-			<h1 class="text-xl font-semibold tracking-tight">{data.project.name}</h1>
+		<div class="min-w-0">
+			<h1 class="text-xl font-semibold tracking-tight break-words">{data.project.name}</h1>
 			<div class="text-muted-foreground text-xs">
 				<span class="font-mono">{data.project.key}</span>
 				{m.open_out_of_tickets({ value1: open, value2: data.tickets.length })}
 			</div>
 		</div>
 	</div>
-	<nav class="mt-4 flex gap-1">
+	<nav aria-label={m.mobile_project_navigation()} class="mt-4 flex gap-1 overflow-x-auto">
 		{#each tabs as t (t.href)}
 			{@const active = page.route.id?.endsWith('/' + t.href)}
 			<a
 				href="/projects/{data.project.key}/{t.href}"
 				class={cn(
-					'text-muted-foreground hover:text-foreground -mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium transition-colors',
+					'text-muted-foreground hover:text-foreground -mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
 					active && 'border-primary text-foreground'
 				)}
 			>

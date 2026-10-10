@@ -134,7 +134,7 @@
 </script>
 
 {#if !data.canEdit}<p class="text-muted-foreground mb-4 text-sm">{m.um_read_only()}</p>{/if}
-<div class="flex flex-col gap-4">
+<div class="flex min-w-0 flex-col gap-4">
 	<input
 		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
 		readonly={!data.canEdit}
@@ -188,7 +188,7 @@
 							>
 						</div>
 					{:else if t.description}
-						<p class="whitespace-pre-wrap">{t.description}</p>
+						<p class="break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{t.description}</p>
 					{:else}
 						<p class="text-muted-foreground">{m.no_description()}</p>
 					{/if}
@@ -277,7 +277,7 @@
 					{/each}
 					<form class="flex flex-wrap gap-2" onsubmit={addLink}>
 						<Select.Root disabled={!data.canEdit} type="single" bind:value={linkType}>
-							<Select.Trigger class="w-48">{LINK_TYPES[linkType]}</Select.Trigger>
+							<Select.Trigger class="w-48 max-sm:w-full">{LINK_TYPES[linkType]}</Select.Trigger>
 							<Select.Content>
 								{#each Object.entries(LINK_TYPES) as [v, l] (v)}
 									<Select.Item value={v}>{l}</Select.Item>
@@ -286,7 +286,7 @@
 						</Select.Root>
 						<TicketPicker
 							disabled={!data.canEdit}
-							class="min-w-40 flex-1"
+							class="min-w-0 flex-1 max-sm:basis-full"
 							tickets={linkCandidates}
 							bind:value={linkTarget}
 						/>
@@ -322,7 +322,7 @@
 						onValueChange={(v) =>
 							run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
 					>
-						<Select.Trigger class="w-full">{columnName}</Select.Trigger>
+						<Select.Trigger aria-label={m.status()} class="w-full">{columnName}</Select.Trigger>
 						<Select.Content>
 							{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}
 						</Select.Content>

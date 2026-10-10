@@ -11,8 +11,9 @@
 <div class="mx-auto max-w-6xl px-5 py-6">
 	<Breadcrumb.Root class="mb-4">
 		<Breadcrumb.List>
-			<Breadcrumb.Item>
-				<Breadcrumb.Link href="/projects/{data.project.key}/board">{data.project.name}</Breadcrumb.Link>
+			<Breadcrumb.Item class="min-w-0 max-w-full">
+				<Breadcrumb.Link class="truncate" href="/projects/{data.project.key}/board">{data.project.name}</Breadcrumb.Link
+				>
 			</Breadcrumb.Item>
 			<Breadcrumb.Separator />
 			{#if data.parent}

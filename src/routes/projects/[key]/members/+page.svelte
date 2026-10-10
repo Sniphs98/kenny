@@ -46,7 +46,7 @@
 		<p class="text-muted-foreground mt-1 text-sm">{m.um_members_description()}</p>
 	</div>
 	<form onsubmit={add} class="flex flex-wrap items-end gap-3 rounded-xl border p-4">
-		<div class="min-w-56 flex-1 space-y-2">
+		<div class="min-w-0 basis-56 flex-1 space-y-2">
 			<Label for="member-email">{m.email()}</Label><Input id="member-email" type="email" required bind:value={email} />
 		</div>
 		<div class="space-y-2">

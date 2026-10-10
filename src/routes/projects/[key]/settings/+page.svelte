@@ -17,6 +17,8 @@
 	import { Synced } from '$lib/synced.svelte';
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -102,6 +104,15 @@
 		(document.querySelector(`[data-grip="${id}"]`) as HTMLElement | null)?.focus();
 	}
 
+	async function moveColumn(id: number, direction: number) {
+		const from = columns.findIndex((col) => col.id === id);
+		const to = from + direction;
+		if (from < 0 || to < 0 || to >= columns.length) return;
+		const [moved] = columns.splice(from, 1);
+		columns.splice(to, 0, moved);
+		await saveOrder(id);
+	}
+
 	async function addColumn(e: SubmitEvent) {
 		e.preventDefault();
 		if (!newColumn.trim()) return;
@@ -161,7 +172,10 @@
 			<ul class="flex flex-col gap-2">
 				{#each columns as col (col.id)}
 					<li
-						class={cn('flex items-center gap-2 rounded-md', dragId === col.id && 'bg-muted opacity-60')}
+						class={cn(
+							'flex flex-wrap items-center gap-2 rounded-md sm:flex-nowrap',
+							dragId === col.id && 'bg-muted opacity-60'
+						)}
 						draggable={armedId === col.id}
 						ondragstart={(e) => {
 							dragId = col.id;
@@ -189,7 +203,23 @@
 								</Button>
 							{/snippet}
 						</Hint>
+						<div class="flex gap-1 sm:hidden">
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label={m.mobile_move_up({ name: col.name })}
+								disabled={columns[0].id === col.id}
+								onclick={() => moveColumn(col.id, -1)}><ArrowUp /></Button
+							><Button
+								variant="ghost"
+								size="icon"
+								aria-label={m.mobile_move_down({ name: col.name })}
+								disabled={columns[columns.length - 1].id === col.id}
+								onclick={() => moveColumn(col.id, 1)}><ArrowDown /></Button
+							>
+						</div>
 						<Input
+							class="max-sm:order-first max-sm:basis-full"
 							value={col.name}
 							onchange={(e) => run(() => api('PATCH', `${base}/columns/${col.id}`, { name: e.currentTarget.value }))}
 						/>

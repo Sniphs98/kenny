@@ -14,6 +14,8 @@ services:
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
+      TEAMS_APP_VERSION: ${TEAMS_APP_VERSION:-1.0.0}
     volumes:
       - kenny-data:/app/data
     security_opt:

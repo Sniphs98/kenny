@@ -247,7 +247,8 @@ const errorTranslations = [
 	{
 		pattern: /^Ein ausgewählter Tag gehört zu keinem Projekt des Formulars\.$/,
 		translate: () => m.tag_not_in_form_projects()
-	}
+	},
+	{ pattern: /^Microsoft Teams ist nicht aktiviert\.$/, translate: () => m.teams_not_enabled() }
 ];
 
 export function localizeError(message: string | undefined): string {

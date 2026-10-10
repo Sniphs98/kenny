@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { intakeFormSchema, type IntakeFormDto } from '$lib/contracts';
+	import { INTAKE_FIELDS, intakeFieldsSchema, intakeFormSchema, type IntakeFormDto } from '$lib/contracts';
 	import { localizeError } from '$lib/i18n';
 	import { m } from '$lib/paraglide/messages.js';
 	import Hint from '$lib/components/Hint.svelte';
@@ -34,6 +34,21 @@
 		required: m.email_mode_required()
 	};
 
+	const FIELD_LABELS = {
+		description: m.description(),
+		priority: m.priority_2(),
+		startDate: m.start(),
+		dueDate: m.due(),
+		tags: m.tags(),
+		attachments: m.attachments()
+	};
+
+	/** Angebotene Felder für die Übersicht, Pflichtfelder mit * */
+	const offered = (f: IntakeFormDto) =>
+		INTAKE_FIELDS.filter((k) => f.fields[k] !== 'hidden')
+			.map((k) => FIELD_LABELS[k] + (f.fields[k] === 'required' ? '*' : ''))
+			.join(', ');
+
 	let open = $state(false);
 	/** ID des bearbeiteten Formulars, null beim Anlegen */
 	let editing = $state<number | null>(null);
@@ -57,7 +72,16 @@
 	);
 
 	function openNew() {
-		reset({ data: { name: '', projectIds: [], requireLogin: false, emailMode: 'optional', active: true } });
+		reset({
+			data: {
+				name: '',
+				projectIds: [],
+				requireLogin: false,
+				emailMode: 'optional',
+				fields: intakeFieldsSchema.parse({}),
+				active: true
+			}
+		});
 		editing = null;
 		open = true;
 	}
@@ -69,6 +93,7 @@
 				projectIds: f.projects.map((p) => p.id),
 				requireLogin: f.requireLogin,
 				emailMode: f.emailMode,
+				fields: { ...f.fields },
 				active: f.active
 			}
 		});
@@ -131,6 +156,9 @@
 						<Badge variant="outline"><span class="font-mono">{p.key}</span> {p.name}</Badge>
 					{/each}
 				</div>
+				<p class="text-muted-foreground text-xs" data-fields>
+					{m.fields()}: {m.title()}*{offered(f) ? `, ${offered(f)}` : ''}
+				</p>
 				<div class="flex gap-2">
 					<Input value={link(f)} readonly class="font-mono text-xs" aria-label={m.copy_link()} />
 					<Hint text={m.copy_link()}>
@@ -177,7 +205,7 @@
 </div>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-lg">
+	<Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
 		<form class="grid gap-4" method="POST" action={editing ? `?/save&id=${editing}` : '?/save'} use:enhance>
 			<Dialog.Header>
 				<Dialog.Title>{editing ? m.edit_form() : m.new_form()}</Dialog.Title>
@@ -196,6 +224,8 @@
 							<span class="size-2.5 rounded-full" style="background: {p.color}"></span>
 							{p.name} <span class="text-muted-foreground font-mono text-xs">{p.key}</span>
 						</Label>
+					{:else}
+						<p class="text-muted-foreground text-sm">{m.no_manageable_projects()}</p>
 					{/each}
 				</div>
 				{#if $errors.projectIds?._errors}
@@ -206,15 +236,36 @@
 			</div>
 			<Label class="font-normal"><Checkbox bind:checked={$form.requireLogin} /> {m.require_login()}</Label>
 			<div class="grid gap-2">
-				<Label>{m.email_field()}</Label>
+				<Label id="email-mode-label">{m.email_field()}</Label>
 				<Select.Root type="single" bind:value={$form.emailMode} disabled={$form.requireLogin}>
-					<Select.Trigger class="w-full">{EMAIL_MODES[$form.emailMode]}</Select.Trigger>
+					<Select.Trigger class="w-full" aria-labelledby="email-mode-label"
+						>{EMAIL_MODES[$form.emailMode]}</Select.Trigger
+					>
 					<Select.Content>
 						{#each Object.entries(EMAIL_MODES) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 					</Select.Content>
 				</Select.Root>
 				<p class="text-muted-foreground text-xs">{m.email_only_without_login()}</p>
 			</div>
+			<fieldset class="grid gap-2">
+				<legend class="mb-2 text-sm font-medium">{m.fields()}</legend>
+				<div class="grid gap-2 rounded-md border p-3">
+					{#each INTAKE_FIELDS as field (field)}
+						<div class="flex items-center gap-3">
+							<span class="grow text-sm" id="field-{field}">{FIELD_LABELS[field]}</span>
+							<Select.Root type="single" bind:value={$form.fields[field]}>
+								<Select.Trigger class="w-36" size="sm" aria-labelledby="field-{field}"
+									>{EMAIL_MODES[$form.fields[field]]}</Select.Trigger
+								>
+								<Select.Content>
+									{#each Object.entries(EMAIL_MODES) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
+								</Select.Content>
+							</Select.Root>
+						</div>
+					{/each}
+				</div>
+				<p class="text-muted-foreground text-xs">{m.title_always_required()}</p>
+			</fieldset>
 			<Label class="font-normal"><Checkbox bind:checked={$form.active} /> {m.form_active()}</Label>
 			{#if $message}<p class="text-destructive text-sm" role="alert">{localizeError($message)}</p>{/if}
 			<Dialog.Footer>

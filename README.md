@@ -133,6 +133,8 @@ Under **Forms** (`/settings/forms`) you can create links that let other people s
 - **Sign-in:** Each form is either public or requires sign-in. Signed-in submissions are created as the signed-in user.
 - **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the ticket sidebar.
 - **Links:** `/submit/<token>` with a random token. Generating a new link or deactivating the form makes the old link stop working. Deleting a form keeps its tickets.
+- **Fields:** The title is always required. Description, priority, start date, due date, tags and attachments can each be hidden, optional or required per form (description is optional by default, the rest hidden). Tags can only be chosen from the project's existing tags; attachments are limited to 5 files and the usual size limit. Hidden fields are ignored even if sent.
+- **Permissions:** Only project administrators of all projects in a form (or instance administrators) can see and manage it, and only their own projects can be added. Signed-in submitters of a sign-in form do not need a project membership – the form is the project administrator's explicit grant to submit tickets.
 - Submitted tickets land in the first open column of the project.
 - **Spam protection:** a hidden honeypot field (bot submissions are silently dropped) and a limit of 10 anonymous submissions per IP address and 10 minutes. The limit is kept in memory of the Node process.
 
@@ -217,3 +219,9 @@ src/routes/api/v1/          REST API
 src/routes/projects/[key]/  Board, Gantt, and settings
 src/routes/tickets/[key]/   Ticket details
 ```
+
+## User management and project access
+
+Instance administrators can manage accounts through **Users** in the user menu. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
+
+See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.

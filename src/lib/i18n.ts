@@ -6,6 +6,22 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
+	{ pattern: /^Konto gesperrt oder nicht verfügbar\.$/, translate: () => m.um_error_account() },
+	{ pattern: /^Administratorrechte erforderlich\.$/, translate: () => m.um_error_admin() },
+	{ pattern: /^Projekt nicht gefunden oder kein Zugriff\.$/, translate: () => m.um_error_project() },
+	{ pattern: /^Unzureichende Projektberechtigungen\.$/, translate: () => m.um_error_permissions() },
+	{ pattern: /^Benutzer nicht gefunden\.$/, translate: () => m.um_error_user() },
+	{
+		pattern: /^Der letzte aktive Administrator kann nicht entfernt werden\.$/,
+		translate: () => m.um_error_last_admin()
+	},
+	{ pattern: /^Benutzer ist bereits Projektmitglied\.$/, translate: () => m.um_error_existing_member() },
+	{ pattern: /^Projektmitglied nicht gefunden\.$/, translate: () => m.um_error_member() },
+	{
+		pattern: /^Der letzte Projektadministrator kann nicht entfernt werden\.$/,
+		translate: () => m.um_error_last_project_admin()
+	},
+	{ pattern: /^Zuständige müssen aktive Projektmitglieder sein\.$/, translate: () => m.um_error_assignee() },
 	{
 		pattern: new RegExp('^Bitte eine Farbe wie #6366f1 angeben\\.$'),
 		translate: (_values: string[]) => m.enter_a_color_such_as_6366f1()
@@ -198,6 +214,31 @@ const errorTranslations = [
 	{
 		pattern: new RegExp('^Bitte eine gültige E-Mail-Adresse angeben\\.$'),
 		translate: (_values: string[]) => m.enter_a_valid_email()
+	},
+	{
+		pattern: new RegExp('^Bitte eine Beschreibung angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_description()
+	},
+	{ pattern: new RegExp('^Bitte eine Priorität wählen\\.$'), translate: (_values: string[]) => m.choose_a_priority() },
+	{
+		pattern: new RegExp('^Bitte ein Startdatum angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_start_date()
+	},
+	{
+		pattern: new RegExp('^Bitte ein Fälligkeitsdatum angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_due_date()
+	},
+	{
+		pattern: new RegExp('^Bitte mindestens einen Tag wählen\\.$'),
+		translate: (_values: string[]) => m.choose_at_least_one_tag()
+	},
+	{
+		pattern: new RegExp('^Bitte mindestens eine Datei anhängen\\.$'),
+		translate: (_values: string[]) => m.attach_at_least_one_file()
+	},
+	{
+		pattern: new RegExp('^Höchstens (.+?) Dateien\\.$'),
+		translate: (values: string[]) => m.at_most_files({ count: values[0] })
 	}
 ];
 

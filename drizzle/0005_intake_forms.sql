@@ -4,6 +4,7 @@ CREATE TABLE `intake_form` (
 	`token` text NOT NULL,
 	`require_login` integer DEFAULT false NOT NULL,
 	`email_mode` text DEFAULT 'optional' NOT NULL,
+	`fields` text DEFAULT '{}' NOT NULL,
 	`active` integer DEFAULT true NOT NULL,
 	`created_by_id` text,
 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,

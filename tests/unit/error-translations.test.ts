@@ -25,7 +25,9 @@ const patterns = [
 	new RegExp(String.raw`,\s*` + literal + String.raw`\s*\)`, 'g'),
 	new RegExp(String.raw`message:\s*` + literal, 'g'),
 	// Formular-Aktionen: fail(400, { error: '…' })
-	new RegExp(String.raw`error:\s*` + literal, 'g')
+	new RegExp(String.raw`error:\s*` + literal, 'g'),
+	// Meldungstabellen in Services: { description: 'Bitte …', … }
+	new RegExp(String.raw`^\s*\w+:\s*` + literal + String.raw`,?\s*$`, 'gm')
 ];
 
 /** Deutsche Sätze aus dem Quelltext; Platzhalter wie ${field} durch Beispielwerte ersetzt */

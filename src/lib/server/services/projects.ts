@@ -1,11 +1,12 @@
 import { createProjectSchema, updateProjectSchema, createColumnSchema, updateColumnSchema } from '$lib/contracts';
 import { parseInput } from '../validation';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { boardColumn, project, ticket } from '../db/schema';
+import { boardColumn, project, projectMember, ticket } from '../db/schema';
 import { ApiError } from '../errors';
 import { removeFiles, storageKeysForProject } from './attachments';
 import { insertDefaultTags } from './tags';
+import { requireActiveUser } from './access';
 import { str, optStr } from './validate';
 
 export const DEFAULT_COLUMNS = [
@@ -15,7 +16,17 @@ export const DEFAULT_COLUMNS = [
 	{ name: 'Erledigt', isDone: true }
 ];
 
-export function listProjects() {
+export function listProjects(userId?: string) {
+	const current = userId ? requireActiveUser(userId) : null;
+	const memberships =
+		userId && current?.role !== 'admin'
+			? db
+					.select({ id: projectMember.projectId })
+					.from(projectMember)
+					.where(eq(projectMember.userId, userId))
+					.all()
+					.map((p) => p.id)
+			: null;
 	const counts = db
 		.select({
 			projectId: ticket.projectId,
@@ -29,6 +40,7 @@ export function listProjects() {
 	return db
 		.select()
 		.from(project)
+		.where(memberships ? inArray(project.id, memberships) : undefined)
 		.orderBy(asc(project.name))
 		.all()
 		.map((p) => ({
@@ -103,6 +115,7 @@ export function createProject(rawInput: unknown, userId: string | null) {
 			tx.insert(boardColumn).values({ projectId: p.id, name: c.name, isDone: c.isDone, position: i }).run()
 		);
 		insertDefaultTags(tx, p.id);
+		if (userId) tx.insert(projectMember).values({ projectId: p.id, userId, role: 'admin' }).run();
 		return p;
 	});
 }

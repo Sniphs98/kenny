@@ -46,7 +46,7 @@ export const boardColumn = sqliteTable(
 );
 
 export { PRIORITIES, type Priority } from '$lib/contracts';
-import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES } from '$lib/contracts';
+import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES, type IntakeFields } from '$lib/contracts';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -183,6 +183,11 @@ export const intakeForm = sqliteTable('intake_form', {
 	token: text('token').notNull().unique(),
 	requireLogin: integer('require_login', { mode: 'boolean' }).notNull().default(false),
 	emailMode: text('email_mode', { enum: INTAKE_EMAIL_MODES }).notNull().default('optional'),
+	/** Welche Ticketfelder angeboten werden (ausgeblendet/optional/Pflicht); fehlende Felder nutzen die Standardwerte */
+	fields: text('fields', { mode: 'json' })
+		.$type<Partial<IntakeFields>>()
+		.notNull()
+		.default(sql`'{}'`),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
 	createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
@@ -208,3 +213,19 @@ export type Ticket = typeof ticket.$inferSelect;
 export type TicketLink = typeof ticketLink.$inferSelect;
 export type Tag = typeof tag.$inferSelect;
 export type Attachment = typeof attachment.$inferSelect;
+
+/** Explicit access grants, independent of the authentication provider. */
+export const projectMember = sqliteTable(
+	'project_member',
+	{
+		projectId: integer('project_id')
+			.notNull()
+			.references(() => project.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		role: text('role', { enum: ['admin', 'member', 'reader'] }).notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.projectId, t.userId] }), index('project_member_user_idx').on(t.userId)]
+);

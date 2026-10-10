@@ -1,7 +1,14 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { createProject, getTicket, open } from './helpers';
 
-type FormOptions = { projects: string[]; requireLogin?: boolean; email?: 'Ausgeblendet' | 'Optional' | 'Pflichtfeld' };
+type Mode = 'Ausgeblendet' | 'Optional' | 'Pflichtfeld';
+type FormOptions = {
+	projects: string[];
+	requireLogin?: boolean;
+	email?: Mode;
+	/** Feldbezeichnung → Modus, z.B. { Priorität: 'Pflichtfeld' } */
+	fields?: Record<string, Mode>;
+};
 
 /** Formular über die Einstellungsseite anlegen und den Link zurückgeben */
 async function createIntakeForm(page: Page, name: string, options: FormOptions) {
@@ -11,10 +18,12 @@ async function createIntakeForm(page: Page, name: string, options: FormOptions) 
 	await dialog.getByLabel('Name').fill(name);
 	for (const project of options.projects) await dialog.getByRole('checkbox', { name: project }).click();
 	if (options.requireLogin) await dialog.getByRole('checkbox', { name: 'Anmeldung erforderlich' }).click();
-	if (options.email) {
-		await dialog.getByRole('button').filter({ hasText: 'Optional' }).click();
-		await page.getByRole('option', { name: options.email, exact: true }).click();
-	}
+	const choose = async (select: string, mode: Mode) => {
+		await dialog.getByRole('button', { name: select, exact: true }).click();
+		await page.getByRole('option', { name: mode, exact: true }).click();
+	};
+	if (options.email) await choose('E-Mail-Feld', options.email);
+	for (const [field, mode] of Object.entries(options.fields ?? {})) await choose(field, mode);
 	await dialog.getByRole('button', { name: 'Speichern' }).click();
 	await expect(dialog).toBeHidden();
 	return card(page, name).getByRole('textbox', { name: 'Link kopieren' }).inputValue();
@@ -136,4 +145,50 @@ test('Neu erzeugter Link und deaktiviertes Formular sperren alte Aufrufe', async
 	await page.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click();
 	await expect(card(page, name)).toContainText('Deaktiviert');
 	expect((await guest.goto(newLink))?.status()).toBe(404);
+});
+
+test('Einstellbare Felder: Priorität, Fälligkeit, Tags und Anhang beim Einreichen', async ({
+	page,
+	browser,
+	baseURL,
+	request
+}) => {
+	const p = await createProject(request, 'Felder');
+	const name = `Felder ${p.key}`;
+	const link = await createIntakeForm(page, name, {
+		projects: [`Felder ${p.key}`],
+		fields: {
+			Beschreibung: 'Ausgeblendet',
+			Priorität: 'Pflichtfeld',
+			Fällig: 'Optional',
+			Tags: 'Optional',
+			Anhänge: 'Optional'
+		}
+	});
+	await expect(card(page, name).locator('[data-fields]')).toHaveText(
+		'Felder: Titel*, Priorität*, Fällig, Tags, Anhänge'
+	);
+
+	const guest = await anonymous(browser, baseURL);
+	await guest.goto(link);
+	await expect(guest.getByLabel('Beschreibung')).toHaveCount(0);
+	await expect(guest.getByLabel('Start', { exact: true })).toHaveCount(0);
+
+	await guest.getByLabel('Titel').fill('Mit allen Feldern');
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('alert')).toContainText('Bitte eine Priorität wählen.');
+
+	await guest.getByRole('button').filter({ hasText: 'Priorität wählen…' }).click();
+	await guest.getByRole('option', { name: 'Hoch' }).click();
+	await guest.getByRole('button', { name: 'Bug', exact: true }).click();
+	await guest
+		.getByLabel(/Anhänge/)
+		.setInputFiles({ name: 'fehler.txt', mimeType: 'text/plain', buffer: Buffer.from('Log') });
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
+
+	const detail = await getTicket(request, `${p.key}-1`);
+	expect(detail).toMatchObject({ title: 'Mit allen Feldern', priority: 'high', description: '' });
+	expect(detail.tags.map((t: { name: string }) => t.name)).toEqual(['Bug']);
+	expect(detail.attachments.map((a: { filename: string }) => a.filename)).toEqual(['fehler.txt']);
 });

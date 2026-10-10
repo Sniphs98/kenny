@@ -87,7 +87,7 @@ docker compose up -d
 
 To build locally without a published image, run `docker compose up -d --build`. The app is then available at <http://localhost:3000>. By default, the port binds only to `127.0.0.1`; use a reverse proxy for external access. `KENNY_ORIGIN` sets both `ORIGIN` and the authentication URL.
 
-Releases are published at `ghcr.io/sniphs98/kenny:<version>`. A tag such as `v0.1.0` on a commit in `main` runs all CI checks and publishes the container only after they pass. Manually triggering the release workflow does not publish an image. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Releases are published at `ghcr.io/sniphs98/kenny:<version>` with release notes on GitHub. Every merge to `main` that contains a `feat`, `fix` or `perf` change runs all CI checks and then publishes the next version automatically. Manually triggering the release workflow does not publish an image. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 `BODY_SIZE_LIMIT` must exceed the maximum attachment size (25 MB by default, configured through `ATTACHMENT_MAX_MB`); the container defaults to 30 MB. Back up the database and attachments together. To update, select a specific container version and run `docker compose pull && docker compose up -d` again. Migrations run at startup and are not reversed when rolling back an image.
 

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
+	import KennyLogo from '$lib/components/KennyLogo.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
 	let {
 		state,
@@ -22,9 +22,7 @@
 	<div class="grid min-h-screen place-items-center p-4">
 		<Card.Root class="w-full max-w-md">
 			<Card.Content class="flex flex-col items-center gap-3 text-center">
-				<span class="bg-primary text-primary-foreground grid size-11 place-items-center rounded-xl">
-					<SquareKanban class="size-5" />
-				</span>
+				<KennyLogo class="size-12" />
 				{#if state === 'connecting' || state === 'signing-in'}
 					<p class="text-muted-foreground flex items-center gap-2 text-sm" role="status">
 						<LoaderCircle class="size-4 animate-spin" />

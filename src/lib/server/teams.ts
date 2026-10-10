@@ -147,32 +147,68 @@ function png(size: number, pixel: (x: number, y: number) => [number, number, num
 	]);
 }
 
-/** Kanban-Symbol: drei Spalten unterschiedlicher Höhe in einem Quadrat der Kantenlänge 1 */
-function kanban(u: number, v: number) {
-	const columns = [
-		[0.22, 0.38, 0.72],
-		[0.43, 0.59, 0.55],
-		[0.64, 0.8, 0.86]
-	];
-	return columns.some(([from, to, bottom]) => u >= from && u < to && v >= 0.22 && v < bottom);
+type RGB = [number, number, number];
+
+// Kenny-Zeichen wie src/lib/assets/favicon.svg und KennyLogo.svelte, Koordinaten auf 0…100
+const BRAND: RGB = [43, 38, 36]; // #2b2624
+const INK: RGB = [246, 244, 240]; // #f6f4f0
+const COLUMNS = [
+	{ x: 22, y: 24, w: 15, h: 46 },
+	{ x: 42.5, y: 24, w: 15, h: 30 },
+	{ x: 63, y: 24, w: 15, h: 54 }
+];
+
+/** Abgerundetes Rechteck (Radius 5) enthält den Punkt? */
+function inRoundedRect(px: number, py: number, { x, y, w, h }: (typeof COLUMNS)[number], r = 5) {
+	const dx = Math.max(x + r - px, px - (x + w - r), 0);
+	const dy = Math.max(y + r - py, py - (y + h - r), 0);
+	return px >= x && px <= x + w && py >= y && py <= y + h && dx * dx + dy * dy <= r * r;
 }
 
-/** Farbiges App-Icon 192×192: weißes Kanban-Symbol auf dunklem, abgerundetem Quadrat */
-export function colorIcon() {
-	const size = 192;
-	const radius = 40;
+const inColumns = (px: number, py: number) => COLUMNS.some((c) => inRoundedRect(px, py, c));
+
+/** Squircle (Superellipse) wie die Form im SVG */
+const inSquircle = (px: number, py: number) => Math.abs(px / 50 - 1) ** 4.4 + Math.abs(py / 50 - 1) ** 4.4 <= 1;
+
+/**
+ * Bild mit Kantenglättung: je Pixel 4×4 Stichproben auf der 0…100-Fläche (Ausschnitt view),
+ * sample liefert Farbe und Deckkraft (0 oder 1) einer Stichprobe.
+ */
+function smoothPng(size: number, view: [number, number], sample: (px: number, py: number) => [...RGB, number]) {
+	const [from, span] = view;
+	const n = 4;
 	return png(size, (x, y) => {
-		const dx = Math.max(radius - x, x - (size - 1 - radius), 0);
-		const dy = Math.max(radius - y, y - (size - 1 - radius), 0);
-		if (dx * dx + dy * dy > radius * radius) return [0, 0, 0, 0];
-		return kanban(x / size, y / size) ? [255, 255, 255, 255] : [28, 25, 23, 255];
+		let r = 0;
+		let g = 0;
+		let b = 0;
+		let a = 0;
+		for (let i = 0; i < n; i++)
+			for (let j = 0; j < n; j++) {
+				const [sr, sg, sb, sa] = sample(
+					from + ((x + (i + 0.5) / n) / size) * span,
+					from + ((y + (j + 0.5) / n) / size) * span
+				);
+				r += sr * sa;
+				g += sg * sa;
+				b += sb * sa;
+				a += sa;
+			}
+		return a
+			? [Math.round(r / a), Math.round(g / a), Math.round(b / a), Math.round((a / (n * n)) * 255)]
+			: [0, 0, 0, 0];
 	});
 }
 
-/** Umriss-Icon 32×32 für die Teams-Leiste: nur Weiß auf transparentem Hintergrund */
+/** Farbiges App-Icon 192×192: helle Spalten auf dem dunklen Kenny-Squircle */
+export function colorIcon() {
+	return smoothPng(192, [0, 100], (px, py) =>
+		!inSquircle(px, py) ? [0, 0, 0, 0] : inColumns(px, py) ? [...INK, 1] : [...BRAND, 1]
+	);
+}
+
+/** Umriss-Icon 32×32 für die Teams-Leiste: nur die Spalten in Weiß auf transparentem Hintergrund */
 export function outlineIcon() {
-	const size = 32;
-	return png(size, (x, y) => (kanban((x + 0.5) / size, (y + 0.5) / size) ? [255, 255, 255, 255] : [0, 0, 0, 0]));
+	return smoothPng(32, [12, 76], (px, py) => (inColumns(px, py) ? [255, 255, 255, 1] : [0, 0, 0, 0]));
 }
 
 // --- ZIP ohne Bibliothek (Methode „stored“, reicht für drei kleine Dateien) -----------------------

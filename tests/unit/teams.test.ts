@@ -90,18 +90,25 @@ describe('teams app package', () => {
 
 		const color = readPng(colorIcon());
 		expect([color.width, color.height]).toEqual([192, 192]);
-		expect(color.pixel(96, 10)).toEqual([28, 25, 23, 255]);
+		// Kenny-Squircle (#2b2624) mit hellen Spalten (#f6f4f0), Ecken transparent
+		expect(color.pixel(96, 10)).toEqual([43, 38, 36, 255]);
+		expect(color.pixel(57, 77)).toEqual([246, 244, 240, 255]);
+		expect(color.pixel(96, 140)).toEqual([43, 38, 36, 255]);
 		expect(color.pixel(0, 0)[3]).toBe(0);
 
-		// Umriss-Icon: nur Weiß oder vollständig transparent
+		// Umriss-Icon: nur Weiß (geglättete Kanten halbtransparent) auf transparentem Grund
 		const outline = readPng(outlineIcon());
 		expect([outline.width, outline.height]).toEqual([32, 32]);
+		const opaque: number[][] = [];
 		for (let y = 0; y < 32; y++)
-			for (let x = 0; x < 32; x++)
-				expect([
-					[255, 255, 255, 255],
-					[0, 0, 0, 0]
-				]).toContainEqual(outline.pixel(x, y));
+			for (let x = 0; x < 32; x++) {
+				const [r, g, b, a] = outline.pixel(x, y);
+				if (a === 0) expect([r, g, b], `${x},${y}`).toEqual([0, 0, 0]);
+				else expect([r, g, b], `${x},${y}`).toEqual([255, 255, 255]);
+				if (a === 255) opaque.push([x, y]);
+			}
+		// Die drei Spalten sind deutlich zu sehen
+		expect(opaque.length).toBeGreaterThan(150);
 	});
 });
 

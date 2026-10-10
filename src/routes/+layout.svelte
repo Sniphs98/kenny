@@ -10,6 +10,7 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SoundToggle from '$lib/components/SoundToggle.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import KennyLogo from '$lib/components/KennyLogo.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -25,7 +26,6 @@
 	import MessagesSquare from '@lucide/svelte/icons/messages-square';
 	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
-	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 
 	let { data, children } = $props();
 
@@ -83,9 +83,7 @@
 				class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur max-sm:h-auto max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-1 max-sm:px-3 max-sm:py-2"
 			>
 				<a href="/" class="mr-3 flex shrink-0 items-center gap-2 font-semibold tracking-tight max-sm:mr-0">
-					<span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">
-						<SquareKanban class="size-4" strokeWidth={2.25} />
-					</span>
+					<KennyLogo class="size-7" />
 					Kenny
 				</a>
 				<nav

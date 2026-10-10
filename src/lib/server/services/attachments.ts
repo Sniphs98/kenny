@@ -67,12 +67,17 @@ function cleanName(name: string) {
 	return base.slice(0, 200) || 'datei';
 }
 
-export async function addAttachments(ref: string | number, files: File[], userId: string | null) {
-	const t = resolveTicket(ref);
-	if (!files.length) throw new ApiError(400, 'Keine Datei übergeben (Feld "file", multipart/form-data).');
+/** Dateigröße prüfen, bevor etwas gespeichert oder angelegt wird */
+export function checkFileSizes(files: File[]) {
 	for (const f of files) {
 		if (f.size > MAX_MB * 1024 * 1024) throw new ApiError(413, `"${f.name}" ist größer als ${MAX_MB} MB.`);
 	}
+}
+
+export async function addAttachments(ref: string | number, files: File[], userId: string | null) {
+	const t = resolveTicket(ref);
+	if (!files.length) throw new ApiError(400, 'Keine Datei übergeben (Feld "file", multipart/form-data).');
+	checkFileSizes(files);
 	mkdirSync(DIR, { recursive: true });
 	const uploadedBy = userId
 		? (db.select({ name: user.name }).from(user).where(eq(user.id, userId)).get()?.name ?? null)

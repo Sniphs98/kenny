@@ -127,6 +127,15 @@ export const ticketListItemSchema = ticketDtoSchema.extend({
 	dependsOn: z.array(id),
 	openBlockers: z.number().int()
 });
+/** Suche über alle sichtbaren Projekte; assignee: "me", "none", Benutzer-ID oder E-Mail */
+export const ticketSearchSchema = z.strictObject({
+	project: z.string().trim().min(1).max(120).optional(),
+	query: z.string().trim().max(200).optional(),
+	assignee: z.string().trim().min(1).max(320).optional(),
+	closed: z.boolean().optional(),
+	limit: z.number().int().min(1).max(200).optional()
+});
+export const ticketSearchResultSchema = z.object({ total: z.number().int(), tickets: z.array(ticketListItemSchema) });
 export const attachmentSchema = z.object({
 	id,
 	ticketId: id,
@@ -165,6 +174,9 @@ export type TagDto = z.output<typeof tagSchema>;
 export type BoardColumnDto = z.output<typeof columnSchema>;
 export type TicketDto = z.output<typeof ticketDtoSchema>;
 export type TicketListItem = z.output<typeof ticketListItemSchema>;
+export type TicketDetail = z.output<typeof ticketDetailSchema>;
+export type TicketSearchInput = z.input<typeof ticketSearchSchema>;
+export type TicketSearchResult = z.output<typeof ticketSearchResultSchema>;
 export type AttachmentDto = z.output<typeof attachmentSchema>;
 export type DependencyDto = z.output<typeof dependencySchema>;
 
@@ -190,9 +202,28 @@ export const ticketFormSchema = z
 
 // --- Formulare: Tickets per Link einreichen (auch ohne Anmeldung) ---
 
-/** E-Mail-Feld bei Formularen ohne Anmeldung: ausgeblendet, optional oder Pflicht */
-export const INTAKE_EMAIL_MODES = ['hidden', 'optional', 'required'] as const;
-export type IntakeEmailMode = (typeof INTAKE_EMAIL_MODES)[number];
+/** Sichtbarkeit eines Formularfelds: ausgeblendet, optional oder Pflicht */
+export const INTAKE_FIELD_MODES = ['hidden', 'optional', 'required'] as const;
+export type IntakeFieldMode = (typeof INTAKE_FIELD_MODES)[number];
+/** E-Mail-Feld bei Formularen ohne Anmeldung */
+export const INTAKE_EMAIL_MODES = INTAKE_FIELD_MODES;
+export type IntakeEmailMode = IntakeFieldMode;
+
+/** Ticketfelder, die ein Formular anbieten kann; der Titel ist immer Pflicht */
+export const INTAKE_FIELDS = ['description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments'] as const;
+export type IntakeField = (typeof INTAKE_FIELDS)[number];
+const fieldMode = z.enum(INTAKE_FIELD_MODES);
+export const intakeFieldsSchema = z.strictObject({
+	description: fieldMode.default('optional'),
+	priority: fieldMode.default('hidden'),
+	startDate: fieldMode.default('hidden'),
+	dueDate: fieldMode.default('hidden'),
+	tags: fieldMode.default('hidden'),
+	attachments: fieldMode.default('hidden')
+});
+export type IntakeFields = z.output<typeof intakeFieldsSchema>;
+/** Höchstzahl an Dateien pro Einreichung */
+export const INTAKE_MAX_FILES = 5;
 
 /** Formular anlegen oder vollständig ändern (Einstellungsseite) */
 export const intakeFormSchema = z.strictObject({
@@ -200,19 +231,29 @@ export const intakeFormSchema = z.strictObject({
 	projectIds: z.array(id).min(1, 'Bitte mindestens ein Projekt auswählen.').max(100),
 	requireLogin: z.boolean().default(false),
 	emailMode: z.enum(INTAKE_EMAIL_MODES).default('optional'),
+	fields: intakeFieldsSchema.prefault({}),
+	/** Nur die ausgewählten Tags anbieten statt aller Tags der Projekte */
+	restrictTags: z.boolean().default(false),
+	tagIds: z.array(id).max(500).default([]),
 	active: z.boolean().default(true)
 });
 
-/** Einreichung über ein Formular; "website" ist ein unsichtbares Fallen-Feld gegen Bots */
-export const intakeSubmissionSchema = z.strictObject({
-	project: z.string().trim().max(20).default(''),
-	title: z.string().trim().min(1, 'Bitte einen Titel angeben.').max(300),
-	description: z.string().max(100_000).default(''),
-	email: z
-		.union([z.literal(''), z.email({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' }).max(320)])
-		.default(''),
-	website: z.string().max(500).default('')
-});
+/** Einreichung über ein Formular; "website" ist ein unsichtbares Fallen-Feld gegen Bots. Dateien kommen separat. */
+export const intakeSubmissionSchema = z
+	.strictObject({
+		project: z.string().trim().max(20).default(''),
+		title: z.string().trim().min(1, 'Bitte einen Titel angeben.').max(300),
+		description: z.string().max(100_000).default(''),
+		priority: z.union([z.enum(PRIORITIES), z.literal('')]).default(''),
+		startDate: z.union([dateSchema, z.literal('')]).default(''),
+		dueDate: z.union([dateSchema, z.literal('')]).default(''),
+		tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+		email: z
+			.union([z.literal(''), z.email({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' }).max(320)])
+			.default(''),
+		website: z.string().max(500).default('')
+	})
+	.refine(validDateRange, rangeError);
 
 export const intakeFormDtoSchema = z.object({
 	id,
@@ -220,6 +261,9 @@ export const intakeFormDtoSchema = z.object({
 	token: z.string(),
 	requireLogin: z.boolean(),
 	emailMode: z.enum(INTAKE_EMAIL_MODES),
+	fields: intakeFieldsSchema,
+	restrictTags: z.boolean(),
+	tagIds: z.array(id),
 	active: z.boolean(),
 	projects: z.array(z.object({ id, key: z.string(), name: z.string() })),
 	createdAt: timestamp
@@ -230,7 +274,16 @@ export const publicIntakeFormSchema = z.object({
 	name: z.string(),
 	requireLogin: z.boolean(),
 	emailMode: z.enum(INTAKE_EMAIL_MODES),
-	projects: z.array(z.object({ key: z.string(), name: z.string(), color: z.string() }))
+	fields: intakeFieldsSchema,
+	projects: z.array(
+		z.object({
+			key: z.string(),
+			name: z.string(),
+			color: z.string(),
+			/** Nur gefüllt, wenn das Formular Tags anbietet */
+			tags: z.array(z.object({ name: z.string(), color: z.string() }))
+		})
+	)
 });
 
 export type IntakeFormInput = z.input<typeof intakeFormSchema>;

@@ -135,7 +135,11 @@ Under **Forms** (`/settings/forms`) you can create links that let other people s
 - **One project or a choice:** A form with one project is a fixed link for that project. With several projects, the submitter picks the project.
 - **Sign-in:** Each form is either public or requires sign-in. Signed-in submissions are created as the signed-in user.
 - **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the ticket sidebar.
+- **Fields:** The title is always required. Description, priority, start, due date, tags and attachments can each be hidden, optional or required. Values for hidden fields are ignored.
+- **Tags:** Submitters can only pick existing tags of the chosen project. Optionally, a form allows only selected tags; deleted tags disappear from the selection automatically.
+- **Attachments:** Up to 5 files per submission, chosen, dragged in or pasted with Ctrl+V (screenshots). Submitters see a preview and can remove files before submitting. The usual size limit (`ATTACHMENT_MAX_MB`, default 25 MB) applies.
 - **Links:** `/submit/<token>` with a random token. Generating a new link or deactivating the form makes the old link stop working. Deleting a form keeps its tickets.
+- **Embedding:** **Embed** shows an HTML snippet (iframe plus a small script that adjusts the height) for your own website. The embedded view (`/submit/<token>?embed`) has no page background and a compact header. Forms that require sign-in cannot be embedded, because sign-in does not work inside a third-party frame. Only `/submit/…` pages may be framed by other sites; every other page sends `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
 - Submitted tickets land in the first open column of the project.
 - **Spam protection:** a hidden honeypot field (bot submissions are silently dropped) and a limit of 10 anonymous submissions per IP address and 10 minutes. The limit is kept in memory of the Node process.
 
@@ -204,6 +208,25 @@ curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=s
   -H "Authorization: Bearer $KENNY_TOKEN" -H "Content-Type: image/png" --data-binary @screenshot.png
 ```
 
+## AI assistants (MCP)
+
+Kenny includes a [Model Context Protocol](https://modelcontextprotocol.io) server so AI assistants can read projects and tickets. It is served by the app itself at `/api/v1/mcp` (Streamable HTTP, stateless, JSON responses) and authenticates like the REST API with `Authorization: Bearer <token>`. The assistant sees exactly what the token's owner can see: projects they are a member of (all projects for instance administrators), and ticket links into other projects are hidden. Deactivating the account or revoking the token cuts off access.
+
+All tools are read-only:
+
+| Tool             | Description                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `list_projects`  | Accessible projects with key and ticket counts                                                                            |
+| `search_tickets` | Tickets across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit` |
+| `get_ticket`     | One ticket by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                |
+
+The **API** page in the app shows the endpoint URL and configuration examples. For example, with Claude Code:
+
+```bash
+claude mcp add --transport http kenny https://kenny.example.com/api/v1/mcp \
+  --header "Authorization: Bearer $KENNY_TOKEN"
+```
+
 ## Microsoft integration
 
 Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` (optionally `MICROSOFT_TENANT_ID`) enables **Sign in with Microsoft** on the login page. Configure `<BETTER_AUTH_URL>/api/auth/callback/microsoft` as the redirect URI in the app registration.
@@ -217,7 +240,8 @@ src/lib/server/db/          Drizzle schema (auth and application tables) and dat
 src/lib/server/services/    Project and ticket business logic shared by the UI and API
 src/lib/server/auth.ts      Better Auth configuration
 src/lib/server/api*.ts      API token validation and handler wrapper
-src/routes/api/v1/          REST API
+src/lib/server/mcp.ts       MCP tools for AI assistants
+src/routes/api/v1/          REST API and MCP endpoint
 src/routes/projects/[key]/  Board, Gantt, and settings
 src/routes/tickets/[key]/   Ticket details
 ```

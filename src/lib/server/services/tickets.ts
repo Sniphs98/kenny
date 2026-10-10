@@ -1,6 +1,6 @@
-import { requireProjectAccess } from './access';
+import { requireProjectAccess, visibleUsers } from './access';
 import { projectMember } from '../db/schema';
-import { createTicketSchema, updateTicketSchema, createLinkSchema } from '$lib/contracts';
+import { createTicketSchema, updateTicketSchema, createLinkSchema, ticketSearchSchema } from '$lib/contracts';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
@@ -19,7 +19,7 @@ import {
 } from '../db/schema';
 import { ApiError } from '../errors';
 import { publish } from '../live';
-import { getColumns, getProject } from './projects';
+import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
 import { oneOf, optDate, optInt, optStr, str } from './validate';
@@ -75,7 +75,7 @@ function present(t: Ticket, projectKey: string, column?: { name: string; isDone:
 	};
 }
 export type { TicketDto, TicketListItem } from '$lib/contracts';
-import type { TicketDto, TicketListItem } from '$lib/contracts';
+import type { TicketDetail, TicketDto, TicketListItem, TicketSearchResult } from '$lib/contracts';
 
 export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);
@@ -139,6 +139,46 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 	});
 }
 
+/**
+ * Tickets aus allen Projekten, die der Benutzer sehen darf (z.B. für KI-Assistenten über MCP).
+ * Mit "project" nur dieses Projekt; Zugriff wird wie bei der REST-API geprüft.
+ */
+export function searchTickets(userId: string, rawInput: unknown): TicketSearchResult {
+	const input = parseInput(ticketSearchSchema, rawInput ?? {});
+	const projects = input.project ? [getProject(input.project)] : listProjects(userId);
+	for (const p of projects) requireProjectAccess(userId, p.id);
+
+	let assigneeId: string | null | undefined;
+	if (input.assignee === 'me') assigneeId = userId;
+	else if (input.assignee === 'none') assigneeId = null;
+	else if (input.assignee !== undefined) {
+		const ref = input.assignee.toLowerCase();
+		const match = visibleUsers(userId).find((u) => u.id === input.assignee || u.email.toLowerCase() === ref);
+		if (!match) throw new ApiError(400, `Benutzer "${input.assignee}" nicht gefunden.`);
+		assigneeId = match.id;
+	}
+	const query = input.query?.toLowerCase();
+
+	const tickets = projects
+		.flatMap((p) => listTickets(p.id, { closed: input.closed }))
+		.filter((t) => assigneeId === undefined || t.assigneeId === assigneeId)
+		.filter(
+			(t) =>
+				!query ||
+				t.key.toLowerCase() === query ||
+				t.title.toLowerCase().includes(query) ||
+				t.description.toLowerCase().includes(query)
+		);
+	return { total: tickets.length, tickets: tickets.slice(0, input.limit ?? 50) };
+}
+
+/** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
+export function viewTicket(ref: string | number, userId: string): TicketDetail {
+	requireProjectAccess(userId, resolveTicket(ref).projectId);
+	const { ticket, parent, subtasks, links, attachments, assignee, submission } = getTicketDetail(ref, userId);
+	return { ...ticket, parent, subtasks, links, attachments, assignee, submission };
+}
+
 /** Detailansicht: Ticket mit Projekt, Unteraufgaben, übergeordnetem Ticket und Verknüpfungen */
 export function getTicketDetail(ref: string | number, actorId?: string) {
 	const t = resolveTicket(ref);
@@ -176,7 +216,8 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	const links = visibleLinks.map(({ link, other, otherKey }) => {
 		const outgoing = link.sourceId === t.id;
 		// Aus Sicht dieses Tickets beschreiben
-		const relation = link.type === 'relates' ? 'relates' : outgoing ? 'depends_on' : ('blocks' as const);
+		const relation: TicketDetail['links'][number]['relation'] =
+			link.type === 'relates' ? 'relates' : outgoing ? 'depends_on' : 'blocks';
 		return {
 			id: link.id,
 			type: link.type,

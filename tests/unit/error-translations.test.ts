@@ -27,18 +27,23 @@ const patterns = [
 	// Formular-Aktionen: fail(400, { error: '…' })
 	new RegExp(String.raw`error:\s*` + literal, 'g')
 ];
+// Meldungstabellen in Services: const MISSING: Record<…, string> = { description: 'Bitte …', … }
+const messageTable = /:\s*Record<[^>]+,\s*string>\s*=\s*\{([\s\S]*?)\n\}/g;
+const tableEntry = new RegExp(String.raw`^\s*\w+:\s*` + literal + String.raw`,?\s*$`, 'gm');
 
 /** Deutsche Sätze aus dem Quelltext; Platzhalter wie ${field} durch Beispielwerte ersetzt */
 function serverMessages() {
 	const found = new Map<string, string>();
 	for (const file of roots.flatMap(files)) {
-		const source = readFileSync(file, 'utf8');
-		for (const pattern of patterns) {
-			for (const match of source.matchAll(pattern)) {
-				const text = match[2].replace(/\$\{[^}]+\}/g, 'X');
-				// Nur Sätze (Großbuchstabe oder Anführungszeichen am Anfang, Punkt am Ende)
-				if (/^["A-ZÄÖÜ]/.test(text) && /\.$/.test(text)) found.set(text, file);
-			}
+		const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+		const matches = [
+			...patterns.flatMap((pattern) => [...source.matchAll(pattern)]),
+			...[...source.matchAll(messageTable)].flatMap((table) => [...table[1].matchAll(tableEntry)])
+		];
+		for (const match of matches) {
+			const text = match[2].replace(/\$\{[^}]+\}/g, 'X');
+			// Nur Sätze (Großbuchstabe oder Anführungszeichen am Anfang, Punkt am Ende)
+			if (/^["A-ZÄÖÜ]/.test(text) && /\.$/.test(text)) found.set(text, file);
 		}
 	}
 	return found;
@@ -52,6 +57,9 @@ describe('server error translations', () => {
 			messages.has('Entweder multipart/form-data mit Feld "file" oder ?filename=… mit der Datei als Body senden.')
 		).toBe(true);
 		expect(messages.has('Feld "X" ist erforderlich.')).toBe(true);
+		// Meldungstabellen ja, sonstige Objekt-Texte (z.B. englische MCP-Beschreibungen) nein
+		expect(messages.has('Bitte eine Beschreibung angeben.')).toBe(true);
+		expect([...messages.values()].some((file) => file.endsWith('mcp.ts'))).toBe(false);
 	});
 
 	it('translates every server error message to English', async () => {

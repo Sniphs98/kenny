@@ -214,6 +214,39 @@ const errorTranslations = [
 	{
 		pattern: new RegExp('^Bitte eine gültige E-Mail-Adresse angeben\\.$'),
 		translate: (_values: string[]) => m.enter_a_valid_email()
+	},
+	{
+		pattern: new RegExp('^Bitte eine Beschreibung angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_description()
+	},
+	{ pattern: new RegExp('^Bitte eine Priorität wählen\\.$'), translate: (_values: string[]) => m.choose_a_priority() },
+	{
+		pattern: new RegExp('^Bitte ein Startdatum angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_start_date()
+	},
+	{
+		pattern: new RegExp('^Bitte ein Fälligkeitsdatum angeben\\.$'),
+		translate: (_values: string[]) => m.enter_a_due_date()
+	},
+	{
+		pattern: new RegExp('^Bitte mindestens einen Tag wählen\\.$'),
+		translate: (_values: string[]) => m.choose_at_least_one_tag()
+	},
+	{
+		pattern: new RegExp('^Bitte mindestens eine Datei anhängen\\.$'),
+		translate: (_values: string[]) => m.attach_at_least_one_file()
+	},
+	{
+		pattern: new RegExp('^Höchstens (.+?) Dateien\\.$'),
+		translate: (values: string[]) => m.at_most_files({ count: values[0] })
+	},
+	{
+		pattern: /^Tag (.+?) ist in diesem Formular nicht erlaubt\.$/,
+		translate: (values: string[]) => m.tag_not_allowed({ name: values[0] })
+	},
+	{
+		pattern: /^Ein ausgewählter Tag gehört zu keinem Projekt des Formulars\.$/,
+		translate: () => m.tag_not_in_form_projects()
 	}
 ];
 

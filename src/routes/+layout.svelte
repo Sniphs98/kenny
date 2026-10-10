@@ -55,6 +55,9 @@
 		return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
 	});
 
+	// Einreichungsformulare stehen für sich, auch für angemeldete Personen ohne App-Navigation
+	const showHeader = $derived(!!data.user && !page.url.pathname.startsWith('/submit/'));
+
 	async function logout() {
 		await authClient.signOut();
 		await goto('/login', { invalidateAll: true });
@@ -71,7 +74,7 @@
 
 <Tooltip.Provider delayDuration={400} disableHoverableContent ignoreNonKeyboardFocus>
 	<div class="contents" style={accentStyle(projectColor)}>
-		{#if data.user}
+		{#if showHeader && data.user}
 			<header class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur">
 				<a href="/" class="mr-3 flex items-center gap-2 font-semibold tracking-tight">
 					<span class="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg">

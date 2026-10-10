@@ -1,4 +1,4 @@
-# Kenny
+# Kenny – Boards, Zeitpläne und Tickets für Teams
 
 Project and ticket management with Kanban boards and Gantt charts.
 

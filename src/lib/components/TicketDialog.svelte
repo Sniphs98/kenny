@@ -10,47 +10,90 @@
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
+	import { NEW_TICKET_KEY, isShortcut } from '$lib/shortcuts';
 	import { Button } from '$lib/components/ui/button';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { toast } from 'svelte-sonner';
 
 	type Option = { id: number | string; label: string };
 	let {
 		projectKey,
 		users,
 		tags,
-		parents
+		parents,
+		canCreate = true,
+		shortcutPreset = () => ({})
 	}: {
 		projectKey: string;
 		users: { id: string; name: string; email?: string }[];
 		tags: { id: number; name: string; color: string }[];
 		parents: Option[];
+		/** Ohne Schreibrechte reagiert das Tastenkürzel nicht */
+		canCreate?: boolean;
+		/** Vorbelegung beim Öffnen per Tastenkürzel (z.B. Datum im Gantt) */
+		shortcutPreset?: () => Partial<ReturnType<typeof blank>>;
 	} = $props();
+
+	/** Nach dem Anlegen offen bleiben, um viele Tickets nacheinander zu erfassen (pro Browser gemerkt) */
+	const CREATE_MORE_KEY = 'kenny:create-more';
+	let createMore = $state(false);
+	try {
+		createMore = typeof localStorage !== 'undefined' && localStorage.getItem(CREATE_MORE_KEY) === '1';
+	} catch {
+		// Speicher gesperrt: Standard bleibt aus
+	}
+	function setCreateMore(on: boolean) {
+		createMore = on;
+		try {
+			localStorage.setItem(CREATE_MORE_KEY, on ? '1' : '0');
+		} catch {
+			// nicht speicherbar, gilt dann nur für diese Seite
+		}
+	}
+	let createdAnother = false;
 
 	let isOpen = $state(false);
 	const { form, errors, enhance, reset, submitting } = superForm(blank(), {
 		SPA: true,
 		dataType: 'json',
+		// Schnelles Enter legt kein Ticket doppelt an; Felder bleiben für „Weitere erstellen“ erhalten
+		multipleSubmits: 'prevent',
+		resetForm: false,
 		validationMethod: 'onsubmit',
 		validators: zod4Client(ticketFormSchema),
 		async onUpdate({ form: validated }) {
 			if (!validated.valid) return;
 			error = '';
 			try {
-				await createTicket(projectKey, {
+				const created = await createTicket(projectKey, {
 					...validated.data,
 					startDate: validated.data.startDate || null,
 					dueDate: validated.data.dueDate || null,
 					parentId: validated.data.parentId ? Number(validated.data.parentId) : null
 				});
-				isOpen = false;
+				if (createMore) {
+					// Titel und Beschreibung leeren, Priorität, Zuständigkeit, Tags, Spalte usw. behalten
+					validated.data.title = '';
+					validated.data.description = '';
+					createdAnother = true;
+					toast.success(m.ticket_created({ key: created.key }));
+				} else {
+					isOpen = false;
+				}
 				await invalidateAll();
 			} catch (err) {
 				error = err instanceof Error ? err.message : m.could_not_create_ticket();
 			}
+		},
+		onUpdated() {
+			if (!createdAnother) return;
+			createdAnother = false;
+			document.getElementById('t-title')?.focus();
 		}
 	});
 	let error = $state('');
@@ -76,8 +119,16 @@
 		isOpen = true;
 	}
 
+	function onkeydown(event: KeyboardEvent) {
+		if (!canCreate || isOpen || !isShortcut(event, NEW_TICKET_KEY)) return;
+		event.preventDefault();
+		open(shortcutPreset());
+	}
+
 	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? m.no_parent_ticket());
 </script>
+
+<svelte:window {onkeydown} />
 
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content class="sm:max-w-lg">
@@ -157,7 +208,11 @@
 					{localizeError(validationError)}
 				</p>{/each}
 			{#if error}<p class="text-destructive text-sm">{localizeError(error)}</p>{/if}
-			<Dialog.Footer>
+			<Dialog.Footer class="items-center">
+				<Label class="mr-auto font-normal max-sm:order-last max-sm:mx-auto">
+					<Checkbox checked={createMore} onCheckedChange={setCreateMore} />
+					{m.create_more()}
+				</Label>
 				<Button variant="outline" onclick={() => (isOpen = false)}>{m.cancel()}</Button>
 				<Button type="submit" disabled={$submitting}>{m.create()}</Button>
 			</Dialog.Footer>

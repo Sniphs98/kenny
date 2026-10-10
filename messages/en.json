@@ -521,5 +521,8 @@
 	"notification_missing_url": "Please enter the webhook address of a Teams workflow.",
 	"notification_not_configured": "Notifications are not set up for this project.",
 	"notification_test_failed": "Test message failed: {error}",
-	"notification_url_not_allowed": "Webhook address is not allowed."
+	"notification_url_not_allowed": "Webhook address is not allowed.",
+	"create_more": "Create more",
+	"ticket_created": "{key} created",
+	"new_ticket_shortcut": "New ticket (press C)"
 }

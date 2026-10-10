@@ -614,7 +614,13 @@
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>
 	</Select.Root>
-	<Button disabled={!data.canEdit} onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
+	<Hint text={m.new_ticket_shortcut()} disabled={!data.canEdit}>
+		{#snippet children(props)}
+			<Button {...props} disabled={!data.canEdit} aria-keyshortcuts="C" onclick={() => dialog.open()}
+				><Plus /> {m.ticket()}</Button
+			>
+		{/snippet}
+	</Hint>
 </div>
 
 <Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">
@@ -697,4 +703,5 @@
 	users={data.users}
 	tags={data.tags}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
+	canCreate={data.canEdit}
 />

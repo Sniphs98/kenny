@@ -6,11 +6,14 @@ import { LIVE_ORIGIN_HEADER, liveOrigin } from '$lib/server/live';
 import { requireActiveUser } from '$lib/server/services/access';
 import { ApiError } from '$lib/server/errors';
 import { protectFraming } from '$lib/server/framing';
+import { TEAMS_FRAME_ANCESTORS, teamsEnabled } from '$lib/server/teams';
 import '$lib/locale-choice';
 import { paraglideMiddleware } from '$lib/paraglide/server.js';
 
 // /submit/: Formulare zum Einreichen; ob eine Anmeldung nötig ist, entscheidet das Formular selbst
 const PUBLIC_PATHS = ['/login', '/api/', '/submit/'];
+// Einstiegsseiten der Teams-App: melden selbst per Teams-SSO an
+const PUBLIC_PAGES = ['/teams', '/teams/config'];
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
@@ -24,12 +27,12 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	}
 
 	const path = event.url.pathname;
-	if (!event.locals.user && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+	if (!event.locals.user && !PUBLIC_PAGES.includes(path) && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
 		redirect(303, `/login?redirect=${encodeURIComponent(path + event.url.search)}`);
 	}
 
 	const response = await svelteKitHandler({ event, resolve, auth, building });
-	protectFraming(path, response.headers);
+	protectFraming(path, response.headers, teamsEnabled() ? TEAMS_FRAME_ANCESTORS : []);
 	return response;
 };
 

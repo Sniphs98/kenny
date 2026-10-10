@@ -21,6 +21,7 @@
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import KeyRound from '@lucide/svelte/icons/key-round';
+	import MessagesSquare from '@lucide/svelte/icons/messages-square';
 	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import SquareKanban from '@lucide/svelte/icons/square-kanban';
@@ -55,8 +56,10 @@
 		return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
 	});
 
-	// Einreichungsformulare stehen für sich, auch für angemeldete Personen ohne App-Navigation
-	const showHeader = $derived(!!data.user && !page.url.pathname.startsWith('/submit/'));
+	// Einreichungsformulare und die Teams-Einstiegsseiten stehen für sich, ohne App-Navigation
+	const showHeader = $derived(
+		!!data.user && !page.url.pathname.startsWith('/submit/') && !/^\/teams(\/|$)/.test(page.url.pathname)
+	);
 
 	async function logout() {
 		await authClient.signOut();
@@ -122,6 +125,8 @@
 						<SoundToggle />
 						{#if data.user.role === 'admin'}<DropdownMenu.Item onSelect={() => goto('/admin/users')}
 								><Users />{m.um_users()}</DropdownMenu.Item
+							><DropdownMenu.Item onSelect={() => goto('/admin/teams')}
+								><MessagesSquare />{m.teams_admin_title()}</DropdownMenu.Item
 							>{/if}
 						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
 							<KeyRound />

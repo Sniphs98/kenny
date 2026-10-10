@@ -231,7 +231,9 @@ claude mcp add --transport http kenny https://kenny.example.com/api/v1/mcp \
 
 Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` (optionally `MICROSOFT_TENANT_ID`) enables **Sign in with Microsoft** on the login page. Configure `<BETTER_AUTH_URL>/api/auth/callback/microsoft` as the redirect URI in the app registration.
 
-Ideas for future integrations include creating tickets from Teams/Outlook through the REST API, synchronizing due dates with the Outlook calendar, and sending notifications to Teams.
+**Microsoft Teams:** With `TEAMS_ENABLED=true`, Kenny runs as a Teams app with a personal tab, channel tabs that show a project's board, and automatic sign-in through Teams SSO. Administrators find the setup values and the app package under **user menu → Microsoft Teams**; see [Microsoft Teams](docs/microsoft-teams.md) for the Entra ID setup, internal servers with a company CA, security notes and troubleshooting.
+
+Ideas for future integrations include Teams channel notifications, creating tickets from Teams messages, and synchronizing due dates with the Outlook calendar.
 
 ## Project structure
 

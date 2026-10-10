@@ -120,6 +120,8 @@ test('Formular mit Anmeldung: Gäste müssen sich anmelden, Angemeldete reichen 
 
 	await open(page, new URL(link).pathname);
 	await expect(page.getByText('Angemeldet als Erika Test')).toBeVisible();
+	// Keine App-Navigation auf der Einreichungsseite
+	await expect(page.getByRole('banner')).toHaveCount(0);
 	await expect(page.getByLabel(/Deine E-Mail-Adresse/)).toHaveCount(0);
 	await page.getByLabel('Titel').fill('Neuer Laptop');
 	await page.getByRole('button', { name: 'Einreichen' }).click();

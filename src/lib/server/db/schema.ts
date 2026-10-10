@@ -46,7 +46,14 @@ export const boardColumn = sqliteTable(
 );
 
 export { PRIORITIES, type Priority } from '$lib/contracts';
-import { PRIORITIES, LINK_TYPES, INTAKE_EMAIL_MODES, type IntakeFields } from '$lib/contracts';
+import {
+	PRIORITIES,
+	LINK_TYPES,
+	INTAKE_EMAIL_MODES,
+	NOTIFICATION_LOCALES,
+	type IntakeFields,
+	type NotificationEvent
+} from '$lib/contracts';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -245,3 +252,16 @@ export const projectMember = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.projectId, t.userId] }), index('project_member_user_idx').on(t.userId)]
 );
+
+/** Teams-Benachrichtigungen eines Projekts (ein Workflow-Webhook pro Projekt) */
+export const projectNotification = sqliteTable('project_notification', {
+	projectId: integer('project_id')
+		.primaryKey()
+		.references(() => project.id, { onDelete: 'cascade' }),
+	/** Enthält die Signatur des Workflows: wie ein Passwort behandeln, nie ausliefern */
+	webhookUrl: text('webhook_url').notNull(),
+	events: text('events', { mode: 'json' }).$type<NotificationEvent[]>().notNull(),
+	locale: text('locale', { enum: NOTIFICATION_LOCALES }).notNull().default('de'),
+	lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+	lastError: text('last_error')
+});

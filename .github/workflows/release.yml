@@ -60,6 +60,9 @@ jobs:
     if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      digest: ${{ steps.build.outputs.digest }}
     permissions:
       contents: read
       packages: write
@@ -87,6 +90,7 @@ jobs:
             type=sha,format=long
           flavor: latest=false
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
@@ -115,6 +119,8 @@ jobs:
       - name: Release notes
         env:
           TAG: ${{ needs.version.outputs.tag }}
+          RELEASE_IMAGE: ${{ needs.publish.outputs.image }}
+          RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
         run: node scripts/release.mjs "$RUNNER_TEMP/release-notes.md" "$TAG"
       # Legt bei einem Push auf main auch den Tag an. Mit GITHUB_TOKEN erzeugte Tags starten
       # keine weiteren Workflows, das Image wird also nicht doppelt veröffentlicht.

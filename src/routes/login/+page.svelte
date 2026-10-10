@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
+	import KennyLogo from '$lib/components/KennyLogo.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth-client';
@@ -11,7 +12,6 @@
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Mail from '@lucide/svelte/icons/mail';
-	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 	import User from '@lucide/svelte/icons/user';
 
 	let { data } = $props();
@@ -58,9 +58,7 @@
 >
 	<div class="w-full max-w-sm">
 		<div class="mb-6 text-center">
-			<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
-				<SquareKanban class="size-5" strokeWidth={2.25} />
-			</span>
+			<KennyLogo class="mx-auto size-12 drop-shadow-lg" />
 			<h1 class="mt-4 text-2xl font-semibold tracking-tight">
 				{mode === 'login' ? m.welcome_back() : m.create_account()}
 			</h1>

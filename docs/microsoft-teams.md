@@ -6,7 +6,9 @@ Kenny can be used as an app in Microsoft Teams:
 - **Channel tab:** Add “Kenny” as a tab to a channel or group chat and pick a project; the tab shows its board.
 - **Automatic sign-in (Teams SSO):** Opening Kenny in Teams signs the user in with their Microsoft account, without a login form.
 
-Channel notifications, “create ticket from message” and preview cards for ticket links will follow separately. The latter two need an endpoint that Microsoft can reach from the internet.
+- **Channel notifications:** A project posts new, completed and assigned tickets to a Teams channel ([see below](#channel-notifications)). This works without the Teams app and without `TEAMS_ENABLED`.
+
+“Create ticket from message” and preview cards for ticket links will follow separately; they need an endpoint that Microsoft can reach from the internet.
 
 The status overview and every value to copy are available in Kenny under **user menu → Microsoft Teams** (instance administrators only).
 
@@ -57,6 +59,28 @@ Restart Kenny. Under **user menu → Microsoft Teams**, all three status checks 
    For a quick test, Teams users can also use **Apps → Manage your apps → Upload an app → Upload a custom app** if the policy allows it.
 3. When the address, the client ID or the package changes, increase `TEAMS_APP_VERSION` and upload the new package as an update.
 
+## Channel notifications
+
+Kenny posts project events as cards to a Teams channel through a Teams **workflow**. Kenny only sends outbound requests, so this also works on servers inside the company network.
+
+1. In Teams, open the channel → **⋯ → Workflows** → template **“Post to a channel when a webhook request is received”**, follow the steps and copy the address shown at the end.
+2. In Kenny, open the project → **Settings → Teams notifications** (project administrators), paste the address, choose the events and the language of the messages and save.
+3. **Send test message** checks the connection.
+
+| Event                                                                 | Card                      |
+| --------------------------------------------------------------------- | ------------------------- |
+| New ticket (including submissions through forms, which name the form) | “New ticket WEB-12”       |
+| Ticket completed (moved to a done column or closed)                   | “Ticket WEB-12 completed” |
+| Ticket assigned (also when created with an assignee)                  | “WEB-12 assigned to Anna” |
+
+Each card shows title, project, priority, assignee and due date and links to the ticket in Kenny.
+
+- **Requirement:** the Kenny server can reach the workflow address (outbound HTTPS to `*.logic.azure.com`, `*.powerautomate.com` or `*.powerplatform.com`).
+- **Secret address:** the workflow address contains a signature. Kenny stores it, never shows it again (only its host) and never returns it through the API. To change it, paste a new one; **Remove** deletes it.
+- **Only Microsoft workflow hosts:** Kenny accepts only `https://` addresses on the hosts above and does not follow redirects. A project administrator therefore cannot make the server call other systems in the network.
+- **Plain text:** ticket titles and names appear as plain text, so submissions through public forms cannot inject links or formatting into the channel.
+- **Delivery:** one attempt per event with a 10-second timeout, without blocking the change in Kenny. The settings show the last delivery or the last error.
+
 ## Security
 
 - **Only in Teams mode** may Teams and Microsoft 365 (`teams.microsoft.com`, `*.teams.microsoft.com`, `*.cloud.microsoft`, `*.office.com`, `*.microsoft365.com`, Outlook) frame Kenny (`Content-Security-Policy: frame-ancestors`). All other sites stay blocked.
@@ -80,3 +104,5 @@ Restart Kenny. Under **user menu → Microsoft Teams**, all three status checks 
 | “Signing in through Teams failed” with `resourceRequiresConsent` or `invalid_resource` | Application ID URI, the `access_as_user` scope or the authorized Teams clients are missing or do not match the host in the manifest.                                 |
 | “Signing in through Teams failed” with `Invalid token`                                 | Usually `requestedAccessTokenVersion: 2` is missing, `MICROSOFT_TENANT_ID` does not match the user's tenant, or the server cannot reach `login.microsoftonline.com`. |
 | “This page is meant for Microsoft Teams”                                               | `/teams` was opened directly in the browser; this is expected.                                                                                                       |
+| Notifications: “Last delivery failed: HTTP 401” or “HTTP 404”                          | The workflow was deleted or turned off in Teams, or the address is incomplete. Create the workflow again and paste the new address.                                  |
+| Notifications: “fetch failed”, `ENOTFOUND` or a timeout                                | The Kenny server cannot reach `*.logic.azure.com` (firewall or outbound proxy).                                                                                      |

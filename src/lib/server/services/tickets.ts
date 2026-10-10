@@ -19,6 +19,7 @@ import {
 } from '../db/schema';
 import { ApiError } from '../errors';
 import { publish } from '../live';
+import { notifyTicket } from './notifications';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
@@ -390,6 +391,8 @@ export function createTicket(
 	});
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
+	notifyTicket('created', p.id, created.id);
+	if (created.assigneeId) notifyTicket('assigned', p.id, created.id);
 	return result;
 }
 
@@ -425,7 +428,14 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 	});
 	const result = getTicket(t.id);
 	publish(t.projectId, { ticket: result.key });
+	notifyChanges(t, resolveTicket(t.id));
 	return result;
+}
+
+/** Benachrichtigungen für Statuswechsel und neue Zuständigkeit (Vergleich vorher/nachher) */
+function notifyChanges(before: Ticket, after: Ticket) {
+	if (before.closedAt === null && after.closedAt !== null) notifyTicket('closed', after.projectId, after.id);
+	if (after.assigneeId && after.assigneeId !== before.assigneeId) notifyTicket('assigned', after.projectId, after.id);
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */
@@ -457,6 +467,7 @@ export function closeTicket(ref: string | number) {
 	db.transaction((tx) => moveTicket(tx, t, col, null));
 	const result = getTicket(t.id);
 	publish(t.projectId, { ticket: result.key });
+	notifyChanges(t, resolveTicket(t.id));
 	return result;
 }
 

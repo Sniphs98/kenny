@@ -50,6 +50,13 @@
       "when": 1791628393166,
       "tag": "0006_intake_fields_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791647235942,
+      "tag": "0007_project_notifications",
+      "breakpoints": true
     }
   ]
 }

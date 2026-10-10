@@ -6,6 +6,7 @@
 	import Hint, { chain } from '$lib/components/Hint.svelte';
 	import TagBadge from '$lib/components/TagBadge.svelte';
 	import TagColorButton from '$lib/components/TagColorButton.svelte';
+	import Notifications from './Notifications.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -310,6 +311,8 @@
 			</form>
 		</Card.Content>
 	</Card.Root>
+
+	<Notifications project={data.project.key} notifications={data.notifications} />
 
 	<Card.Root class="border-destructive/30">
 		<Card.Header class="flex items-center gap-4">

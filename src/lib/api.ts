@@ -21,7 +21,10 @@ import {
 	type CreateProjectInput,
 	type UpdateProjectInput,
 	type CreateTicketInput,
-	type UpdateTicketInput
+	type UpdateTicketInput,
+	notificationsDtoSchema,
+	updateNotificationsSchema,
+	type UpdateNotificationsInput
 } from '$lib/contracts';
 
 const errorSchema = z.object({ error: z.string() });
@@ -134,4 +137,17 @@ export async function changeProjectMember(project: string, user: string, role: P
 				role === null ? undefined : updateMemberSchema.parse({ role })
 			)
 		);
+}
+
+/** Teams-Benachrichtigungen eines Projekts (nur Projektadministratoren) */
+export async function getNotifications(project: string | number) {
+	return notificationsDtoSchema.parse(await api('GET', `/projects/${ref(project)}/notifications`));
+}
+export async function updateNotifications(project: string | number, input: UpdateNotificationsInput) {
+	return notificationsDtoSchema.parse(
+		await api('PUT', `/projects/${ref(project)}/notifications`, updateNotificationsSchema.parse(input))
+	);
+}
+export async function sendTestNotification(project: string | number) {
+	return notificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/notifications/test`));
 }

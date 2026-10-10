@@ -248,7 +248,24 @@ const errorTranslations = [
 		pattern: /^Ein ausgewählter Tag gehört zu keinem Projekt des Formulars\.$/,
 		translate: () => m.tag_not_in_form_projects()
 	},
-	{ pattern: /^Microsoft Teams ist nicht aktiviert\.$/, translate: () => m.teams_not_enabled() }
+	{ pattern: /^Microsoft Teams ist nicht aktiviert\.$/, translate: () => m.teams_not_enabled() },
+	{
+		pattern: /^Bitte die Webhook-Adresse eines Teams-Workflows \(https:\/\/…logic\.azure\.com\/…\) angeben\.$/,
+		translate: () => m.notification_invalid_url()
+	},
+	{
+		pattern: /^Bitte die Webhook-Adresse eines Teams-Workflows angeben\.$/,
+		translate: () => m.notification_missing_url()
+	},
+	{
+		pattern: /^Für dieses Projekt sind keine Benachrichtigungen eingerichtet\.$/,
+		translate: () => m.notification_not_configured()
+	},
+	{
+		pattern: /^Testnachricht fehlgeschlagen: (.+)$/,
+		translate: (values: string[]) => m.notification_test_failed({ error: localizeError(values[0]) })
+	},
+	{ pattern: /^Webhook-Adresse ist nicht erlaubt\.$/, translate: () => m.notification_url_not_allowed() }
 ];
 
 export function localizeError(message: string | undefined): string {

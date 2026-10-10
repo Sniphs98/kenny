@@ -233,7 +233,9 @@ Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MI
 
 **Microsoft Teams:** With `TEAMS_ENABLED=true`, Kenny runs as a Teams app with a personal tab, channel tabs that show a project's board, and automatic sign-in through Teams SSO. Administrators find the setup values and the app package under **user menu → Microsoft Teams**; see [Microsoft Teams](docs/microsoft-teams.md) for the Entra ID setup, internal servers with a company CA, security notes and troubleshooting.
 
-Ideas for future integrations include Teams channel notifications, creating tickets from Teams messages, and synchronizing due dates with the Outlook calendar.
+**Teams channel notifications:** Project administrators can post new, completed and assigned tickets to a Teams channel through a Teams workflow (**project settings → Teams notifications**); see [Channel notifications](docs/microsoft-teams.md#channel-notifications).
+
+Ideas for future integrations include creating tickets from Teams messages and synchronizing due dates with the Outlook calendar.
 
 ## Project structure
 

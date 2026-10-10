@@ -4,7 +4,9 @@ import {
 	createTicketSchema,
 	updateTicketSchema,
 	createColumnSchema,
-	ticketDtoSchema
+	ticketDtoSchema,
+	isAllowedWebhookUrl,
+	updateNotificationsSchema
 } from '$lib/contracts';
 import { parseInput } from '$lib/server/validation';
 import { ApiError } from '$lib/server/errors';
@@ -52,5 +54,17 @@ describe('HTTP input contracts', () => {
 	});
 	it('rejects incomplete API responses', () => {
 		expect(ticketDtoSchema.safeParse({ id: 1, title: 'Incomplete' }).success).toBe(false);
+	});
+});
+
+describe('notification contracts', () => {
+	it('accepts only HTTPS addresses of Microsoft workflows', () => {
+		expect(isAllowedWebhookUrl('https://prod-01.westeurope.logic.azure.com/workflows/x')).toBe(true);
+		for (const value of ['kein Link', '', 'https://example.com/x', 'http://prod.logic.azure.com/x'])
+			expect(isAllowedWebhookUrl(value), value).toBe(false);
+		// Fehlende Felder bleiben unverändert, null entfernt die Einrichtung
+		expect(updateNotificationsSchema.parse({})).toEqual({});
+		expect(updateNotificationsSchema.parse({ webhookUrl: null }).webhookUrl).toBeNull();
+		expect(updateNotificationsSchema.safeParse({ events: ['deleted'] }).success).toBe(false);
 	});
 });

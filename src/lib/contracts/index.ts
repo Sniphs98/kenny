@@ -313,3 +313,54 @@ export type ManagedUser = z.output<typeof managedUserSchema>;
 export type ProjectMember = z.output<typeof memberSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;
 export type AddMemberInput = z.input<typeof addMemberSchema>;
+
+// --- Benachrichtigungen: Ereignisse eines Projekts in einen Teams-Kanal posten ---
+
+export const NOTIFICATION_EVENTS = ['created', 'closed', 'assigned'] as const;
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
+export const NOTIFICATION_LOCALES = ['de', 'en'] as const;
+
+/** Microsoft-Dienste hinter Teams-Workflows („Bei Empfang einer Webhookanforderung in einem Kanal posten“) */
+export const WEBHOOK_HOST_SUFFIXES = ['.logic.azure.com', '.powerautomate.com', '.powerplatform.com'] as const;
+
+/** Nur HTTPS zu Microsoft-Workflow-Hosts: der Server ruft die Adresse auf, beliebige Ziele wären ein SSRF-Risiko */
+export function isAllowedWebhookUrl(value: string) {
+	try {
+		const url = new URL(value);
+		const host = url.hostname.toLowerCase();
+		return (
+			url.protocol === 'https:' &&
+			!url.username &&
+			!url.password &&
+			WEBHOOK_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix) && host.length > suffix.length)
+		);
+	} catch {
+		return false;
+	}
+}
+
+const webhookUrl = z
+	.string()
+	.trim()
+	.max(2000)
+	.refine(isAllowedWebhookUrl, 'Bitte die Webhook-Adresse eines Teams-Workflows (https://…logic.azure.com/…) angeben.');
+
+/** Einrichtung ändern: fehlende Felder bleiben, webhookUrl null entfernt die Einrichtung */
+export const updateNotificationsSchema = z.strictObject({
+	webhookUrl: webhookUrl.nullable().optional(),
+	events: z.array(z.enum(NOTIFICATION_EVENTS)).max(NOTIFICATION_EVENTS.length).optional(),
+	locale: z.enum(NOTIFICATION_LOCALES).optional()
+});
+
+/** Die Webhook-URL enthält eine Signatur und wird nie ausgeliefert, nur ihr Host */
+export const notificationsDtoSchema = z.object({
+	configured: z.boolean(),
+	webhookHost: z.string().nullable(),
+	events: z.array(z.enum(NOTIFICATION_EVENTS)),
+	locale: z.enum(NOTIFICATION_LOCALES),
+	lastSentAt: timestamp.nullable(),
+	lastError: z.string().nullable()
+});
+
+export type UpdateNotificationsInput = z.input<typeof updateNotificationsSchema>;
+export type NotificationsDto = z.output<typeof notificationsDtoSchema>;

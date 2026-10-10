@@ -30,6 +30,58 @@ test('Trennlinie im Ticket ist sichtbar', async ({ page, request }) => {
 	expect(box?.width).toBeGreaterThan(100);
 });
 
+test('Dark Mode: neutrale Flächen, hellere Karten und lesbarer Text', async ({ page, request }) => {
+	const p = await createProject(request);
+	await createTicket(request, p.key, { title: 'Dark-Mode-Kontrast' });
+	await open(page, `/projects/${p.key}/board`);
+	await page.getByRole('group', { name: 'Darstellung' }).getByRole('radio').nth(2).click();
+	await expect(page.locator('html')).toHaveClass(/dark/);
+
+	const colors = await page
+		.locator('[data-card]')
+		.first()
+		.evaluate((card) => {
+			const column = card.closest('section')!;
+			const canvas = document.createElement('canvas');
+			canvas.width = canvas.height = 1;
+			const ctx = canvas.getContext('2d')!;
+			const sample = (...layers: string[]) => {
+				ctx.clearRect(0, 0, 1, 1);
+				for (const layer of layers) {
+					ctx.fillStyle = layer;
+					ctx.fillRect(0, 0, 1, 1);
+				}
+				return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+			};
+			const background = getComputedStyle(document.body).backgroundColor;
+			const columnBackground = getComputedStyle(column).backgroundColor;
+			const cardStyle = getComputedStyle(card);
+			return {
+				background: sample(background),
+				column: sample(background, columnBackground),
+				card: sample(background, columnBackground, cardStyle.backgroundColor),
+				text: sample(cardStyle.color),
+				mutedText: sample(getComputedStyle(card.querySelector('.text-muted-foreground')!).color)
+			};
+		});
+	const luminance = (rgb: number[]) => {
+		const linear = rgb.map((channel) => {
+			const value = channel / 255;
+			return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+		});
+		return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+	};
+	for (const rgb of Object.values(colors)) expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(1);
+	expect(luminance(colors.column)).toBeGreaterThan(luminance(colors.background));
+	expect(luminance(colors.card)).toBeGreaterThan(luminance(colors.column));
+	for (const text of [colors.text, colors.mutedText]) {
+		expect((luminance(text) + 0.05) / (luminance(colors.card) + 0.05)).toBeGreaterThanOrEqual(4.5);
+	}
+
+	await page.getByRole('group', { name: 'Darstellung' }).getByRole('radio').nth(1).click();
+	await expect(page.locator('html')).not.toHaveClass(/dark/);
+});
+
 test('Ticket: Beschreibung und Seitenleiste beginnen auf gleicher Höhe', async ({ page, request }) => {
 	const p = await createProject(request);
 	const t = await createTicket(request, p.key, { title: 'Bündig' });

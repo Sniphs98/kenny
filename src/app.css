@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * shadcn-svelte Theme (Basisfarbe "stone").
- * --primary ist außerhalb von Projekten ein warmes Schwarzbraun;
+ * shadcn-svelte Theme (Light: "stone", Dark: neutrale Grautöne).
+ * --primary ist im Light Mode außerhalb von Projekten ein warmes Schwarzbraun;
  * in Projekten wird es per accentStyle() aus $lib/theme mit der Projektfarbe überschrieben.
  */
 :root {
@@ -42,25 +42,26 @@
 
 .dark {
 	color-scheme: dark;
-	--background: oklch(0.147 0.004 49.25);
-	--foreground: oklch(0.985 0.001 106.423);
-	--card: oklch(0.183 0.005 56);
-	--card-foreground: oklch(0.985 0.001 106.423);
-	--popover: oklch(0.216 0.006 56.043);
-	--popover-foreground: oklch(0.985 0.001 106.423);
-	--primary: oklch(0.923 0.003 48.717);
-	--primary-foreground: oklch(0.216 0.006 56.043);
-	--primary-soft: oklch(0.923 0.003 48.717 / 12%);
-	--secondary: oklch(0.268 0.007 34.298);
-	--secondary-foreground: oklch(0.985 0.001 106.423);
-	--muted: oklch(0.268 0.007 34.298);
-	--muted-foreground: oklch(0.709 0.01 56.259);
-	--accent: oklch(0.268 0.007 34.298);
-	--accent-foreground: oklch(0.985 0.001 106.423);
+	--background: #121212;
+	--foreground: #ededed;
+	--card: #1e1e1e;
+	--card-foreground: #ededed;
+	--popover: #262626;
+	--popover-foreground: #ededed;
+	--primary: #ededed;
+	--primary-foreground: #1e1e1e;
+	--primary-soft: rgb(237 237 237 / 12%);
+	--secondary: #2a2a2a;
+	--secondary-foreground: #ededed;
+	--muted: #2a2a2a;
+	--muted-foreground: #a3a3a3;
+	--accent: #303030;
+	--accent-foreground: #ededed;
 	--destructive: oklch(0.704 0.191 22.216);
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.553 0.013 58.071);
+	--ring: #a3a3a3;
+	--prio-low: #a3a3a3;
 	--success: oklch(0.792 0.209 151.711);
 	--warning: oklch(0.828 0.189 84.429);
 }

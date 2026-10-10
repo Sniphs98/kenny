@@ -1,14 +1,44 @@
 # Kenny – Boards, Zeitpläne und Tickets für Teams
 
-Project and ticket management with Kanban boards and Gantt charts.
+Self-hosted project and ticket management with Kanban boards, Gantt timelines and submission forms. Kenny runs as a single Docker container with SQLite, so there is no separate database server to operate.
 
-- **Projects** with their own key (e.g. `WEB`), giving tickets identifiers such as `WEB-1`, `WEB-2`, …
-- **Kanban boards** with configurable columns and drag and drop
-- **Gantt charts** with start and due dates, draggable and resizable bars, and dependency arrows (red when a ticket starts before its prerequisite)
-- **Tickets** with priority, assignee, description, **subtasks**, and **links** (`depends on`, `blocks`, `related to`), with cycle prevention
-- **REST API** for creating, updating, and completing tickets using personal API tokens
-- **Mobile support** with responsive navigation, full-screen ticket editing, native date inputs, and touch controls for moving tickets and reordering columns. Boards, timelines, and wide tables scroll within their own areas.
-- **User accounts** with [Better Auth](https://better-auth.com) (email/password authentication and optional Microsoft sign-in)
+## Features
+
+**Plan and track**
+
+- **Projects** with their own key and color; tickets get identifiers such as `WEB-1`, `WEB-2`, …
+- **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by tag, assignee or priority, and sorting per board or per column
+- **Gantt timeline** with start and due dates, draggable and resizable bars, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
+- **Tickets** with priority, assignee, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
+- **Create more:** keep the new-ticket dialog open to enter many tickets in a row
+
+**Find and navigate**
+
+- **Command palette** (Ctrl+K / ⌘K, or the search bar in the header): search tickets across all your projects by key, title or description, with highlighted matches and excerpts; create tickets, jump to boards, settings and admin pages, and switch the theme
+
+**Work together**
+
+- **Live updates:** boards, timelines and tickets refresh when someone else changes something; unsaved edits are kept
+- **Accounts and roles:** email/password or Microsoft sign-in, instance administrators, and project roles (reader, member, project administrator); deactivating an account revokes its sessions and tokens
+- **Completion sound** when ticking off tickets and subtasks (can be turned off)
+
+**Collect requests**
+
+- **Submission forms:** shareable links that create tickets, public or with sign-in, with configurable fields (hidden, optional, required), allowed tags, file uploads, a project choice and spam protection
+- **Embed code** to place a form on your own website
+
+**Connect**
+
+- **REST API** with personal API tokens
+- **AI assistants (MCP):** read-only access to projects and tickets for tools such as Claude Code
+- **Microsoft Teams:** personal app, channel tabs with a project's board, and automatic sign-in (Teams SSO)
+- **Teams channel notifications** for new, completed and assigned tickets
+
+**Everyday use**
+
+- English and German interface, following the system language by default
+- Light, dark and system theme
+- Works on phones and tablets: responsive navigation, full-screen ticket editing and touch controls
 
 ## Screenshots
 
@@ -32,11 +62,105 @@ Plan ticket schedules and see dependencies and scheduling conflicts.
 
 ![Gantt timeline showing scheduled tickets, dependency arrows, and a scheduling conflict](docs/screenshots/gantt.png)
 
+## Installation
+
+Kenny is published as a Docker image at `ghcr.io/sniphs98/kenny`. You need Docker with the Compose plugin; a checkout of this repository is not required.
+
+**1. Create a folder with a `compose.yaml`:**
+
+```yaml
+services:
+  kenny:
+    image: ghcr.io/sniphs98/kenny:${KENNY_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000' # only reachable from this host; put a reverse proxy in front
+    environment:
+      ORIGIN: ${KENNY_ORIGIN:?Set KENNY_ORIGIN in .env}
+      BETTER_AUTH_URL: ${KENNY_ORIGIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      ATTACHMENT_MAX_MB: ${ATTACHMENT_MAX_MB:-25}
+      BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-30M}
+      # Optional: Microsoft sign-in and Teams, see Configuration below
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
+    volumes:
+      - kenny-data:/app/data # database and attachments
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  kenny-data:
+```
+
+**2. Create a `.env` file next to it** with a random secret and the address people will use:
+
+```bash
+printf 'BETTER_AUTH_SECRET=%s\nKENNY_ORIGIN=https://kenny.example.com\nKENNY_VERSION=0.6.0\n' "$(openssl rand -base64 32)" > .env
+```
+
+For a quick local test, use `KENNY_ORIGIN=http://localhost:3000`. Pin `KENNY_VERSION` to a release from the [releases page](https://github.com/Sniphs98/kenny/releases) so updates happen only when you choose.
+
+**3. Start Kenny:**
+
+```bash
+docker compose up -d
+docker compose ps   # wait until the container is "healthy"
+```
+
+**4. Open Kenny and register.** The first account becomes the instance administrator. Migrations run automatically at startup.
+
+### Reverse proxy and HTTPS
+
+The port is bound to `127.0.0.1`, so serve Kenny through a reverse proxy with HTTPS at the address in `KENNY_ORIGIN`. Live updates use Server-Sent Events on `/api/v1/events`: the proxy must keep these connections open and must not buffer them. With [Caddy](https://caddyserver.com), which handles both and fetches certificates automatically:
+
+```
+kenny.example.com {
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+With nginx, set `proxy_buffering off;` and a long `proxy_read_timeout` (e.g. `1h`) for `/api/v1/events`, and raise `client_max_body_size` to at least the attachment limit.
+
+### Updates and backups
+
+- **Update:** set `KENNY_VERSION` to the new release, then run `docker compose pull && docker compose up -d`. Migrations run at startup and are not reversed when you go back to an older image, so back up first.
+- **Backup:** the `kenny-data` volume contains the database and the attachments; back them up together. For example, stop Kenny and archive the volume (Compose prefixes the volume with the folder name, here `kenny`):
+
+```bash
+docker compose stop
+docker run --rm -v kenny_kenny-data:/data -v "$PWD":/backup alpine tar czf /backup/kenny-backup.tgz -C /data .
+docker compose start
+```
+
+## Configuration
+
+| Variable                                                    | Default                        | Description                                                                                                          |
+| ----------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`                                        | – (required)                   | Long random secret for sessions, e.g. `openssl rand -base64 32`. Changing it signs everyone out.                     |
+| `KENNY_ORIGIN`                                              | – (required in `compose.yaml`) | Public URL of Kenny. Compose passes it on as `ORIGIN` and `BETTER_AUTH_URL`; set those two directly without Compose. |
+| `KENNY_VERSION`                                             | `latest`                       | Image version used by `compose.yaml`.                                                                                |
+| `ATTACHMENT_MAX_MB`                                         | `25`                           | Maximum size of one attachment in MB.                                                                                |
+| `BODY_SIZE_LIMIT`                                           | `30M`                          | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                               |
+| `DATABASE_URL`                                              | `/app/data/kenny.db`           | SQLite database file.                                                                                                |
+| `ATTACHMENTS_DIR`                                           | `/app/data/attachments`        | Storage directory for attachments.                                                                                   |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                              | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.             |
+| `MICROSOFT_TENANT_ID`                                       | `common`                       | Entra tenant; use your tenant ID for a company installation.                                                         |
+| `MICROSOFT_AUTHORITY`                                       | Microsoft default              | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                   |
+| `TEAMS_ENABLED`                                             | `false`                        | Run Kenny as a Microsoft Teams app; see [Microsoft Teams](docs/microsoft-teams.md).                                  |
+| `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`      | Details of the Teams app package.                                                                                    |
+
+Variables that are not listed in `compose.yaml` (such as `MICROSOFT_AUTHORITY` or `TEAMS_APP_ID`) need an extra line under `environment`.
+
 ## Tech stack
 
 SvelteKit 2 (Svelte 5), TypeScript, SQLite through `better-sqlite3`, Drizzle ORM, Better Auth, and `adapter-node`.
 
-## Getting started
+## Development
 
 Use the Node.js version pinned in `.nvmrc`, then run:
 
@@ -69,27 +193,11 @@ Sign in with the scenario's first user, e.g. `anna@example.com` with the passwor
 
 Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-seed.mjs` seeds them through the running app's REST API. This applies the same rules as the UI and keeps scenarios independent of the database implementation. To add a scenario, create another file in `scenarios/`; invalid references, columns, tags, or date ranges are reported before seeding. The command refuses to run with `NODE_ENV=production`.
 
-### Docker and production
+### Building the container
 
-Container builds use the official Node.js 22 image through its Amazon ECR Public mirror to avoid anonymous Docker Hub pull limits. The Node.js version is pinned in `Dockerfile` and `.nvmrc`.
-
-Kenny is distributed as a Docker container. The image includes the Node production server and migrations. It runs as the `node` user; the database and attachments share a persistent volume under `/app/data`.
-
-```bash
-cp .env.example .env
-# Replace BETTER_AUTH_SECRET with your own value: openssl rand -base64 32
-# Set KENNY_ORIGIN to the publicly accessible URL
-# Set KENNY_VERSION to a published version
-
-docker compose pull
-docker compose up -d
-```
-
-To build locally without a published image, run `docker compose up -d --build`. The app is then available at <http://localhost:3000>. By default, the port binds only to `127.0.0.1`; use a reverse proxy for external access. `KENNY_ORIGIN` sets both `ORIGIN` and the authentication URL.
+For installing Kenny, see [Installation](#installation). The repository's `compose.yml` can also build the image from source: `cp .env.example .env`, set the values, then `docker compose up -d --build`. Container builds use the official Node.js 22 image through its Amazon ECR Public mirror to avoid anonymous Docker Hub pull limits; the Node.js version is pinned in `Dockerfile` and `.nvmrc`. The image runs as the `node` user and keeps the database and attachments under `/app/data`.
 
 Releases are published at `ghcr.io/sniphs98/kenny:<version>` with release notes on GitHub. Every merge to `main` that contains a `feat`, `fix` or `perf` change runs all CI checks and then publishes the next version automatically. Manually triggering the release workflow does not publish an image. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-`BODY_SIZE_LIMIT` must exceed the maximum attachment size (25 MB by default, configured through `ATTACHMENT_MAX_MB`); the container defaults to 30 MB. Back up the database and attachments together. To update, select a specific container version and run `docker compose pull && docker compose up -d` again. Migrations run at startup and are not reversed when rolling back an image.
 
 To run without Docker:
 

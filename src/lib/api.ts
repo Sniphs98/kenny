@@ -18,6 +18,7 @@ import {
 	projectSchema,
 	ticketDtoSchema,
 	ticketDetailSchema,
+	ticketSearchResultSchema,
 	type CreateProjectInput,
 	type UpdateProjectInput,
 	type CreateTicketInput,
@@ -150,4 +151,13 @@ export async function updateNotifications(project: string | number, input: Updat
 }
 export async function sendTestNotification(project: string | number) {
 	return notificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/notifications/test`));
+}
+
+/** Tickets aller sichtbaren Projekte, nach Treffergüte sortiert */
+export async function searchTickets(query: string, limit = 8) {
+	const params = new URLSearchParams({ q: query, limit: String(limit) });
+	return ticketSearchResultSchema.parse(await api('GET', `/search?${params}`));
+}
+export async function listProjects() {
+	return z.array(projectSchema).parse(await api('GET', '/projects'));
 }

@@ -12,6 +12,8 @@
 	const DAY = 86_400_000;
 	const fromDay = (d: number) => new Date(d * DAY).toISOString().slice(0, 10);
 	const today = Math.floor(Date.now() / DAY);
+	/** Neue Tickets im Gantt starten heute und dauern drei Tage */
+	const preset = () => ({ startDate: fromDay(today), dueDate: fromDay(today + 3) });
 </script>
 
 <Gantt
@@ -23,11 +25,7 @@
 	color={data.project.color}
 >
 	{#snippet actions()}
-		<Button
-			disabled={!data.canEdit}
-			size="sm"
-			onclick={() => dialog.open({ startDate: fromDay(today), dueDate: fromDay(today + 3) })}
-		>
+		<Button disabled={!data.canEdit} size="sm" onclick={() => dialog.open(preset())}>
 			<Plus />
 			{m.ticket()}
 		</Button>
@@ -40,4 +38,6 @@
 	users={data.users}
 	tags={data.tags}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
+	canCreate={data.canEdit}
+	{preset}
 />

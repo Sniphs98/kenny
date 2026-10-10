@@ -521,5 +521,21 @@
 	"notification_missing_url": "Bitte die Webhook-Adresse eines Teams-Workflows angeben.",
 	"notification_not_configured": "Für dieses Projekt sind keine Benachrichtigungen eingerichtet.",
 	"notification_test_failed": "Testnachricht fehlgeschlagen: {error}",
-	"notification_url_not_allowed": "Webhook-Adresse ist nicht erlaubt."
+	"notification_url_not_allowed": "Webhook-Adresse ist nicht erlaubt.",
+	"create_more": "Weitere erstellen",
+	"ticket_created": "{key} angelegt",
+	"command_trigger": "Suchen…",
+	"command_open": "Suchen und Befehle (Strg+K)",
+	"command_shortcut_ctrl": "Strg K",
+	"command_title": "Suchen und Befehle",
+	"command_description": "Tickets suchen, Aktionen ausführen oder zu einer Seite springen.",
+	"command_placeholder": "Ticket suchen oder Befehl eingeben…",
+	"command_tickets": "Tickets",
+	"command_searching": "Suche…",
+	"command_no_tickets": "Keine Tickets gefunden.",
+	"command_actions": "Aktionen",
+	"command_navigation": "Navigation",
+	"command_appearance": "Darstellung",
+	"command_new_ticket": "Neues Ticket in {project}",
+	"command_theme": "Design: {mode}"
 }

@@ -51,7 +51,18 @@ CI runs without production secrets. `npm audit --audit-level=high` blocks high a
 
 ## Docker releases
 
-After a green merge to `main`, create and push a tag such as `v0.1.0` on the desired commit. The release workflow checks the entire codebase, including the container, before publishing `ghcr.io/sniphs98/kenny:0.1.0` and a commit tag. Stable releases also receive `latest`; prereleases do not. Linux amd64 is currently supported.
+Every push to `main` starts the release workflow. It runs the complete CI, including the container, and derives the next version from the Conventional Commits since the last `v*` tag (with squash merges, these are the PR titles):
+
+| Commits since the last release                                        | Next version                           |
+| --------------------------------------------------------------------- | -------------------------------------- |
+| Breaking change (`feat!:`, `fix!:` or `BREAKING CHANGE:` in the body) | major; while Kenny is below 1.0: minor |
+| at least one `feat`                                                   | minor, e.g. `0.1.0` → `0.2.0`          |
+| at least one `fix` or `perf`                                          | patch, e.g. `0.2.0` → `0.2.1`          |
+| only `docs`, `test`, `ci`, `chore`, `refactor`, …                     | no release                             |
+
+It then publishes `ghcr.io/sniphs98/kenny:<version>` with a commit tag and creates the `v<version>` tag and a GitHub release with grouped release notes. Stable releases also receive `latest`; prereleases do not. Linux amd64 is currently supported.
+
+To release a specific version, for example a prerelease, push a tag such as `v1.0.0-rc.1` on a commit in `main`; the workflow publishes exactly that version.
 
 A manually triggered release workflow builds and tests without publishing. To roll back, use a previous container tag or digest. Back up the database and attachments first; rolling back an image does not reverse applied database migrations.
 

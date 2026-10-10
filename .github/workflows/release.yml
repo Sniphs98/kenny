@@ -1,24 +1,63 @@
-name: Docker release
+name: Release
 
+# Push auf main: Version aus den Conventional Commits seit dem letzten Tag berechnen und bei
+# feat/fix/perf (oder Breaking Change) automatisch veröffentlichen.
+# Tag v*: manuelles Release genau dieser Version. Manueller Start: bauen und testen ohne Veröffentlichung.
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Releases von main nacheinander, damit jede Version auf dem Tag der vorherigen aufbaut
 concurrency:
-  group: docker-release-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
+  version:
+    name: Determine version
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.version.outputs.release }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Validate release tag and main ancestry
+        if: github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Next version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: node scripts/release.mjs "$RUNNER_TEMP/release-notes.md" ${RELEASE_TAG:+"$RELEASE_TAG"}
+      - name: Show release notes
+        if: steps.version.outputs.release == 'true'
+        run: cat "$RUNNER_TEMP/release-notes.md" >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: Publish Docker image
-    needs: ci
+    needs: version
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -26,15 +65,6 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Validate release tag and main ancestry
-        if: github.event_name == 'push'
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Image name
         id: image
         env:
@@ -52,9 +82,10 @@ jobs:
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.version }},enable=${{ github.event_name == 'push' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && needs.version.outputs.prerelease == 'false' }}
             type=sha,format=long
-          flavor: latest=auto
+          flavor: latest=false
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -65,3 +96,34 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
+
+  github-release:
+    name: Create GitHub release
+    needs: [version, publish]
+    if: github.event_name == 'push' && needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Release notes
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: node scripts/release.mjs "$RUNNER_TEMP/release-notes.md" "$TAG"
+      # Legt bei einem Push auf main auch den Tag an. Mit GITHUB_TOKEN erzeugte Tags starten
+      # keine weiteren Workflows, das Image wird also nicht doppelt veröffentlicht.
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          flags=(--title "$TAG" --notes-file "$RUNNER_TEMP/release-notes.md" --target "$GITHUB_SHA")
+          if [[ "$PRERELEASE" == 'true' ]]; then flags+=(--prerelease); else flags+=(--latest); fi
+          gh release create "$TAG" "${flags[@]}"

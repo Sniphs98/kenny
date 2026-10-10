@@ -22,5 +22,5 @@ Kenny is a SvelteKit/Svelte 5 application with a Node server, SQLite, Drizzle an
 - Tests must not read development/production databases or secrets. Use dedicated test fixtures, in-memory databases and disposable containers/volumes.
 - Never commit `.env`, database files, uploaded files, session cookies, private keys, build outputs or test reports. `.env.example` contains placeholders only.
 - Changes to CI must preserve pinned action commits, minimal permissions, untrusted PR isolation and the full release test gate. Do not interpolate issue/PR content directly into shell code.
-- Releases are Docker images on GHCR, triggered by semantic version tags on commits in `main`. No npm package or automatic production deployment.
+- Releases are Docker images on GHCR plus a GitHub release. Every push to `main` with `feat`, `fix` or `perf` commits (or a breaking change) publishes the next semantic version automatically; PR titles therefore decide the version bump. Manual `v*` tags on `main` still work. No npm package or automatic production deployment.
 - UI messages use ParaglideJS. Add messages to both `messages/de.json` and `messages/en.json`; keep stable schema/field identifiers and user content separate from translated text. Generated `src/lib/paraglide/` files must not be committed.

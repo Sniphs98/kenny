@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
 	import Gantt from '$lib/components/Gantt.svelte';
-	import Hint from '$lib/components/Hint.svelte';
 	import TicketDialog from '$lib/components/TicketDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -26,20 +25,10 @@
 	color={data.project.color}
 >
 	{#snippet actions()}
-		<Hint text={m.new_ticket_shortcut()} disabled={!data.canEdit}>
-			{#snippet children(props)}
-				<Button
-					{...props}
-					disabled={!data.canEdit}
-					size="sm"
-					aria-keyshortcuts="C"
-					onclick={() => dialog.open(preset())}
-				>
-					<Plus />
-					{m.ticket()}
-				</Button>
-			{/snippet}
-		</Hint>
+		<Button disabled={!data.canEdit} size="sm" onclick={() => dialog.open(preset())}>
+			<Plus />
+			{m.ticket()}
+		</Button>
 	{/snippet}
 </Gantt>
 
@@ -50,5 +39,5 @@
 	tags={data.tags}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
 	canCreate={data.canEdit}
-	shortcutPreset={preset}
+	{preset}
 />

@@ -56,6 +56,26 @@ test('Projektübersicht zeigt neue Projekte live', async ({ page, request }) => 
 	await expect(page.getByText(`Live-Projekt ${p.key}`)).toBeVisible();
 });
 
+test('Live-Neuladen bricht eine laufende Navigation nicht ab', async ({ page, request }) => {
+	const target = await createProject(request, 'Ziel');
+	await open(page, '/');
+	// Verbindung steht: ein neues Projekt erscheint live
+	const first = await createProject(request, 'Verbunden');
+	await expect(page.getByText(`Verbunden ${first.key}`)).toBeVisible();
+
+	// Die Navigation zum Board dauert; währenddessen ändert jemand anderes etwas
+	await page.route(`**/projects/${target.key}/board/__data.json*`, async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		await route.continue();
+	});
+	await page
+		.getByRole('link')
+		.filter({ hasText: `Ziel ${target.key}` })
+		.click();
+	await createProject(request, 'Zwischendurch');
+	await expect(page).toHaveURL(`/projects/${target.key}/board`, { timeout: 10_000 });
+});
+
 test.describe('ohne Anmeldung', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 

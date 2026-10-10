@@ -10,7 +10,7 @@
 	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
 	import DatePicker from '$lib/components/DatePicker.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
-	import { NEW_TICKET_KEY, isShortcut } from '$lib/shortcuts';
+	import { newTicketRequest, takeNewTicketRequest } from '$lib/new-ticket.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -27,16 +27,16 @@
 		tags,
 		parents,
 		canCreate = true,
-		shortcutPreset = () => ({})
+		preset = () => ({})
 	}: {
 		projectKey: string;
 		users: { id: string; name: string; email?: string }[];
 		tags: { id: number; name: string; color: string }[];
 		parents: Option[];
-		/** Ohne Schreibrechte reagiert das Tastenkürzel nicht */
+		/** Ohne Schreibrechte öffnet die Befehlspalette den Dialog nicht */
 		canCreate?: boolean;
-		/** Vorbelegung beim Öffnen per Tastenkürzel (z.B. Datum im Gantt) */
-		shortcutPreset?: () => Partial<ReturnType<typeof blank>>;
+		/** Vorbelegung beim Öffnen aus der Befehlspalette (z.B. Datum im Gantt) */
+		preset?: () => Partial<ReturnType<typeof blank>>;
 	} = $props();
 
 	/** Nach dem Anlegen offen bleiben, um viele Tickets nacheinander zu erfassen (pro Browser gemerkt) */
@@ -119,16 +119,13 @@
 		isOpen = true;
 	}
 
-	function onkeydown(event: KeyboardEvent) {
-		if (!canCreate || isOpen || !isShortcut(event, NEW_TICKET_KEY)) return;
-		event.preventDefault();
-		open(shortcutPreset());
-	}
+	// „Neues Ticket“ aus der Befehlspalette (Strg+K)
+	$effect(() => {
+		if (newTicketRequest.pending && canCreate && takeNewTicketRequest()) open(preset());
+	});
 
 	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? m.no_parent_ticket());
 </script>
-
-<svelte:window {onkeydown} />
 
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content class="sm:max-w-lg">

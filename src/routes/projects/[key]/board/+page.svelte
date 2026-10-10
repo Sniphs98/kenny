@@ -614,13 +614,7 @@
 			{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
 		</Select.Content>
 	</Select.Root>
-	<Hint text={m.new_ticket_shortcut()} disabled={!data.canEdit}>
-		{#snippet children(props)}
-			<Button {...props} disabled={!data.canEdit} aria-keyshortcuts="C" onclick={() => dialog.open()}
-				><Plus /> {m.ticket()}</Button
-			>
-		{/snippet}
-	</Hint>
+	<Button disabled={!data.canEdit} onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
 </div>
 
 <Collapsible.Root bind:open={showTimeline} class="mb-4 border-b">

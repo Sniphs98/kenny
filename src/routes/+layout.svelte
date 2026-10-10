@@ -10,6 +10,7 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SoundToggle from '$lib/components/SoundToggle.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Toaster } from '$lib/components/ui/sonner';
@@ -105,6 +106,7 @@
 					{/each}
 				</nav>
 				<span class="grow"></span>
+				<CommandPalette />
 				<ThemeToggle />
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger

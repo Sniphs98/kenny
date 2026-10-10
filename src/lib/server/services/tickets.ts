@@ -160,17 +160,29 @@ export function searchTickets(userId: string, rawInput: unknown): TicketSearchRe
 	}
 	const query = input.query?.toLowerCase();
 
-	const tickets = projects
+	const candidates = projects
 		.flatMap((p) => listTickets(p.id, { closed: input.closed }))
-		.filter((t) => assigneeId === undefined || t.assigneeId === assigneeId)
-		.filter(
-			(t) =>
-				!query ||
-				t.key.toLowerCase() === query ||
-				t.title.toLowerCase().includes(query) ||
-				t.description.toLowerCase().includes(query)
-		);
+		.filter((t) => assigneeId === undefined || t.assigneeId === assigneeId);
+	// Mit Suchbegriff nach Treffergüte: Schlüssel genau, Schlüssel-Anfang, Titel-Anfang, Titel, Beschreibung
+	const tickets = !query
+		? candidates
+		: candidates
+				.map((t) => ({ t, rank: searchRank(t, query) }))
+				.filter(({ rank }) => rank > 0)
+				.sort((a, b) => b.rank - a.rank || Number(a.t.closed) - Number(b.t.closed))
+				.map(({ t }) => t);
 	return { total: tickets.length, tickets: tickets.slice(0, input.limit ?? 50) };
+}
+
+/** Treffergüte eines Tickets für einen (kleingeschriebenen) Suchbegriff; 0 = kein Treffer */
+function searchRank(t: TicketListItem, query: string) {
+	const key = t.key.toLowerCase();
+	const title = t.title.toLowerCase();
+	if (key === query) return 5;
+	if (key.startsWith(query)) return 4;
+	if (title.startsWith(query)) return 3;
+	if (title.includes(query)) return 2;
+	return t.description.toLowerCase().includes(query) ? 1 : 0;
 }
 
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */

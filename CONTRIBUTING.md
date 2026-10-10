@@ -4,6 +4,8 @@
 
 Use the Node.js version in `.nvmrc`, then run `npm ci`. For development, copy `.env.example` to `.env` and set your own `BETTER_AUTH_SECRET`. Start the app with `npm run dev`. See `AGENTS.md` for architecture and development rules.
 
+Text files use LF line endings; `.gitattributes` enforces this even with `core.autocrlf=true` on Windows. A checkout made before that file existed may still contain CRLF files: run `npm run format` once (only line endings change, `git status` stays clean).
+
 ## Issue → branch → pull request
 
 1. Describe the bug or feature using the appropriate issue form. Include acceptance criteria and any impact on existing data.

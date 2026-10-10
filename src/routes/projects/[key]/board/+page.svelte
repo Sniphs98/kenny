@@ -20,6 +20,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { cn } from '$lib/utils';
+	import { scrollActivity } from '$lib/scroll-activity';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { playIfCompleted } from '$lib/sound';
@@ -488,7 +489,8 @@
 	>
 		{#if !grouped}{@render columnHeader(col, lane)}{/if}
 		<div
-			class={cn('flex min-h-10 flex-col gap-1.5', !grouped && 'overflow-y-auto')}
+			class={cn('flex min-h-10 flex-col gap-1.5', !grouped && 'scrollbar-soft overflow-y-auto')}
+			use:scrollActivity
 			role="region"
 			aria-label={grouped ? `${lane.label}: ${col.name}` : col.name}
 			ondragover={(e) => onDragOver(e, lane.key, col.id, e.currentTarget as HTMLElement)}
@@ -640,13 +642,16 @@
 </Collapsible.Root>
 
 {#if groupBy === 'none'}
-	<div class="flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5">
+	<div
+		class="scrollbar-soft flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5"
+		use:scrollActivity
+	>
 		{#each data.columns as col (col.id)}
 			{@render columnCell(lanes[0], col, false)}
 		{/each}
 	</div>
 {:else}
-	<div class="overflow-x-auto px-5 pb-5">
+	<div class="scrollbar-soft overflow-x-auto px-5 pb-5" use:scrollActivity>
 		<div class="flex w-max min-w-full flex-col gap-2">
 			<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
 			<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">

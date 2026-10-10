@@ -481,7 +481,7 @@
 	{@const cellKey = `${lane.key}|${col.id}`}
 	<section
 		class={cn(
-			'bg-muted/60 flex w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5 transition-shadow',
+			'bg-muted/60 dark:bg-card/50 flex w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5 transition-shadow',
 			!grouped && 'max-h-[calc(100vh-210px)]',
 			target && !manualSort && 'ring-primary/50 ring-2'
 		)}

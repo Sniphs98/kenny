@@ -36,6 +36,7 @@
 		"@inlang/paraglide-js": "^2.26.0",
 		"@inlang/plugin-message-format": "^4.4.0",
 		"@internationalized/date": "^3.12.4",
+		"@microsoft/teams-js": "^2.58.0",
 		"@playwright/test": "^1.64.0",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.70.3",

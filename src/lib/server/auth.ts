@@ -8,6 +8,7 @@ import { db, schema } from './db';
 import { APIError } from 'better-auth/api';
 import { requireActiveUser } from './services/access';
 import { bootstrapAdministrator } from './services/users';
+import { teamsEnabled } from './teams';
 
 // Microsoft-Login wird nur aktiviert, wenn die Zugangsdaten gesetzt sind (siehe README)
 const socialProviders: BetterAuthOptions['socialProviders'] = {};
@@ -15,7 +16,12 @@ if (env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
 	socialProviders.microsoft = {
 		clientId: env.MICROSOFT_CLIENT_ID,
 		clientSecret: env.MICROSOFT_CLIENT_SECRET,
-		tenantId: env.MICROSOFT_TENANT_ID || 'common'
+		tenantId: env.MICROSOFT_TENANT_ID || 'common',
+		// Nur für nationale Clouds (z.B. https://login.microsoftonline.us); sonst Microsofts Standard
+		...(env.MICROSOFT_AUTHORITY ? { authority: env.MICROSOFT_AUTHORITY } : {}),
+		// Teams-SSO-Tokens enthalten ohne optionalen Claim keine E-Mail; dann gilt der Anmeldename.
+		// Er gilt nicht als bestätigt, verknüpft also keine bestehenden Konten über die E-Mail.
+		mapProfileToUser: (profile) => (profile.email ? {} : { email: profile.preferred_username || profile.upn })
 	};
 }
 
@@ -54,6 +60,11 @@ export const auth = betterAuth({
 		}
 	},
 	socialProviders,
+	// Teams zeigt Kenny in einem iframe einer fremden Seite: Cookies müssen dort mitgesendet werden.
+	// Partitioned trennt die Teams-Sitzung von der normalen Browser-Sitzung; CSRF prüft SvelteKit (Origin).
+	advanced: teamsEnabled()
+		? { defaultCookieAttributes: { sameSite: 'none', secure: true, partitioned: true } }
+		: undefined,
 	plugins: [sveltekitCookies(getRequestEvent)]
 });
 

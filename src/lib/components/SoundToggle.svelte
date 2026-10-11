@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { m } from '$lib/paraglide/messages.js';
-	import { playComplete, setSoundEnabled, soundEnabled } from '$lib/sound';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { playComplete, setSoundEnabled, soundEnabled } from '#lib/sound.js';
 
 	// Eintrag im Benutzermenü; wird erst beim Öffnen im Browser gerendert
 	let on = $state(soundEnabled());

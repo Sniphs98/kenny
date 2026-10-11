@@ -13,7 +13,7 @@ import {
 	type IntakeFields,
 	type IntakeFormDto,
 	type PublicIntakeForm
-} from '$lib/contracts';
+} from '#lib/contracts/index.js';
 import { db } from '../db';
 import { intakeForm, intakeFormProject, intakeFormTag, project, projectMember, tag } from '../db/schema';
 import { ApiError } from '../errors';

@@ -7,7 +7,7 @@
 /*
  * shadcn-svelte Theme (Light: "stone", Dark: neutrale Grautöne).
  * --primary ist im Light Mode außerhalb von Projekten ein warmes Schwarzbraun;
- * in Projekten wird es per accentStyle() aus $lib/theme mit der Projektfarbe überschrieben.
+ * in Projekten wird es per accentStyle() aus #lib/theme mit der Projektfarbe überschrieben.
  */
 :root {
 	color-scheme: light;
@@ -140,7 +140,7 @@
 /*
  * Dezente Scrollleisten (Board): schmal, abgerundet, in der gedämpften Textfarbe des Themes.
  * Unsichtbar, bis man den Bereich überfährt, in ihn tabbt oder scrollt (data-scrolling, siehe
- * $lib/scroll-activity.ts). Natives Scrollen bleibt erhalten (Drag & Drop, Touch, Tastatur).
+ * #lib/scroll-activity.ts). Natives Scrollen bleibt erhalten (Drag & Drop, Touch, Tastatur).
  * Firefox kennt nur Breite und Farbe; Chrome, Edge und Safari bekommen die runde Variante. Chrome
  * beachtet ::-webkit-scrollbar nur, solange scrollbar-width/-color auf auto stehen.
  */

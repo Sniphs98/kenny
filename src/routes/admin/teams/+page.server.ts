@@ -1,9 +1,15 @@
-import { localizeError } from '$lib/i18n';
+import { localizeError } from '#lib/i18n.js';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-import { ApiError } from '$lib/server/errors';
-import { requireAdmin } from '$lib/server/services/access';
-import { TEAMS_CLIENT_IDS, applicationIdUri, microsoftConfigured, teamsConfig, teamsEnabled } from '$lib/server/teams';
+import { MICROSOFT_TENANT_ID } from '$app/env/private';
+import { ApiError } from '#lib/server/errors.js';
+import { requireAdmin } from '#lib/server/services/access.js';
+import {
+	TEAMS_CLIENT_IDS,
+	applicationIdUri,
+	microsoftConfigured,
+	teamsConfig,
+	teamsEnabled
+} from '#lib/server/teams.js';
 
 /** Einrichtung von Microsoft Teams: Status und alle Werte, die in Entra ID einzutragen sind */
 export const load = ({ locals }) => {
@@ -28,7 +34,7 @@ export const load = ({ locals }) => {
 		},
 		baseUrl: config.baseUrl,
 		clientId: config.clientId,
-		tenantId: env.MICROSOFT_TENANT_ID || 'common',
+		tenantId: MICROSOFT_TENANT_ID || 'common',
 		applicationIdUri: validUrl && config.clientId ? applicationIdUri(config) : '',
 		redirectUri: `${config.baseUrl}/api/auth/callback/microsoft`,
 		teamsClients: Object.entries(TEAMS_CLIENT_IDS).map(([name, id]) => ({ name, id })),

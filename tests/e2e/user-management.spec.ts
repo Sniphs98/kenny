@@ -78,7 +78,16 @@ test('project roles protect every resource and do not allow signup to elevate pr
 			['DELETE', `/attachments/${attachment.id}`, undefined],
 			['POST', `/projects/${p.key}/tickets`, { title: 'Forbidden' }]
 		] as const) {
-			expect((await reader.context.request.fetch(`/api/v1${path}`, { method, data })).status(), path).toBe(403);
+			expect(
+				(
+					await reader.context.request.fetch(`/api/v1${path}`, {
+						method,
+						data,
+						headers: { 'content-type': 'application/json' }
+					})
+				).status(),
+				path
+			).toBe(403);
 		}
 		for (const [method, path, data] of [
 			['PATCH', `/projects/${p.key}`, { name: 'Forbidden' }],
@@ -93,7 +102,16 @@ test('project roles protect every resource and do not allow signup to elevate pr
 			['PATCH', `/projects/${p.key}/members/${reader.user.id}`, { role: 'admin' }],
 			['DELETE', `/projects/${p.key}/members/${reader.user.id}`, undefined]
 		] as const) {
-			expect((await member.context.request.fetch(`/api/v1${path}`, { method, data })).status(), path).toBe(403);
+			expect(
+				(
+					await member.context.request.fetch(`/api/v1${path}`, {
+						method,
+						data,
+						headers: { 'content-type': 'application/json' }
+					})
+				).status(),
+				path
+			).toBe(403);
 		}
 		expect(
 			(await member.context.request.patch(`/api/v1/tickets/${t.key}`, { data: { title: 'Allowed edit' } })).status()

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '$lib/server/db';
-import { intakeForm, project, user } from '$lib/server/db/schema';
+import { db } from '#lib/server/db/index.js';
+import { intakeForm, project, user } from '#lib/server/db/schema.js';
 import {
 	createForm,
 	deleteForm,
@@ -10,10 +10,10 @@ import {
 	resetRateLimit,
 	submitForm,
 	updateForm
-} from '$lib/server/services/intake';
-import { createProject } from '$lib/server/services/projects';
-import { createTag, deleteTag, listTags } from '$lib/server/services/tags';
-import { getTicketDetail, listTickets } from '$lib/server/services/tickets';
+} from '#lib/server/services/intake.js';
+import { createProject } from '#lib/server/services/projects.js';
+import { createTag, deleteTag, listTags } from '#lib/server/services/tags.js';
+import { getTicketDetail, listTickets } from '#lib/server/services/tickets.js';
 
 const anonymous = { user: null, ip: '203.0.113.1' };
 /** Angemeldet, aber ohne Mitgliedschaft in irgendeinem Projekt */

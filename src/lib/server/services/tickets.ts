@@ -1,6 +1,6 @@
 import { requireProjectAccess, visibleUsers } from './access';
 import { projectMember } from '../db/schema';
-import { createTicketSchema, updateTicketSchema, createLinkSchema, ticketSearchSchema } from '$lib/contracts';
+import { createTicketSchema, updateTicketSchema, createLinkSchema, ticketSearchSchema } from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
@@ -20,7 +20,7 @@ import {
 import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
-import { searchTokens } from '$lib/search';
+import { searchTokens } from '#lib/search.js';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
 import { countAttachments, listAttachments, removeFiles, storageKeysForTickets } from './attachments';
@@ -76,8 +76,8 @@ function present(t: Ticket, projectKey: string, column?: { name: string; isDone:
 		updatedAt: t.updatedAt
 	};
 }
-export type { TicketDto, TicketListItem } from '$lib/contracts';
-import type { TicketDetail, TicketDto, TicketListItem, TicketSearchResult } from '$lib/contracts';
+export type { TicketDto, TicketListItem } from '#lib/contracts/index.js';
+import type { TicketDetail, TicketDto, TicketListItem, TicketSearchResult } from '#lib/contracts/index.js';
 
 export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);

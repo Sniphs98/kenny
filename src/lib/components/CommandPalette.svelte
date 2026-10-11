@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { listProjects, searchTickets } from '$lib/api';
-	import type { TicketListItem } from '$lib/contracts';
-	import { requestNewTicket } from '$lib/new-ticket.svelte';
-	import { highlight, searchTokens, snippet, type Part } from '$lib/search';
-	import { m } from '$lib/paraglide/messages.js';
-	import * as Command from '$lib/components/ui/command';
-	import { cn } from '$lib/utils';
+	import { listProjects, searchTickets } from '#lib/api.js';
+	import type { TicketListItem } from '#lib/contracts/index.js';
+	import { requestNewTicket } from '#lib/new-ticket.svelte.js';
+	import { highlight, searchTokens, snippet, type Part } from '#lib/search.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import * as Command from '#lib/components/ui/command/index.js';
+	import { cn } from '#lib/utils.js';
 	import { setMode } from 'mode-watcher';
 	import type { Component } from 'svelte';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';

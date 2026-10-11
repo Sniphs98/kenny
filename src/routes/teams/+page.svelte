@@ -2,9 +2,9 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { m } from '$lib/paraglide/messages.js';
-	import { safeTarget } from '$lib/safe-target';
-	import { connectTeams, signInWithTeams } from '$lib/teams';
+	import { m } from '#lib/paraglide/messages.js';
+	import { safeTarget } from '#lib/safe-target.js';
+	import { connectTeams, signInWithTeams } from '#lib/teams.js';
 	import TeamsStatus from './TeamsStatus.svelte';
 
 	/** Einstieg der Teams-Tabs: verbinden, per SSO anmelden, dann zur gewünschten Seite (?to=/…) */
@@ -21,7 +21,7 @@
 		phase = 'signing-in';
 		try {
 			await signInWithTeams(sdk);
-			await goto(safeTarget(page.url.searchParams.get('to')), { replaceState: true, invalidateAll: true });
+			await goto(safeTarget(page.url.searchParams.get('to')), { replace: true, refreshAll: true });
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 			phase = 'error';

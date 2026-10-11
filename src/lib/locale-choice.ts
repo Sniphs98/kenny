@@ -11,7 +11,7 @@ import {
 	defineCustomServerStrategy,
 	isLocale,
 	type Locale
-} from '$lib/paraglide/runtime.js';
+} from '#lib/paraglide/runtime.js';
 
 const pattern = new RegExp(`(?:^|;\\s*)${cookieName}=([^;]*)`);
 

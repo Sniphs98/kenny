@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
-import { env } from '$env/dynamic/private';
+
+import {
+	MICROSOFT_CLIENT_ID,
+	MICROSOFT_CLIENT_SECRET,
+	TEAMS_ENABLED,
+	BETTER_AUTH_URL,
+	TEAMS_APP_ID,
+	TEAMS_APP_VERSION,
+	TEAMS_DEVELOPER_NAME
+} from '$app/env/private';
 
 /**
  * Microsoft Teams: Kenny als Teams-App (persönlicher Tab und Kanal-Tab) mit Anmeldung per Teams-SSO.
@@ -35,9 +44,9 @@ export type TeamsConfig = {
 };
 
 /** Ist Microsoft-Login eingerichtet (Voraussetzung für Teams-SSO)? */
-export const microsoftConfigured = () => !!(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET);
+export const microsoftConfigured = () => !!(MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET);
 
-export const teamsEnabled = () => env.TEAMS_ENABLED === 'true' && microsoftConfigured();
+export const teamsEnabled = () => TEAMS_ENABLED === 'true' && microsoftConfigured();
 
 /** UUID-förmige, stabile ID aus einem Text: dasselbe Kenny ergibt bei jedem Download dieselbe Teams-App */
 function stableUuid(seed: string) {
@@ -47,14 +56,14 @@ function stableUuid(seed: string) {
 }
 
 export function teamsConfig(): TeamsConfig {
-	const baseUrl = (env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
-	const clientId = env.MICROSOFT_CLIENT_ID ?? '';
+	const baseUrl = (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
+	const clientId = MICROSOFT_CLIENT_ID ?? '';
 	return {
 		baseUrl,
 		clientId,
-		appId: env.TEAMS_APP_ID || stableUuid(`kenny-teams:${baseUrl}:${clientId}`),
-		version: env.TEAMS_APP_VERSION || '1.0.0',
-		developer: env.TEAMS_DEVELOPER_NAME || 'Kenny'
+		appId: TEAMS_APP_ID || stableUuid(`kenny-teams:${baseUrl}:${clientId}`),
+		version: TEAMS_APP_VERSION || '1.0.0',
+		developer: TEAMS_DEVELOPER_NAME || 'Kenny'
 	};
 }
 
@@ -182,12 +191,14 @@ function smoothPng(size: number, view: [number, number], sample: (px: number, py
 		let g = 0;
 		let b = 0;
 		let a = 0;
+
 		for (let i = 0; i < n; i++)
 			for (let j = 0; j < n; j++) {
 				const [sr, sg, sb, sa] = sample(
 					from + ((x + (i + 0.5) / n) / size) * span,
 					from + ((y + (j + 0.5) / n) / size) * span
 				);
+
 				r += sr * sa;
 				g += sg * sa;
 				b += sb * sa;

@@ -5,9 +5,9 @@ const file = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineConfig({
 	resolve: {
 		alias: {
-			$lib: file('./src/lib'),
-			'$env/dynamic/private': file('./tests/fixtures/env.ts'),
-			'$app/environment': file('./tests/fixtures/environment.ts')
+			'#lib': file('./src/lib'),
+			'$app/env/private': file('./tests/fixtures/env.ts'),
+			'$app/env': file('./tests/fixtures/environment.ts')
 		}
 	},
 	test: {

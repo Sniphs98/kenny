@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { EMBED_RESIZE_MESSAGE, embedCode } from '$lib/embed';
-import { isEmbeddable, protectFraming } from '$lib/server/framing';
+import { EMBED_RESIZE_MESSAGE, embedCode } from '#lib/embed.js';
+import { isEmbeddable, protectFraming } from '#lib/server/framing.js';
 
 describe('framing protection', () => {
 	it('allows only submission pages inside foreign frames', () => {

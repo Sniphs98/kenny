@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { buttonVariants, Button } from '$lib/components/ui/button';
-	import { Calendar } from '$lib/components/ui/calendar';
-	import * as Popover from '$lib/components/ui/popover';
-	import { cn } from '$lib/utils';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { buttonVariants, Button } from '#lib/components/ui/button/index.js';
+	import { Calendar } from '#lib/components/ui/calendar/index.js';
+	import * as Popover from '#lib/components/ui/popover/index.js';
+	import { cn } from '#lib/utils.js';
 	import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 

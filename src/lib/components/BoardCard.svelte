@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { PRIORITY_LABELS } from '$lib/api';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { buttonVariants } from '$lib/components/ui/button';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { PRIORITY_LABELS } from '#lib/api.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
 	import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
-	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
-	import Hint from '$lib/components/Hint.svelte';
-	import TagBadge from '$lib/components/TagBadge.svelte';
-	import type { TicketListItem, BoardColumnDto } from '$lib/contracts';
-	import { openTicket } from '$lib/ticket-modal';
-	import { cn } from '$lib/utils';
+	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
+	import Hint from '#lib/components/Hint.svelte';
+	import TagBadge from '#lib/components/TagBadge.svelte';
+	import type { TicketListItem, BoardColumnDto } from '#lib/contracts/index.js';
+	import { openTicket } from '#lib/ticket-modal.js';
+	import { cn } from '#lib/utils.js';
 	import Ban from '@lucide/svelte/icons/ban';
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';

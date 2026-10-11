@@ -3,7 +3,7 @@ import { db } from '../db';
 import { account, apiToken, projectMember, session, user } from '../db/schema';
 import { ApiError } from '../errors';
 import { parseInput } from '../validation';
-import { addMemberSchema, managedUserSchema, updateMemberSchema, updateUserSchema } from '$lib/contracts';
+import { addMemberSchema, managedUserSchema, updateMemberSchema, updateUserSchema } from '#lib/contracts/index.js';
 import { requireActiveUser, requireAdmin, requireProjectAccess } from './access';
 
 export function bootstrapAdministrator() {

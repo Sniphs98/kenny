@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { api, formatSize, upload } from '$lib/api';
-	import type { AttachmentDto } from '$lib/contracts';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { Badge } from '$lib/components/ui/badge';
-	import Hint from '$lib/components/Hint.svelte';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { cn } from '$lib/utils';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { api, formatSize, upload } from '#lib/api.js';
+	import type { AttachmentDto } from '#lib/contracts/index.js';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import { Button, buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { cn } from '#lib/utils.js';
 	import { toast } from 'svelte-sonner';
 	import Download from '@lucide/svelte/icons/download';
 	import ExternalLink from '@lucide/svelte/icons/external-link';

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '$lib/server/db';
-import { project } from '$lib/server/db/schema';
-import { createProject, getProject, getColumns, updateColumn, deleteColumn } from '$lib/server/services/projects';
+import { db } from '#lib/server/db/index.js';
+import { project } from '#lib/server/db/schema.js';
+import { createProject, getProject, getColumns, updateColumn, deleteColumn } from '#lib/server/services/projects.js';
 import {
 	createTicket,
 	updateTicket,
@@ -10,9 +10,9 @@ import {
 	addLink,
 	closeTicket,
 	reopenTicket
-} from '$lib/server/services/tickets';
-import { createTag } from '$lib/server/services/tags';
-import { ticketDtoSchema } from '$lib/contracts';
+} from '#lib/server/services/tickets.js';
+import { createTag } from '#lib/server/services/tags.js';
+import { ticketDtoSchema } from '#lib/contracts/index.js';
 
 beforeEach(() => db.delete(project).run());
 

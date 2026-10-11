@@ -4,7 +4,7 @@ import { attachment, projectMember, ticket, user } from '../db/schema';
 import { ApiError } from '../errors';
 import { getProject } from './projects';
 import { resolveTicket } from './tickets';
-import type { ProjectRole } from '$lib/contracts';
+import type { ProjectRole } from '#lib/contracts/index.js';
 
 export function requireActiveUser(userId: string) {
 	const current = db.select().from(user).where(eq(user.id, userId)).get();

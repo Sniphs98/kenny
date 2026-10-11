@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import Hint from '$lib/components/Hint.svelte';
-	import { cn } from '$lib/utils';
+	import { m } from '#lib/paraglide/messages.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import { cn } from '#lib/utils.js';
 	import Check from '@lucide/svelte/icons/check';
 	import Pipette from '@lucide/svelte/icons/pipette';
 

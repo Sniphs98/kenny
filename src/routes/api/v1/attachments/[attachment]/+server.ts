@@ -1,5 +1,5 @@
-import { apiHandler } from '$lib/server/api';
-import { deleteAttachment, downloadAttachment } from '$lib/server/services/attachments';
+import { apiHandler } from '#lib/server/api.js';
+import { deleteAttachment, downloadAttachment } from '#lib/server/services/attachments.js';
 
 /** Datei abrufen; ?download erzwingt den Download auch bei Bildern */
 export const GET = apiHandler((e) =>

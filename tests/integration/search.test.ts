@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '$lib/server/db';
-import { project, user } from '$lib/server/db/schema';
-import { createProject } from '$lib/server/services/projects';
-import { closeTicket, createTicket, searchTickets } from '$lib/server/services/tickets';
-import { addMember } from '$lib/server/services/users';
+import { db } from '#lib/server/db/index.js';
+import { project, user } from '#lib/server/db/schema.js';
+import { createProject } from '#lib/server/services/projects.js';
+import { closeTicket, createTicket, searchTickets } from '#lib/server/services/tickets.js';
+import { addMember } from '#lib/server/services/users.js';
 
 beforeEach(() => {
 	db.delete(project).run();

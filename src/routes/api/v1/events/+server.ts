@@ -1,8 +1,8 @@
-import { apiHandler } from '$lib/server/api';
-import { requireActiveUser, requireProjectAccess } from '$lib/server/services/access';
-import { ApiError } from '$lib/server/errors';
-import { subscribe } from '$lib/server/live';
-import { getProject } from '$lib/server/services/projects';
+import { apiHandler } from '#lib/server/api.js';
+import { requireActiveUser, requireProjectAccess } from '#lib/server/services/access.js';
+import { ApiError } from '#lib/server/errors.js';
+import { subscribe } from '#lib/server/live.js';
+import { getProject } from '#lib/server/services/projects.js';
 
 /** Lebenszeichen, damit Proxys die offene Verbindung nicht schließen */
 const HEARTBEAT_MS = 25_000;

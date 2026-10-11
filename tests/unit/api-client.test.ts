@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { closeTicket, createTicket, reopenTicket, updateTicket } from '$lib/api';
+import { closeTicket, createTicket, reopenTicket, updateTicket } from '#lib/api.js';
 
 afterEach(() => vi.unstubAllGlobals());
 

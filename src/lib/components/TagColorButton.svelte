@@ -1,9 +1,9 @@
 <script lang="ts">
-	import ColorPicker from '$lib/components/ColorPicker.svelte';
-	import Hint from '$lib/components/Hint.svelte';
-	import * as Popover from '$lib/components/ui/popover';
-	import { m } from '$lib/paraglide/messages.js';
-	import { Synced } from '$lib/synced.svelte';
+	import ColorPicker from '#lib/components/ColorPicker.svelte';
+	import Hint from '#lib/components/Hint.svelte';
+	import * as Popover from '#lib/components/ui/popover/index.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { Synced } from '#lib/synced.svelte.js';
 	import { untrack } from 'svelte';
 
 	let { name, color, onchange }: { name: string; color: string; onchange: (color: string) => void } = $props();

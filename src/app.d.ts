@@ -1,4 +1,4 @@
-import type { Session } from '$lib/server/auth';
+import type { Session } from '#lib/server/auth.js';
 import type { PageData as TicketPageData } from './routes/tickets/[key]/$types';
 
 declare global {

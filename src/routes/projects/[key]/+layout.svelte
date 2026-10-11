@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import LiveUpdates from '$lib/components/LiveUpdates.svelte';
-	import TicketModal from '$lib/components/TicketModal.svelte';
+	import LiveUpdates from '#lib/components/LiveUpdates.svelte';
+	import TicketModal from '#lib/components/TicketModal.svelte';
 	import { toast } from 'svelte-sonner';
-	import { cn } from '$lib/utils';
+	import { cn } from '#lib/utils.js';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
 	import Users from '@lucide/svelte/icons/users';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -67,6 +67,6 @@
 	project={data.project.key}
 	onDeleted={() => {
 		toast.info(m.project_was_deleted());
-		goto('/', { invalidateAll: true });
+		goto('/', { refreshAll: true });
 	}}
 />

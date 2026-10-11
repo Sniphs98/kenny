@@ -1,4 +1,4 @@
-import { dateSchema } from '$lib/contracts';
+import { dateSchema } from '#lib/contracts/index.js';
 import { ApiError } from '../errors';
 
 export function str(v: unknown, field: string, opts: { max?: number } = {}): string {

@@ -3,16 +3,16 @@ import { mkdirSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { env } from '$env/dynamic/private';
+import { ATTACHMENTS_DIR, ATTACHMENT_MAX_MB } from '$app/env/private';
 import { db } from '../db';
 import { attachment, ticket, user, type Attachment } from '../db/schema';
 import { ApiError } from '../errors';
 import { publish } from '../live';
 import { resolveTicket } from './tickets';
 
-const DIR = env.ATTACHMENTS_DIR || 'data/attachments';
+const DIR = ATTACHMENTS_DIR || 'data/attachments';
 /** Maximale Größe pro Datei in MB */
-const MAX_MB = Number(env.ATTACHMENT_MAX_MB) || 25;
+const MAX_MB = Number(ATTACHMENT_MAX_MB) || 25;
 
 /** Bildformate, die direkt im Browser angezeigt werden dürfen (kein SVG: könnte Skripte enthalten) */
 const INLINE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'];
@@ -32,8 +32,8 @@ function present(a: Attachment, uploadedBy: string | null = null) {
 		createdAt: a.createdAt
 	};
 }
-export type { AttachmentDto } from '$lib/contracts';
-import type { AttachmentDto } from '$lib/contracts';
+export type { AttachmentDto } from '#lib/contracts/index.js';
+import type { AttachmentDto } from '#lib/contracts/index.js';
 
 export function listAttachments(ticketId: number): AttachmentDto[] {
 	return db

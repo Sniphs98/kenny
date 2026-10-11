@@ -1,32 +1,32 @@
 <script lang="ts">
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { PRIORITIES, type UpdateTicketInput } from '$lib/contracts';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { PRIORITIES, type UpdateTicketInput } from '#lib/contracts/index.js';
+	import { goto, refreshAll } from '$app/navigation';
 	import type { PageData } from '../../routes/tickets/[key]/$types';
 	import { page } from '$app/state';
-	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '$lib/api';
-	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
-	import Attachments from '$lib/components/Attachments.svelte';
-	import DatePicker from '$lib/components/DatePicker.svelte';
-	import TicketPicker from '$lib/components/TicketPicker.svelte';
-	import TagPicker from '$lib/components/TagPicker.svelte';
-	import * as Alert from '$lib/components/ui/alert';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { Badge } from '$lib/components/ui/badge';
-	import Hint from '$lib/components/Hint.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { cn } from '$lib/utils';
-	import { Synced } from '$lib/synced.svelte';
+	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
+	import Attachments from '#lib/components/Attachments.svelte';
+	import DatePicker from '#lib/components/DatePicker.svelte';
+	import TicketPicker from '#lib/components/TicketPicker.svelte';
+	import TagPicker from '#lib/components/TagPicker.svelte';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
+	import { cn } from '#lib/utils.js';
+	import { Synced } from '#lib/synced.svelte.js';
 	import { untrack } from 'svelte';
-	import { playIfCompleted } from '$lib/sound';
+	import { playIfCompleted } from '#lib/sound.js';
 	import { toast } from 'svelte-sonner';
 	import AlignLeft from '@lucide/svelte/icons/align-left';
 	import Ban from '@lucide/svelte/icons/ban';
@@ -43,7 +43,7 @@
 
 	let {
 		data,
-		refresh = invalidateAll,
+		refresh = refreshAll,
 		onDeleted
 	}: {
 		data: PageData;
@@ -109,7 +109,7 @@
 		await api('DELETE', base);
 		toast.success(m.deleted_ticket({ value1: t.key }));
 		if (onDeleted) onDeleted();
-		else await goto(`/projects/${data.project.key}/board`, { invalidateAll: true });
+		else await goto(`/projects/${data.project.key}/board`, { refreshAll: true });
 	}
 
 	const groups = $derived([

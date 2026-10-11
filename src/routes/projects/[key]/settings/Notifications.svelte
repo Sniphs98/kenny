@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { sendTestNotification, updateNotifications } from '$lib/api';
+	import { refreshAll } from '$app/navigation';
+	import { sendTestNotification, updateNotifications } from '#lib/api.js';
 	import {
 		NOTIFICATION_EVENTS,
 		NOTIFICATION_LOCALES,
 		isAllowedWebhookUrl,
 		type NotificationEvent,
 		type NotificationsDto
-	} from '$lib/contracts';
-	import { intlLocale, localizeError } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
+	} from '#lib/contracts/index.js';
+	import { intlLocale, localizeError } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -52,7 +52,7 @@
 		busy = kind;
 		try {
 			await fn();
-			await invalidateAll();
+			await refreshAll();
 			toast.success(success);
 			if (kind !== 'test') webhookUrl = '';
 		} catch (err) {

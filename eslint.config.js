@@ -49,7 +49,7 @@ export default ts.config(
 		rules: {
 			'no-restricted-imports': [
 				'error',
-				{ patterns: ['$lib/server', '$lib/server/**', '**/server/**', 'node:*', 'svelte', 'svelte/*', '@sveltejs/*'] }
+				{ patterns: ['#lib/server', '#lib/server/**', '**/server/**', 'node:*', 'svelte', 'svelte/*', '@sveltejs/*'] }
 			]
 		}
 	},
@@ -60,8 +60,8 @@ export default ts.config(
 				'error',
 				{
 					patterns: [
-						'$lib/server',
-						'$lib/server/**',
+						'#lib/server',
+						'#lib/server/**',
 						'**/server/**',
 						'node:*',
 						'better-sqlite3',
@@ -77,7 +77,7 @@ export default ts.config(
 		rules: {
 			'no-restricted-imports': [
 				'error',
-				{ patterns: ['svelte', 'svelte/*', '$lib/components/**', '$app/navigation', '$app/state'] }
+				{ patterns: ['svelte', 'svelte/*', '#lib/components/**', '$app/navigation', '$app/state'] }
 			]
 		}
 	}

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { m } from '$lib/paraglide/messages.js';
-	import { addProjectMember, changeProjectMember } from '$lib/api';
-	import { PROJECT_ROLES, type ProjectRole } from '$lib/contracts';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { refreshAll } from '$app/navigation';
+	import { m } from '#lib/paraglide/messages.js';
+	import { addProjectMember, changeProjectMember } from '#lib/api.js';
+	import { PROJECT_ROLES, type ProjectRole } from '#lib/contracts/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { toast } from 'svelte-sonner';
 	let { data } = $props();
 	let email = $state('');
@@ -21,11 +21,11 @@
 		busy = true;
 		try {
 			await fn();
-			await invalidateAll();
+			await refreshAll();
 			toast.success(m.um_members_updated());
 		} catch (e) {
 			toast.error((e as Error).message);
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}

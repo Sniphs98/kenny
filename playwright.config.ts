@@ -48,7 +48,7 @@ export default defineConfig({
 	],
 	webServer: [
 		{
-			command: `node -e "require('fs').rmSync('data/test',{recursive:true,force:true})" && node build`,
+			command: `node -e "require('fs').rmSync('data/test',{recursive:true,force:true})" && node scripts/start-server.mjs`,
 			url: `${baseURL}/login`,
 			reuseExistingServer: false,
 			timeout: 120_000,
@@ -70,7 +70,7 @@ export default defineConfig({
 			env: { FAKE_ENTRA_PORT: String(TEAMS_E2E.entraPort) }
 		},
 		{
-			command: `node -e "require('fs').rmSync('data/test-teams',{recursive:true,force:true})" && node build`,
+			command: `node -e "require('fs').rmSync('data/test-teams',{recursive:true,force:true})" && node scripts/start-server.mjs`,
 			url: `${TEAMS_E2E.url}/login`,
 			reuseExistingServer: false,
 			timeout: 120_000,

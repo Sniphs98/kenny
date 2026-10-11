@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { m } from '$lib/paraglide/messages.js';
-	import { connectTeams, signInWithTeams } from '$lib/teams';
-	import * as Card from '$lib/components/ui/card';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
+	import { m } from '#lib/paraglide/messages.js';
+	import { connectTeams, signInWithTeams } from '#lib/teams.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
 	import TeamsStatus from '../TeamsStatus.svelte';
 
 	let { data } = $props();
@@ -30,7 +30,7 @@
 			phase = 'signing-in';
 			try {
 				await signInWithTeams(sdk);
-				await invalidateAll();
+				await refreshAll();
 			} catch (e) {
 				error = e instanceof Error ? e.message : String(e);
 				phase = 'error';

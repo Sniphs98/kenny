@@ -3,7 +3,7 @@
 // Der Verteiler liegt im Speicher dieses Prozesses. Für mehrere Instanzen hinter einem
 // Load Balancer bräuchte es einen gemeinsamen Kanal (z. B. Postgres LISTEN/NOTIFY oder Redis).
 import { AsyncLocalStorage } from 'node:async_hooks';
-export { LIVE_ORIGIN_HEADER } from '$lib/live-client';
+export { LIVE_ORIGIN_HEADER } from '#lib/live-client.js';
 
 export type LiveEvent = {
 	projectId: number;

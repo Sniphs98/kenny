@@ -1,6 +1,6 @@
-import { projectSchema, projectDetailSchema } from '$lib/contracts';
-import { apiHandler, readJson } from '$lib/server/api';
-import { deleteProject, getColumns, getProject, updateProject } from '$lib/server/services/projects';
+import { projectSchema, projectDetailSchema } from '#lib/contracts/index.js';
+import { apiHandler, readJson } from '#lib/server/api.js';
+import { deleteProject, getColumns, getProject, updateProject } from '#lib/server/services/projects.js';
 
 export const GET = apiHandler(
 	(e) => {

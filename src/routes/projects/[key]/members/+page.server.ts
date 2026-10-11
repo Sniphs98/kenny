@@ -1,7 +1,7 @@
-import { localizeError } from '$lib/i18n';
+import { localizeError } from '#lib/i18n.js';
 import { error } from '@sveltejs/kit';
-import { ApiError } from '$lib/server/errors';
-import { listMembers } from '$lib/server/services/users';
+import { ApiError } from '#lib/server/errors.js';
+import { listMembers } from '#lib/server/services/users.js';
 export const load = async ({ parent, locals }) => {
 	const data = await parent();
 	if (!data.canManage) error(403, localizeError('Unzureichende Projektberechtigungen.'));

@@ -1,9 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { projectFormSchema } from '$lib/contracts';
-import { ApiError } from '$lib/server/errors';
-import { createProject, listProjects } from '$lib/server/services/projects';
+import { projectFormSchema } from '#lib/contracts/index.js';
+import { ApiError } from '#lib/server/errors.js';
+import { createProject, listProjects } from '#lib/server/services/projects.js';
 
 export const load = async ({ locals }) => ({
 	projects: listProjects(locals.user!.id),

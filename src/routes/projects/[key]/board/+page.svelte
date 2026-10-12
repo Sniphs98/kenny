@@ -106,6 +106,8 @@
 	let columnSort = $state<Record<number, Sort>>({});
 	let groupBy = $state<Group>('none');
 	const collapsedLanes = new SvelteSet<string>();
+	/** Expanded subtask lists are part of the saved project view. */
+	const expanded = new SvelteSet<number>();
 
 	// Ansicht pro Projekt im Browser merken
 	const viewKey = $derived(`board-view:${data.project.key}`);
@@ -115,8 +117,14 @@
 		// Nur beim Projektwechsel laden, nicht bei Änderungen an der Ansicht selbst
 		untrack(() => {
 			viewLoaded = false;
+			showSubtasks = false;
+			expanded.clear();
 			try {
 				const v = JSON.parse(localStorage.getItem(key) ?? '{}');
+				showSubtasks = v.showSubtasks === true;
+				for (const id of Array.isArray(v.expandedTickets) ? v.expandedTickets : []) {
+					if (Number.isSafeInteger(id) && id > 0) expanded.add(id);
+				}
 				sortBy = v.sortBy in SORTS ? v.sortBy : 'manual';
 				groupBy = v.groupBy in GROUPS ? v.groupBy : 'none';
 				columnSort = v.columnSort && typeof v.columnSort === 'object' ? v.columnSort : {};
@@ -129,7 +137,14 @@
 		});
 	});
 	$effect(() => {
-		const v = { sortBy, groupBy, columnSort, collapsed: [...collapsedLanes] };
+		const v = {
+			sortBy,
+			groupBy,
+			columnSort,
+			collapsed: [...collapsedLanes],
+			showSubtasks,
+			expandedTickets: [...expanded]
+		};
 		if (!viewLoaded) return;
 		try {
 			localStorage.setItem(viewKey, JSON.stringify(v));
@@ -182,8 +197,6 @@
 		for (const list of m.values()) list.sort((a, b) => a.number - b.number);
 		return m;
 	});
-	/** Karten mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */
-	const expanded = new SvelteSet<number>();
 
 	function toggleSubtasks(id: number) {
 		if (expanded.has(id)) expanded.delete(id);

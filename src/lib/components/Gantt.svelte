@@ -288,8 +288,13 @@
 		if (span(t)) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const day = range.start + Math.floor((e.clientX - rect.left) / px);
+		const dates = planningDates(t, fromDay(day));
+		if (dates.startDate > dates.dueDate) {
+			toast.error(m.plan_after_deadline());
+			return;
+		}
 		try {
-			await updateTicket(t.id, planningDates(t, fromDay(day)));
+			await updateTicket(t.id, dates);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -352,16 +357,21 @@
 		if (readOnly) return;
 		planOpen = false;
 		const start = planDay ?? today;
-		const body: UpdateTicketInput = planningDates(t, fromDay(start));
+		const body = planningDates(t, fromDay(start));
+		if (body.startDate > body.dueDate) {
+			toast.error(m.plan_after_deadline());
+			return;
+		}
+		const update: UpdateTicketInput = body;
 		if (backlogColumns.has(t.columnId)) {
 			// Aus dem Backlog holen, sonst wäre es im Gantt gleich wieder ausgeblendet
 			const target = columns.find((c) => !c.isBacklog && !c.isDone);
-			if (target) body.columnId = target.id;
+			if (target) update.columnId = target.id;
 		}
 		// Elterntickets aufklappen, damit eine eingeplante Unteraufgabe sichtbar ist
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
-			await updateTicket(t.id, body);
+			await updateTicket(t.id, update);
 			toast.success(m.scheduled_from({ value1: t.key, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);

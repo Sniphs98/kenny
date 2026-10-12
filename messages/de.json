@@ -192,7 +192,7 @@
 	"sort": "Sortierung:",
 	"sort_all_columns": "Sortierung für alle Spalten",
 	"schedule": "Zeitplan",
-	"scheduled": "{value1} mit Termin",
+	"scheduled": "{value1} eingeplant",
 	"no_tickets_match_these_filters": "Keine Tickets für diese Filter.",
 	"newest_first": "Neueste zuerst",
 	"oldest_first": "Älteste zuerst",
@@ -539,5 +539,6 @@
 	"command_new_ticket": "Neues Ticket in {project}",
 	"command_theme": "Design: {mode}",
 	"plan_from_today": "Ab heute planen",
-	"plan_from_today_overdue": "Die Fälligkeit liegt vor heute. Passe sie an oder wähle ein früheres Startdatum."
+	"plan_from_today_overdue": "Die Fälligkeit liegt vor heute. Passe sie an oder wähle ein früheres Startdatum.",
+	"plan_after_deadline": "Das Startdatum darf nicht nach der Fälligkeit liegen."
 }

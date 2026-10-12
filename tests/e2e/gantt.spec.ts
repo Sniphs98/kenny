@@ -167,7 +167,7 @@ test('deadline-only tickets stay out of the schedule while start-only tickets re
 	await expect(row(page, 'Start only')).toBeVisible();
 	await expect(row(page, 'Planned interval')).toBeVisible();
 	await open(page, `/projects/${p.key}/board`);
-	await expect(page.getByRole('button', { name: /Zeitplan/ })).toContainText('2');
+	await expect(page.getByRole('button', { name: 'Zeitplan 2 eingeplant', exact: true })).toBeVisible();
 });
 
 test('planning deadline-only tickets preserves the original due date', async ({ page, request }) => {
@@ -194,11 +194,8 @@ test('overdue deadlines are not silently moved when scheduling from today', asyn
 	await expect(page.getByRole('button', { name: 'Ab heute planen', exact: true })).toBeDisabled();
 	await open(page, `/projects/${p.key}/gantt`);
 	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
-	const response = page.waitForResponse(
-		(response) => response.request().method() === 'PATCH' && response.url().endsWith(`/tickets/${t.id}`)
-	);
 	await page.getByRole('option', { name: /Past deadline/ }).click();
-	expect((await response).status()).toBe(400);
+	await expect(page.getByText('Das Startdatum darf nicht nach der Fälligkeit liegen.', { exact: true })).toBeVisible();
 	expect(await getTicket(request, t.key)).toMatchObject({ startDate: null, dueDate: day(-1) });
 	await expect(row(page, t.title)).toHaveCount(0);
 });

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import demo from '../../scenarios/demo.mjs';
 import gantt from '../../scenarios/gantt.mjs';
 import { day, seedScenario, type Scenario } from '../../scripts/scenario-seed.mjs';
 import { api, getTicket } from './helpers';
@@ -10,9 +11,9 @@ function unique(scenario: Scenario): Scenario {
 	return {
 		...scenario,
 		users: scenario.users.map((u) => ({ ...u, email: mail(u.email) })),
-		projects: scenario.projects?.map((p) => ({
+		projects: scenario.projects?.map((p, index) => ({
 			...p,
-			key: `G${suffix}`.slice(0, 10),
+			key: `G${index}${suffix.slice(-8)}`,
 			tickets: JSON.parse(
 				JSON.stringify(p.tickets ?? []).replaceAll(
 					/"([^"@]+)@example\.com"/g,
@@ -57,4 +58,23 @@ test('Szenario über die API befüllen', async ({ request, baseURL }) => {
 			['blocks', 'Frontend umsetzen']
 		])
 	);
+});
+
+test('demo seeding preserves closed tickets and multipart attachments', async ({ request, baseURL }) => {
+	const scenario = unique(demo);
+	const result = await seedScenario(baseURL!, scenario);
+	expect(result.users).toBe(3);
+	expect(result.projects).toBe(2);
+	const tickets = await api<{ key: string; title: string; closed: boolean }[]>(
+		request,
+		'GET',
+		`/projects/${scenario.projects![0].key}/tickets`
+	);
+	expect(tickets.find((ticket) => ticket.title === 'Anhänge per Drag & Drop')).toMatchObject({ closed: true });
+	const login = await getTicket(request, tickets.find((ticket) => ticket.title === 'Login mit Microsoft')!.key);
+	expect(login.subtasks.find((ticket) => ticket.title === 'Callback-Route')).toMatchObject({ closed: true });
+	expect(login.attachments.map((attachment) => attachment.filename)).toEqual(['ablauf.md', 'skizze.png']);
+	const markdown = await request.get(login.attachments[0].url);
+	expect(markdown.ok()).toBeTruthy();
+	expect(await markdown.text()).toContain('# Login-Ablauf');
 });

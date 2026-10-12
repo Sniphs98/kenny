@@ -123,7 +123,8 @@ export async function seedScenario(baseUrl, scenario, { log = () => {} } = {}) {
 		/** @type {Record<string, string>} */
 		const headers = { origin };
 		if (cookie && !anonymous) headers.cookie = cookie;
-		if (body !== undefined) headers['content-type'] = 'application/json';
+		if (!form && (body !== undefined || ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)))
+			headers['content-type'] = 'application/json';
 		const res = await fetch(origin + path, {
 			method,
 			headers,

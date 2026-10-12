@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import demo from '../../scenarios/demo.mjs';
 import gantt from '../../scenarios/gantt.mjs';
@@ -6,7 +7,7 @@ import { api, getTicket } from './helpers';
 
 /** Szenario mit eindeutigen E-Mails und Kürzeln, damit Wiederholungen nicht kollidieren */
 function unique(scenario: Scenario): Scenario {
-	const suffix = Date.now().toString(36).toUpperCase();
+	const suffix = randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase();
 	const mail = (email: string) => email.replace('@', `+${suffix.toLowerCase()}@`);
 	return {
 		...scenario,

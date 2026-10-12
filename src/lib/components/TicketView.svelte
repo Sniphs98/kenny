@@ -54,6 +54,7 @@
 	} = $props();
 
 	const t = $derived(data.ticket);
+	const today = () => new Date().toISOString().slice(0, 10);
 	const base = $derived(`/tickets/${data.ticket.id}`);
 
 	// Lokale Kopien; Live-Updates überschreiben keine ungespeicherten Eingaben
@@ -399,6 +400,17 @@
 						min={t.startDate}
 						onchange={(d) => patch({ dueDate: d })}
 					/>
+					{#if data.canEdit && !t.startDate && t.dueDate}
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={t.dueDate < today()}
+							onclick={() => patch({ startDate: today() })}
+						>
+							{m.plan_from_today()}
+						</Button>
+						{#if t.dueDate < today()}<p class="text-muted-foreground text-xs">{m.plan_from_today_overdue()}</p>{/if}
+					{/if}
 				</div>
 				<div class="grid gap-2">
 					<Label>{m.subtask_of_2()}</Label>

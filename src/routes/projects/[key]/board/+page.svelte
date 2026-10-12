@@ -64,7 +64,7 @@
 	let showTimeline = $state(true);
 	/** Höhe des Zeitplans in px, per Griff einstellbar */
 	let timelineHeight = $state(360);
-	const scheduled = $derived(data.tickets.filter((t) => t.startDate || t.dueDate).length);
+	const scheduled = $derived(data.tickets.filter((t) => t.startDate).length);
 	onMount(() => {
 		try {
 			showTimeline =

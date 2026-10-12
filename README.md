@@ -8,7 +8,7 @@ Self-hosted project and ticket management with Kanban boards, Gantt timelines an
 
 - **Projects** with their own key and color; tickets get identifiers such as `WEB-1`, `WEB-2`, …
 - **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by tag, assignee or priority, and sorting per board or per column
-- **Gantt timeline** with start and due dates, draggable and resizable bars, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
+- **Gantt timeline** for tickets with a start date (a due date alone remains a deadline), draggable and resizable bars, a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
 - **Tickets** with priority, assignee, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
 - **Create more:** keep the new-ticket dialog open to enter many tickets in a row
 

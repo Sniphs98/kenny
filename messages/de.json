@@ -537,5 +537,7 @@
 	"command_navigation": "Navigation",
 	"command_appearance": "Darstellung",
 	"command_new_ticket": "Neues Ticket in {project}",
-	"command_theme": "Design: {mode}"
+	"command_theme": "Design: {mode}",
+	"plan_from_today": "Ab heute planen",
+	"plan_from_today_overdue": "Die Fälligkeit liegt vor heute. Passe sie an oder wähle ein früheres Startdatum."
 }

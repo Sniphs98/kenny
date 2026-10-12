@@ -144,7 +144,7 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 		expect(signup.ok()).toBeTruthy();
 		const { user } = await signup.json();
 		const p = await createProject(request, 'Mobile read-only');
-		const t = await createTicket(request, p.key, { title: 'Read-only touch ticket' });
+		const t = await createTicket(request, p.key, { title: 'Read-only touch ticket', dueDate: day(3) });
 		await api(request, 'POST', `/projects/${p.key}/members`, { user: user.id, role: 'reader' });
 		const page = await context.newPage();
 		await open(page, `/projects/${p.key}/board`);
@@ -154,6 +154,7 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 			'readonly',
 			''
 		);
+		await expect(page.getByRole('button', { name: 'Ab heute planen', exact: true })).toHaveCount(0);
 		const dates = page.getByRole('dialog').locator('input[type=date]');
 		await expect(dates).toHaveCount(2);
 		await expect(dates.first()).toBeDisabled();

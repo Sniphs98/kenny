@@ -1,7 +1,7 @@
 import { ne } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '$lib/server/db';
-import { account, apiToken, attachment, project, projectMember, session, user } from '$lib/server/db/schema';
+import { db } from '#lib/server/db/index.js';
+import { account, apiToken, attachment, project, projectMember, session, user } from '#lib/server/db/schema.js';
 import {
 	addMember,
 	bootstrapAdministrator,
@@ -9,7 +9,7 @@ import {
 	listManagedUsers,
 	listMembers,
 	updateUser
-} from '$lib/server/services/users';
+} from '#lib/server/services/users.js';
 import {
 	authorizeResource,
 	projectUsers,
@@ -17,10 +17,10 @@ import {
 	requireAdmin,
 	requireProjectAccess,
 	visibleUsers
-} from '$lib/server/services/access';
-import { createProject, listProjects } from '$lib/server/services/projects';
-import { addLink, createTicket, getTicketDetail, updateTicket } from '$lib/server/services/tickets';
-import { ApiError } from '$lib/server/errors';
+} from '#lib/server/services/access.js';
+import { createProject, listProjects } from '#lib/server/services/projects.js';
+import { addLink, createTicket, getTicketDetail, updateTicket } from '#lib/server/services/tickets.js';
+import { ApiError } from '#lib/server/errors.js';
 
 beforeEach(() => {
 	db.delete(project).run();

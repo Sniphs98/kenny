@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { refreshAll } from '$app/navigation';
 	import { navigating } from '$app/state';
-	import { clientId, LIVE_EVENT } from '$lib/live-client';
+	import { clientId, LIVE_EVENT } from '#lib/live-client.js';
 
 	// Live-Updates per Server-Sent Events: Änderungen anderer (Tabs, Personen, API) laden die
 	// Seite im Hintergrund neu. refreshAll() behält den Zustand, z. B. ein offenes Ticket-Modal.

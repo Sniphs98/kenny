@@ -2,7 +2,7 @@
 
 ## Setup
 
-Use the Node.js version in `.nvmrc`, then run `npm ci`. For development, copy `.env.example` to `.env` and set your own `BETTER_AUTH_SECRET`. Start the app with `npm run dev`. See `AGENTS.md` for architecture and development rules.
+Use the Node.js version in `.nvmrc`, then run `npm ci`. For development, copy `.env.example` to `.env` and set your own `BETTER_AUTH_SECRET`. Start the app with `npm run dev`. See `AGENTS.md` for architecture and development rules. Framework configuration lives in `vite.config.ts`; use `#lib` imports with explicit extensions. For the production server, run `npm run build` and `npm start` to preserve runtime origin configuration.
 
 Text files use LF line endings; `.gitattributes` enforces this even with `core.autocrlf=true` on Windows. A checkout made before that file existed may still contain CRLF files: run `npm run format` once (only line endings change, `git status` stays clean).
 

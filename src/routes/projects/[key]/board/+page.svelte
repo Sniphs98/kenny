@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import type { UpdateTicketInput } from '$lib/contracts';
-	import { invalidateAll } from '$app/navigation';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import type { UpdateTicketInput } from '#lib/contracts/index.js';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTicket, updateTicket, PRIORITY_LABELS } from '$lib/api';
-	import BoardCard from '$lib/components/BoardCard.svelte';
-	import TagBadge from '$lib/components/TagBadge.svelte';
-	import Gantt from '$lib/components/Gantt.svelte';
-	import Hint from '$lib/components/Hint.svelte';
-	import TicketDialog from '$lib/components/TicketDialog.svelte';
-	import UserAvatar from '$lib/components/UserAvatar.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import * as Collapsible from '$lib/components/ui/collapsible';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Input } from '$lib/components/ui/input';
-	import * as InputGroup from '$lib/components/ui/input-group';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import { cn } from '$lib/utils';
-	import { scrollActivity } from '$lib/scroll-activity';
+	import { createTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import BoardCard from '#lib/components/BoardCard.svelte';
+	import TagBadge from '#lib/components/TagBadge.svelte';
+	import Gantt from '#lib/components/Gantt.svelte';
+	import Hint from '#lib/components/Hint.svelte';
+	import TicketDialog from '#lib/components/TicketDialog.svelte';
+	import UserAvatar from '#lib/components/UserAvatar.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import * as InputGroup from '#lib/components/ui/input-group/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
+	import { cn } from '#lib/utils.js';
+	import { scrollActivity } from '#lib/scroll-activity.js';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { playIfCompleted } from '$lib/sound';
+	import { playIfCompleted } from '#lib/sound.js';
 	import { toast } from 'svelte-sonner';
 	import ArrowDownUp from '@lucide/svelte/icons/arrow-down-up';
 	import ChartGantt from '@lucide/svelte/icons/chart-gantt';
@@ -367,7 +367,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	function onDragEnd() {
@@ -381,7 +381,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function assign(t: Item, assigneeId: string | null) {
@@ -395,7 +395,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	// --- Schnell-Anlegen (übernimmt die Werte der Bahn, z.B. den Tag) ---
@@ -408,7 +408,7 @@
 		try {
 			await createTicket(data.project.key, { ...lane.preset, title: quickTitle, columnId });
 			quickTitle = '';
-			await invalidateAll();
+			await refreshAll();
 		} catch (err) {
 			toast.error((err as Error).message);
 		}

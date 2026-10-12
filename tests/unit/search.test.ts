@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { highlight, searchTokens, snippet } from '$lib/search';
+import { highlight, searchTokens, snippet } from '#lib/search.js';
 
 const render = (parts: { text: string; hit: boolean }[] | null) =>
 	parts?.map((p) => (p.hit ? `[${p.text}]` : p.text)).join('') ?? null;

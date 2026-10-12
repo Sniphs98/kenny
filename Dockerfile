@@ -22,9 +22,11 @@ COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/drizzle ./drizzle
 COPY package.json ./
-RUN mkdir -p /app/data && chown node:node /app/data
+COPY --chmod=644 scripts/start-server.mjs scripts/runtime-origin.mjs ./scripts/
+RUN chmod 755 /app/scripts && chmod 644 /app/package.json \
+    && mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "build"]
+CMD ["node", "scripts/start-server.mjs"]

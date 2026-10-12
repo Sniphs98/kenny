@@ -7,9 +7,9 @@ import {
 	ticketDtoSchema,
 	isAllowedWebhookUrl,
 	updateNotificationsSchema
-} from '$lib/contracts';
-import { parseInput } from '$lib/server/validation';
-import { ApiError } from '$lib/server/errors';
+} from '#lib/contracts/index.js';
+import { parseInput } from '#lib/server/validation.js';
+import { ApiError } from '#lib/server/errors.js';
 
 describe('HTTP input contracts', () => {
 	it('normalizes project names and keys without accepting internal fields', () => {

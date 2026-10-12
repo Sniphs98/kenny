@@ -1,7 +1,7 @@
 <script lang="ts">
-	import LiveUpdates from '$lib/components/LiveUpdates.svelte';
-	import TicketView from '$lib/components/TicketView.svelte';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb';
+	import LiveUpdates from '#lib/components/LiveUpdates.svelte';
+	import TicketView from '#lib/components/TicketView.svelte';
+	import * as Breadcrumb from '#lib/components/ui/breadcrumb/index.js';
 
 	let { data } = $props();
 </script>

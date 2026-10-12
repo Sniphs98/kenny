@@ -1,6 +1,6 @@
 // Tickets per Shallow Routing als Modal öffnen: URL wechselt auf /tickets/KEY,
 // der Hintergrund (Board, Gantt) bleibt stehen. Neu laden öffnet die volle Ticket-Seite.
-import { goto, preloadData, pushState, replaceState } from '$app/navigation';
+import { goto, preloadData } from '$app/navigation';
 
 /**
  * Öffnet ein Ticket im Modal. Mit Strg/Cmd/Shift oder Mittelklick bleibt das normale
@@ -16,8 +16,9 @@ export async function openTicket(key: string, e?: MouseEvent, replace = false) {
 	const result = await preloadData(href);
 	if (result.type === 'loaded' && result.status === 200) {
 		const state = { ticket: result.data as App.PageState['ticket'] };
-		if (replace) replaceState(href, state);
-		else pushState(href, state);
+
+		if (replace) goto(href, { shallow: true, replace: true, state });
+		else goto(href, { shallow: true, state });
 	} else {
 		await goto(href);
 	}

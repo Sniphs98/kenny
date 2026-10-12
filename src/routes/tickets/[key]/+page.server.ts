@@ -1,9 +1,9 @@
-import { localizeError } from '$lib/i18n';
-import { requireProjectAccess, projectUsers } from '$lib/server/services/access';
+import { localizeError } from '#lib/i18n.js';
+import { requireProjectAccess, projectUsers } from '#lib/server/services/access.js';
 import { error } from '@sveltejs/kit';
-import { ApiError } from '$lib/server/errors';
-import { listTags } from '$lib/server/services/tags';
-import { getTicketDetail, listTickets, resolveTicket } from '$lib/server/services/tickets';
+import { ApiError } from '#lib/server/errors.js';
+import { listTags } from '#lib/server/services/tags.js';
+import { getTicketDetail, listTickets, resolveTicket } from '#lib/server/services/tickets.js';
 
 export const load = ({ params, locals }) => {
 	try {

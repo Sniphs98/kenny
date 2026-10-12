@@ -1,10 +1,10 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { intakeSubmissionSchema } from '$lib/contracts';
-import { localizeError } from '$lib/i18n';
-import { ApiError } from '$lib/server/errors';
-import { getPublicForm, submitForm } from '$lib/server/services/intake';
+import { intakeSubmissionSchema } from '#lib/contracts/index.js';
+import { localizeError } from '#lib/i18n.js';
+import { ApiError } from '#lib/server/errors.js';
+import { getPublicForm, submitForm } from '#lib/server/services/intake.js';
 
 function publicForm(token: string) {
 	try {

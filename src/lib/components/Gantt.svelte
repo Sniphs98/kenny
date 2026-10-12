@@ -1,20 +1,20 @@
 <script lang="ts">
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import type { UpdateTicketInput } from '$lib/contracts';
-	import { invalidateAll } from '$app/navigation';
-	import { createTicket, updateTicket } from '$lib/api';
-	import { openTicket } from '$lib/ticket-modal';
-	import Hint, { chain, cursorAnchor } from '$lib/components/Hint.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Label } from '$lib/components/ui/label';
-	import * as Command from '$lib/components/ui/command';
-	import * as Popover from '$lib/components/ui/popover';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import * as ToggleGroup from '$lib/components/ui/toggle-group';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import type { UpdateTicketInput } from '#lib/contracts/index.js';
+	import { refreshAll } from '$app/navigation';
+	import { createTicket, updateTicket } from '#lib/api.js';
+	import { openTicket } from '#lib/ticket-modal.js';
+	import Hint, { chain, cursorAnchor } from '#lib/components/Hint.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Command from '#lib/components/ui/command/index.js';
+	import * as Popover from '#lib/components/ui/popover/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import * as ToggleGroup from '#lib/components/ui/toggle-group/index.js';
 	import { toast } from 'svelte-sonner';
-	import type { BoardColumnDto, DependencyDto, TicketListItem } from '$lib/contracts';
+	import type { BoardColumnDto, DependencyDto, TicketListItem } from '#lib/contracts/index.js';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
@@ -282,7 +282,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	/** Klick in eine leere Zeile setzt Start- und Enddatum für Tickets ohne Termin */
@@ -296,7 +296,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	// --- Tickets einplanen: Suche in der letzten Zeile, z.B. um Tickets aus dem Backlog zu terminieren ---
@@ -346,7 +346,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	const fmtDay = (d: number) => new Date(d * DAY).toLocaleDateString(intlLocale(), { timeZone: 'UTC' });
@@ -371,7 +371,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 		await afterPlan(t.id);
 	}
 
@@ -409,7 +409,7 @@
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
-		await invalidateAll();
+		await refreshAll();
 		await afterPlan(id);
 	}
 

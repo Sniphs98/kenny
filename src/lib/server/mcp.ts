@@ -6,8 +6,8 @@ import {
 	ticketDetailSchema,
 	ticketSearchResultSchema,
 	ticketSearchSchema
-} from '$lib/contracts';
-import { localizeError } from '$lib/i18n';
+} from '#lib/contracts/index.js';
+import { localizeError } from '#lib/i18n.js';
 import { ApiError } from './errors';
 import { listProjects } from './services/projects';
 import { searchTickets, viewTicket } from './services/tickets';

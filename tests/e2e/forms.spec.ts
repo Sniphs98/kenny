@@ -40,3 +40,15 @@ test('ticket dialog uses Superforms and the typed API command', async ({ page, r
 	await expect(dialog).toBeHidden();
 	await expect(page.getByRole('link', { name: 'Ticket through Superforms', exact: true })).toBeVisible();
 });
+
+test('runtime origin cannot be overridden by client-supplied adapter headers', async ({ request }) => {
+	const response = await request.post('/', {
+		headers: {
+			origin: 'https://untrusted.example',
+			'x-kenny-protocol': 'https',
+			'x-kenny-host': 'untrusted.example'
+		},
+		form: { name: 'Untrusted form', key: 'UNTRUSTED' }
+	});
+	expect(response.status()).toBe(403);
+});

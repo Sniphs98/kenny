@@ -1,4 +1,4 @@
-import { createTagSchema, updateTagSchema } from '$lib/contracts';
+import { createTagSchema, updateTagSchema } from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
@@ -19,8 +19,8 @@ export const DEFAULT_TAGS = [
 /** Farben für automatisch angelegte Tags, reihum vergeben */
 const AUTO_COLORS = ['#a855f7', '#f97316', '#14b8a6', '#ec4899', '#eab308', '#0ea5e9', '#6366f1', '#292524'];
 
-export type { TagDto } from '$lib/contracts';
-import type { TagDto } from '$lib/contracts';
+export type { TagDto } from '#lib/contracts/index.js';
+import type { TagDto } from '#lib/contracts/index.js';
 const presentTag = (t: Tag): TagDto => ({ id: t.id, name: t.name, color: t.color });
 
 function checkColor(v: unknown) {

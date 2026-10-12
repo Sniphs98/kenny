@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import Hint from '$lib/components/Hint.svelte';
-	import * as Avatar from '$lib/components/ui/avatar';
-	import { initials } from '$lib/api';
-	import { cn } from '$lib/utils';
+	import { m } from '#lib/paraglide/messages.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import * as Avatar from '#lib/components/ui/avatar/index.js';
+	import { initials } from '#lib/api.js';
+	import { cn } from '#lib/utils.js';
 	import UserRound from '@lucide/svelte/icons/user-round';
 
 	let {

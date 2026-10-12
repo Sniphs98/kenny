@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import Hint from '$lib/components/Hint.svelte';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
+	import { m } from '#lib/paraglide/messages.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 	import { toast } from 'svelte-sonner';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';

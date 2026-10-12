@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { localizeError } from '$lib/i18n';
-	import { intlLocale } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
+	import { localizeError } from '#lib/i18n.js';
+	import { intlLocale } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
-	import Hint from '$lib/components/Hint.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import * as InputGroup from '$lib/components/ui/input-group';
-	import * as Table from '$lib/components/ui/table';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import * as InputGroup from '#lib/components/ui/input-group/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
 	import { toast } from 'svelte-sonner';
 	import Check from '@lucide/svelte/icons/check';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';

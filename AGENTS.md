@@ -1,6 +1,6 @@
 # Working on Kenny
 
-Kenny is a SvelteKit/Svelte 5 application with a Node server, SQLite, Drizzle and Better Auth. Read `CONTRIBUTING.md` and `README.md` before changing behavior.
+Kenny is a SvelteKit 3/Svelte 5 application with a Node server, SQLite, Drizzle and Better Auth. Read `CONTRIBUTING.md` and `README.md` before changing behavior.
 
 ## Architecture and contracts
 

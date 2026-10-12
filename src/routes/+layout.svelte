@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import '@fontsource-variable/inter';
 	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '#lib/assets/favicon.svg';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { authClient } from '$lib/auth-client';
-	import { accentStyle, accentVars } from '$lib/theme';
-	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
-	import SoundToggle from '$lib/components/SoundToggle.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import KennyLogo from '$lib/components/KennyLogo.svelte';
-	import CommandPalette from '$lib/components/CommandPalette.svelte';
-	import UserAvatar from '$lib/components/UserAvatar.svelte';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Toaster } from '$lib/components/ui/sonner';
-	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { cn } from '$lib/utils';
+	import { authClient } from '#lib/auth-client.js';
+	import { accentStyle, accentVars } from '#lib/theme.js';
+	import LanguageSwitcher from '#lib/components/LanguageSwitcher.svelte';
+	import SoundToggle from '#lib/components/SoundToggle.svelte';
+	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
+	import KennyLogo from '#lib/components/KennyLogo.svelte';
+	import CommandPalette from '#lib/components/CommandPalette.svelte';
+	import UserAvatar from '#lib/components/UserAvatar.svelte';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { Toaster } from '#lib/components/ui/sonner/index.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+	import { cn } from '#lib/utils.js';
 	import { onMount } from 'svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -64,7 +64,7 @@
 
 	async function logout() {
 		await authClient.signOut();
-		await goto('/login', { invalidateAll: true });
+		await goto('/login', { refreshAll: true });
 	}
 </script>
 

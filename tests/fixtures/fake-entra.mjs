@@ -9,9 +9,11 @@ const kid = 'kenny-e2e-key';
 const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const jwk = { ...publicKey.export({ format: 'jwk' }), kid, use: 'sig', alg: 'RS256' };
 
+/** @param {unknown} value */
 const base64url = (value) =>
 	Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)).toString('base64url');
 
+/** @param {Record<string, unknown>} claims */
 function mint(claims) {
 	const now = Math.floor(Date.now() / 1000);
 	const header = base64url({ alg: 'RS256', typ: 'JWT', kid });
@@ -21,6 +23,7 @@ function mint(claims) {
 }
 
 createServer((req, res) => {
+	/** @param {number} status @param {unknown} body */
 	const send = (status, body) => {
 		res.writeHead(status, { 'content-type': 'application/json' });
 		res.end(JSON.stringify(body));

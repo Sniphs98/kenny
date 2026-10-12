@@ -1,6 +1,6 @@
-import { localizeError, intlLocale } from '$lib/i18n';
-import { clientId, LIVE_ORIGIN_HEADER } from '$lib/live-client';
-import { m } from '$lib/paraglide/messages.js';
+import { localizeError, intlLocale } from '#lib/i18n.js';
+import { clientId, LIVE_ORIGIN_HEADER } from '#lib/live-client.js';
+import { m } from '#lib/paraglide/messages.js';
 import { z } from 'zod';
 import {
 	managedUserSchema,
@@ -26,7 +26,7 @@ import {
 	notificationsDtoSchema,
 	updateNotificationsSchema,
 	type UpdateNotificationsInput
-} from '$lib/contracts';
+} from '#lib/contracts/index.js';
 
 const errorSchema = z.object({ error: z.string() });
 
@@ -37,7 +37,9 @@ export async function api(method: string, path: string, body?: unknown): Promise
 		// Tab-Kennung: Live-Updates über die eigene Änderung ignoriert dieser Tab
 		headers: {
 			[LIVE_ORIGIN_HEADER]: clientId,
-			...(body !== undefined ? { 'content-type': 'application/json' } : {})
+			...(body !== undefined || ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+				? { 'content-type': 'application/json' }
+				: {})
 		},
 		body: body !== undefined ? JSON.stringify(body) : undefined
 	});

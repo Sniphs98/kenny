@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import Hint from '$lib/components/Hint.svelte';
-	import * as ToggleGroup from '$lib/components/ui/toggle-group';
+	import { m } from '#lib/paraglide/messages.js';
+	import Hint from '#lib/components/Hint.svelte';
+	import * as ToggleGroup from '#lib/components/ui/toggle-group/index.js';
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';

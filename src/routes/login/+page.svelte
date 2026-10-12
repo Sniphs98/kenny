@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import KennyLogo from '$lib/components/KennyLogo.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import KennyLogo from '#lib/components/KennyLogo.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { authClient } from '$lib/auth-client';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import * as InputGroup from '$lib/components/ui/input-group';
-	import { Label } from '$lib/components/ui/label';
+	import { authClient } from '#lib/auth-client.js';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import * as InputGroup from '#lib/components/ui/input-group/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -45,7 +45,7 @@
 							: m.login_failed();
 			return;
 		}
-		await goto(target.startsWith('/') ? target : '/', { invalidateAll: true });
+		await goto(target.startsWith('/') ? target : '/', { refreshAll: true });
 	}
 
 	async function microsoft() {

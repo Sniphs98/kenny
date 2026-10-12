@@ -1,8 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { apiToken } from '$lib/server/db/schema';
-import { createApiToken } from '$lib/server/api-auth';
+import { db } from '#lib/server/db/index.js';
+import { apiToken } from '#lib/server/db/schema.js';
+import { createApiToken } from '#lib/server/api-auth.js';
 
 export const load = ({ locals }) => ({
 	tokens: db

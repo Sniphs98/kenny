@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import { goto, invalidateAll, preloadData, refreshAll, replaceState } from '$app/navigation';
+	import { m } from '#lib/paraglide/messages.js';
+	import { goto, preloadData, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import TicketView from '$lib/components/TicketView.svelte';
-	import Hint from '$lib/components/Hint.svelte';
-	import { buttonVariants } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { LIVE_EVENT } from '$lib/live-client';
-	import { openTicket } from '$lib/ticket-modal';
+	import TicketView from '#lib/components/TicketView.svelte';
+	import Hint from '#lib/components/Hint.svelte';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { LIVE_EVENT } from '#lib/live-client.js';
+	import { openTicket } from '#lib/ticket-modal.js';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 
 	const data = $derived(page.state.ticket);
@@ -25,7 +25,11 @@
 		await refreshAll();
 		const result = await preloadData(href);
 		if (result.type === 'loaded' && result.status === 200) {
-			replaceState('', { ticket: result.data as App.PageState['ticket'] });
+			goto('', {
+				shallow: true,
+				replace: true,
+				state: { ticket: result.data as App.PageState['ticket'] }
+			});
 		}
 	}
 
@@ -33,9 +37,14 @@
 	async function reloadTicket() {
 		if (!data) return;
 		const result = await preloadData(`/tickets/${data.ticket.key}`);
+
 		if (result.type === 'loaded' && result.status === 200)
-			replaceState('', { ticket: result.data as App.PageState['ticket'] });
-		else if (result.type === 'loaded' && result.status === 404) close();
+			goto('', {
+				shallow: true,
+				replace: true,
+				state: { ticket: result.data as App.PageState['ticket'] }
+			});
+		else if (result.type === 'error' && result.status === 404) close();
 	}
 
 	// Live-Update: der Hintergrund ist schon neu geladen (LiveUpdates), hier das offene Ticket
@@ -90,7 +99,7 @@
 					{refresh}
 					onDeleted={async () => {
 						close();
-						await invalidateAll();
+						await refreshAll();
 					}}
 				/>
 			{/key}

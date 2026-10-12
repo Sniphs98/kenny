@@ -1,7 +1,7 @@
 // Microsoft Teams im Browser: Verbindung zum Teams-Fenster, Anmeldung per SSO und Design übernehmen.
 // Das SDK wird nur auf den Teams-Seiten geladen, damit es die übrige App nicht vergrößert.
 import { setMode } from 'mode-watcher';
-import { authClient } from '$lib/auth-client';
+import { authClient } from '#lib/auth-client.js';
 
 type TeamsSdk = typeof import('@microsoft/teams-js');
 

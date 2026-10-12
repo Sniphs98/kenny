@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { localizeError } from '$lib/i18n';
-	import { m } from '$lib/paraglide/messages.js';
-	import { invalidateAll } from '$app/navigation';
+	import { localizeError } from '#lib/i18n.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { ticketFormSchema, type Priority } from '$lib/contracts';
-	import { createTicket, PRIORITY_LABELS } from '$lib/api';
-	import AssigneePicker from '$lib/components/AssigneePicker.svelte';
-	import DatePicker from '$lib/components/DatePicker.svelte';
-	import TagPicker from '$lib/components/TagPicker.svelte';
-	import { newTicketRequest, takeNewTicketRequest } from '$lib/new-ticket.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import { ticketFormSchema, type Priority } from '#lib/contracts/index.js';
+	import { createTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
+	import DatePicker from '#lib/components/DatePicker.svelte';
+	import TagPicker from '#lib/components/TagPicker.svelte';
+	import { newTicketRequest, takeNewTicketRequest } from '#lib/new-ticket.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import { toast } from 'svelte-sonner';
 
 	type Option = { id: number | string; label: string };
@@ -85,7 +85,7 @@
 				} else {
 					isOpen = false;
 				}
-				await invalidateAll();
+				await refreshAll();
 			} catch (err) {
 				error = err instanceof Error ? err.message : m.could_not_create_ticket();
 			}

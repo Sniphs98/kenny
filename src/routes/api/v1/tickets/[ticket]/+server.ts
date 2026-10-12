@@ -1,6 +1,6 @@
-import { ticketDtoSchema, ticketDetailSchema } from '$lib/contracts';
-import { apiHandler, readJson } from '$lib/server/api';
-import { deleteTicket, getTicketDetail, updateTicket } from '$lib/server/services/tickets';
+import { ticketDtoSchema, ticketDetailSchema } from '#lib/contracts/index.js';
+import { apiHandler, readJson } from '#lib/server/api.js';
+import { deleteTicket, getTicketDetail, updateTicket } from '#lib/server/services/tickets.js';
 
 export const GET = apiHandler(
 	(e, user) => {

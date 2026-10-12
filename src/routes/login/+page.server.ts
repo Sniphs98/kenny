@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { microsoftEnabled } from '$lib/server/auth';
+import { microsoftEnabled } from '#lib/server/auth.js';
 
 export const load = ({ locals }) => {
 	if (locals.user) redirect(303, '/');

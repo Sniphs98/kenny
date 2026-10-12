@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { db } from '$lib/server/db';
-import { project } from '$lib/server/db/schema';
-import { listenerCount, liveOrigin, subscribe, type LiveEvent } from '$lib/server/live';
-import { addAttachments, deleteAttachment } from '$lib/server/services/attachments';
-import { addColumn, createProject, deleteProject, updateProject } from '$lib/server/services/projects';
-import { createTag } from '$lib/server/services/tags';
+import { db } from '#lib/server/db/index.js';
+import { project } from '#lib/server/db/schema.js';
+import { listenerCount, liveOrigin, subscribe, type LiveEvent } from '#lib/server/live.js';
+import { addAttachments, deleteAttachment } from '#lib/server/services/attachments.js';
+import { addColumn, createProject, deleteProject, updateProject } from '#lib/server/services/projects.js';
+import { createTag } from '#lib/server/services/tags.js';
 import {
 	addLink,
 	closeTicket,
@@ -13,7 +13,7 @@ import {
 	removeLink,
 	reopenTicket,
 	updateTicket
-} from '$lib/server/services/tickets';
+} from '#lib/server/services/tickets.js';
 
 let events: LiveEvent[] = [];
 let unsubscribe = () => {};

@@ -1,7 +1,7 @@
-import { ticketDtoSchema, ticketListItemSchema } from '$lib/contracts';
-import { apiHandler, readJson } from '$lib/server/api';
-import { getProject } from '$lib/server/services/projects';
-import { createTicket, listTickets } from '$lib/server/services/tickets';
+import { ticketDtoSchema, ticketListItemSchema } from '#lib/contracts/index.js';
+import { apiHandler, readJson } from '#lib/server/api.js';
+import { getProject } from '#lib/server/services/projects.js';
+import { createTicket, listTickets } from '#lib/server/services/tickets.js';
 
 /** GET ?closed=true|false filtert nach Status */
 export const GET = apiHandler(

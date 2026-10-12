@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { apiHandler } from '$lib/server/api';
-import { createMcpServer } from '$lib/server/mcp';
+import { apiHandler } from '#lib/server/api.js';
+import { createMcpServer } from '#lib/server/mcp.js';
 
 /**
  * MCP-Endpunkt (Streamable HTTP, zustandslos) für KI-Assistenten.

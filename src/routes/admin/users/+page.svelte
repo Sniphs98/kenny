@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { m } from '$lib/paraglide/messages.js';
-	import { updateUser } from '$lib/api';
-	import type { ManagedUser, UpdateUserInput } from '$lib/contracts';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { refreshAll } from '$app/navigation';
+	import { m } from '#lib/paraglide/messages.js';
+	import { updateUser } from '#lib/api.js';
+	import type { ManagedUser, UpdateUserInput } from '#lib/contracts/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { toast } from 'svelte-sonner';
 	let { data } = $props();
 	let search = $state('');
@@ -18,11 +18,11 @@
 		busy = true;
 		try {
 			await updateUser(user.id, input);
-			await invalidateAll();
+			await refreshAll();
 			toast.success(m.um_user_updated());
 		} catch (e) {
 			toast.error((e as Error).message);
-			await invalidateAll();
+			await refreshAll();
 		} finally {
 			busy = false;
 		}

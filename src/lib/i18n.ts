@@ -1,6 +1,6 @@
-import '$lib/locale-choice';
-import { m } from '$lib/paraglide/messages.js';
-import { getLocale } from '$lib/paraglide/runtime.js';
+import '#lib/locale-choice.js';
+import { m } from '#lib/paraglide/messages.js';
+import { getLocale } from '#lib/paraglide/runtime.js';
 
 export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 

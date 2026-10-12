@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import Gantt from '$lib/components/Gantt.svelte';
-	import TicketDialog from '$lib/components/TicketDialog.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { m } from '#lib/paraglide/messages.js';
+	import Gantt from '#lib/components/Gantt.svelte';
+	import TicketDialog from '#lib/components/TicketDialog.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	let { data } = $props();

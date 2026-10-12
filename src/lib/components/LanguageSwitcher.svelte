@@ -1,8 +1,8 @@
 <script lang="ts">
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { chooseLocale, storedLocale } from '$lib/locale-choice';
-	import { m } from '$lib/paraglide/messages.js';
-	import { isLocale } from '$lib/paraglide/runtime.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { chooseLocale, storedLocale } from '#lib/locale-choice.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { isLocale } from '#lib/paraglide/runtime.js';
 	import Languages from '@lucide/svelte/icons/languages';
 
 	// Untermenü im Benutzermenü; wird erst beim Öffnen im Browser gerendert

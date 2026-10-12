@@ -158,7 +158,7 @@ Variables that are not listed in `compose.yaml` (such as `MICROSOFT_AUTHORITY` o
 
 ## Tech stack
 
-SvelteKit 2 (Svelte 5), TypeScript, SQLite through `better-sqlite3`, Drizzle ORM, Better Auth, and `adapter-node`.
+SvelteKit 3 (Svelte 5), TypeScript, SQLite through `better-sqlite3`, Drizzle ORM, Better Auth, and `adapter-node`.
 
 ## Development
 
@@ -171,6 +171,14 @@ npm run dev
 ```
 
 Open <http://localhost:5173> and register an account. The database is stored at `data/kenny.db`; migrations run automatically at startup.
+
+### SvelteKit 3 runtime
+
+Use Node.js 22.17 or newer within the pinned Node 22 line. Run `npm run build` followed by `npm start` for the production server. The startup script preserves runtime `ORIGIN` configuration (falling back to `BETTER_AUTH_URL`) with adapter-node 6; use this entry point instead of `node build` so the same image works at different public URLs. Compose already supplies these settings. Internal origin headers are overwritten before request handling, preserving CSRF checks.
+
+State-changing JSON API requests must send `Content-Type: application/json`, including POST or DELETE requests without a body. This follows SvelteKit 3’s stricter CSRF validation; the built-in client already supplies it.
+
+Framework configuration now lives in `vite.config.ts`, and library imports use `#lib` with explicit module extensions. Better Auth 1.7.7 and Runed still declare SvelteKit 2 peer ranges; narrowly scoped npm overrides resolve them to the application’s Kit 3 version. Authentication, Teams, forms, and UI behavior are covered by the production browser suite. Remove these overrides when upstream peer ranges support Kit 3.
 
 ### Development scenarios
 
@@ -204,7 +212,7 @@ To run without Docker:
 ```bash
 npm run build
 DATABASE_URL=/path/to/kenny.db BETTER_AUTH_SECRET=... BETTER_AUTH_URL=https://kenny.example.com \
-  ORIGIN=https://kenny.example.com PORT=3000 BODY_SIZE_LIMIT=30M node build
+  ORIGIN=https://kenny.example.com PORT=3000 BODY_SIZE_LIMIT=30M npm start
 ```
 
 The `drizzle/` directory must be next to the build or specified through `MIGRATIONS_DIR`. `/api/health` checks whether the server can access the migrated database.
@@ -213,7 +221,7 @@ The `drizzle/` directory must be next to the build or specified through `MIGRATI
 
 The UI is available in English and German. Without an explicit choice, it follows the system language (the browser or `Accept-Language`); unsupported languages fall back to English. Users can choose a language under **Language** in the user menu or select **System language** to follow the system setting again. The choice is stored in the `PARAGLIDE_LOCALE` cookie (see `src/lib/locale-choice.ts`) and applies to server rendering, calendars, dates, and numbers. User-created project names, board columns, tags, and ticket content are not translated. URLs and API field names stay the same.
 
-Translations live in `messages/de.json` and `messages/en.json`; inlang configuration lives in `project.inlang/settings.json`. Add new UI messages to both catalogs and use them as `m.message_name()` from `$lib/paraglide/messages.js`. `npm ci`, `npm run dev`, `npm run build`, and `npm run check` generate typed messages; run `npm run i18n:compile` to generate them manually. Generated files under `src/lib/paraglide/` are not committed. The message plugin is installed as an npm dependency, so builds do not need to download it from a CDN.
+Translations live in `messages/de.json` and `messages/en.json`; inlang configuration lives in `project.inlang/settings.json`. Add new UI messages to both catalogs and use them as `m.message_name()` from `#lib/paraglide/messages.js`. `npm ci`, `npm run dev`, `npm run build`, and `npm run check` generate typed messages; run `npm run i18n:compile` to generate them manually. Generated files under `src/lib/paraglide/` are not committed. The message plugin is installed as an npm dependency, so builds do not need to download it from a CDN.
 
 Changing the language reloads the current page. Errors from framework-independent contracts and services remain stable internally and are localized at the UI/API boundary. When adding a business error, also add its mapping in `src/lib/i18n.ts`.
 

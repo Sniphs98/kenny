@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { api, updateProject } from '$lib/api';
-	import ColorPicker from '$lib/components/ColorPicker.svelte';
-	import Hint, { chain } from '$lib/components/Hint.svelte';
-	import TagBadge from '$lib/components/TagBadge.svelte';
-	import TagColorButton from '$lib/components/TagColorButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { goto, refreshAll } from '$app/navigation';
+	import { api, updateProject } from '#lib/api.js';
+	import ColorPicker from '#lib/components/ColorPicker.svelte';
+	import Hint, { chain } from '#lib/components/Hint.svelte';
+	import TagBadge from '#lib/components/TagBadge.svelte';
+	import TagColorButton from '#lib/components/TagColorButton.svelte';
 	import Notifications from './Notifications.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { cn } from '$lib/utils';
-	import { Synced } from '$lib/synced.svelte';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
+	import { cn } from '#lib/utils.js';
+	import { Synced } from '#lib/synced.svelte.js';
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
@@ -42,7 +42,7 @@
 	async function run(fn: () => Promise<unknown>, success?: string) {
 		try {
 			await fn();
-			await invalidateAll();
+			await refreshAll();
 			if (success) toast.success(success);
 		} catch (err) {
 			toast.error((err as Error).message);
@@ -135,7 +135,7 @@
 	async function remove() {
 		await api('DELETE', base);
 		toast.success(m.deleted_project({ value1: data.project.name }));
-		await goto('/', { invalidateAll: true });
+		await goto('/', { refreshAll: true });
 	}
 </script>
 

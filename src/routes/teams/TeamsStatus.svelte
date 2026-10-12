@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import KennyLogo from '$lib/components/KennyLogo.svelte';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
+	import { m } from '#lib/paraglide/messages.js';
+	import KennyLogo from '#lib/components/KennyLogo.svelte';
+	import { Button, buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 

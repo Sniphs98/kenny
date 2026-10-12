@@ -2,7 +2,7 @@
 // Kenny sendet nur ausgehend; der Workflow („Bei Empfang einer Webhookanforderung in einem Kanal posten“)
 // stellt die Karte im Kanal zu. Funktioniert damit auch auf Servern im Firmennetz.
 import { eq } from 'drizzle-orm';
-import { env } from '$env/dynamic/private';
+import { BETTER_AUTH_URL } from '$app/env/private';
 import {
 	NOTIFICATION_EVENTS,
 	isAllowedWebhookUrl,
@@ -11,8 +11,8 @@ import {
 	type NotificationEvent,
 	type NotificationsDto,
 	type Priority
-} from '$lib/contracts';
-import { m } from '$lib/paraglide/messages.js';
+} from '#lib/contracts/index.js';
+import { m } from '#lib/paraglide/messages.js';
 import { db } from '../db';
 import { intakeForm, project, projectNotification, ticket, user } from '../db/schema';
 import { ApiError } from '../errors';
@@ -85,7 +85,7 @@ const run = (text: string, style: Record<string, unknown> = {}) => ({ type: 'Tex
 const line = (...inlines: ReturnType<typeof run>[]) => ({ type: 'RichTextBlock', inlines });
 const fact = (label: string, value: string) => line(run(`${label}: `, { weight: 'Bolder' }), run(value));
 
-const baseUrl = () => (env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
+const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
 
 export function adaptiveCard(body: unknown[], action?: { title: string; url: string }) {
 	return {

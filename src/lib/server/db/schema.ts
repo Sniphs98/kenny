@@ -45,7 +45,7 @@ export const boardColumn = sqliteTable(
 	(t) => [index('board_column_project_idx').on(t.projectId)]
 );
 
-export { PRIORITIES, type Priority } from '$lib/contracts';
+export { PRIORITIES, type Priority } from '#lib/contracts/index.js';
 import {
 	PRIORITIES,
 	LINK_TYPES,
@@ -53,7 +53,7 @@ import {
 	NOTIFICATION_LOCALES,
 	type IntakeFields,
 	type NotificationEvent
-} from '$lib/contracts';
+} from '#lib/contracts/index.js';
 
 export const ticket = sqliteTable(
 	'ticket',
@@ -102,7 +102,7 @@ export const ticket = sqliteTable(
  * - depends_on: source setzt target voraus (target muss zuerst erledigt sein)
  * - relates: einfache Verlinkung
  */
-export { LINK_TYPES, type LinkType } from '$lib/contracts';
+export { LINK_TYPES, type LinkType } from '#lib/contracts/index.js';
 
 export const ticketLink = sqliteTable(
 	'ticket_link',

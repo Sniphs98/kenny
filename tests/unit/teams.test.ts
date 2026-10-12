@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { protectFraming } from '$lib/server/framing';
+import { protectFraming } from '#lib/server/framing.js';
 import {
 	TEAMS_FRAME_ANCESTORS,
 	applicationIdUri,
@@ -10,8 +10,8 @@ import {
 	teamsManifest,
 	teamsPackage,
 	type TeamsConfig
-} from '$lib/server/teams';
-import { safeTarget } from '$lib/safe-target';
+} from '#lib/server/teams.js';
+import { safeTarget } from '#lib/safe-target.js';
 
 const config: TeamsConfig = {
 	baseUrl: 'https://kenny.firma.intern',

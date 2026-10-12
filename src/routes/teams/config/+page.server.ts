@@ -1,4 +1,4 @@
-import { listProjects } from '$lib/server/services/projects';
+import { listProjects } from '#lib/server/services/projects.js';
 
 /** Projekte für den Kanal-Tab; null, solange die Teams-Anmeldung noch aussteht */
 export const load = ({ locals }) => ({

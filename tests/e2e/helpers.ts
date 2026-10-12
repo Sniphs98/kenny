@@ -9,7 +9,7 @@ export async function api<T = unknown>(
 	path: string,
 	data?: Json
 ): Promise<T> {
-	const res = await request.fetch(`/api/v1${path}`, { method, data });
+	const res = await request.fetch(`/api/v1${path}`, { method, data, headers: { 'content-type': 'application/json' } });
 	expect(res.ok(), `${method} ${path}: ${await res.text()}`).toBeTruthy();
 	return res.json();
 }

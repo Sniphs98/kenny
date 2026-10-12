@@ -1,7 +1,7 @@
-import { apiHandler } from '$lib/server/api';
-import { ApiError } from '$lib/server/errors';
-import { addAttachments, listAttachments } from '$lib/server/services/attachments';
-import { resolveTicket } from '$lib/server/services/tickets';
+import { apiHandler } from '#lib/server/api.js';
+import { ApiError } from '#lib/server/errors.js';
+import { addAttachments, listAttachments } from '#lib/server/services/attachments.js';
+import { resolveTicket } from '#lib/server/services/tickets.js';
 
 export const GET = apiHandler((e) => listAttachments(resolveTicket(e.params.ticket!).id));
 

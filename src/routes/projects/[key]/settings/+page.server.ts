@@ -1,6 +1,6 @@
-import { localizeError } from '$lib/i18n';
+import { localizeError } from '#lib/i18n.js';
 import { error } from '@sveltejs/kit';
-import { getNotifications } from '$lib/server/services/notifications';
+import { getNotifications } from '#lib/server/services/notifications.js';
 
 export const load = async ({ parent, params, locals }) => {
 	const data = await parent();

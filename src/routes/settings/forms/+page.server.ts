@@ -1,13 +1,13 @@
-import { localizeError } from '$lib/i18n';
+import { localizeError } from '#lib/i18n.js';
 import { fail, error } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { intakeFormSchema } from '$lib/contracts';
-import { ApiError } from '$lib/server/errors';
-import { createForm, deleteForm, listForms, regenerateToken, updateForm } from '$lib/server/services/intake';
-import { requireAdmin } from '$lib/server/services/access';
-import { listProjects } from '$lib/server/services/projects';
-import { listTags } from '$lib/server/services/tags';
+import { intakeFormSchema } from '#lib/contracts/index.js';
+import { ApiError } from '#lib/server/errors.js';
+import { createForm, deleteForm, listForms, regenerateToken, updateForm } from '#lib/server/services/intake.js';
+import { requireAdmin } from '#lib/server/services/access.js';
+import { listProjects } from '#lib/server/services/projects.js';
+import { listTags } from '#lib/server/services/tags.js';
 
 function authorize(userId: string) {
 	try {

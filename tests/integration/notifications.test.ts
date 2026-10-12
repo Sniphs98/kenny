@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '$lib/server/db';
-import { project, user } from '$lib/server/db/schema';
-import { createForm } from '$lib/server/services/intake';
+import { db } from '#lib/server/db/index.js';
+import { project, user } from '#lib/server/db/schema.js';
+import { createForm } from '#lib/server/services/intake.js';
 import {
 	getNotifications,
 	sendTestNotification,
 	settleNotifications,
 	updateNotifications
-} from '$lib/server/services/notifications';
-import { createProject, deleteProject } from '$lib/server/services/projects';
-import { closeTicket, createTicket, reopenTicket, updateTicket } from '$lib/server/services/tickets';
-import { addMember } from '$lib/server/services/users';
+} from '#lib/server/services/notifications.js';
+import { createProject, deleteProject } from '#lib/server/services/projects.js';
+import { closeTicket, createTicket, reopenTicket, updateTicket } from '#lib/server/services/tickets.js';
+import { addMember } from '#lib/server/services/users.js';
 
 const WEBHOOK =
 	'https://prod-01.westeurope.logic.azure.com/workflows/abc/triggers/manual/paths/invoke?api-version=2016-06-01&sig=GEHEIM';

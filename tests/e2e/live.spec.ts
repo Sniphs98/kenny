@@ -130,3 +130,15 @@ test('live streams enforce project access when connecting and after membership r
 		await context.close();
 	}
 });
+
+test('externally deleted tickets close shallow dialogs after a preload error', async ({ page, request }) => {
+	const p = await createProject(request, 'Deleted modal');
+	const t = await createTicket(request, p.key, { title: 'Deleted in another tab' });
+	await open(page, `/projects/${p.key}/board`);
+	await card(page, t.title).getByRole('link', { name: t.title, exact: true }).click();
+	await expect(page.getByRole('dialog')).toBeVisible();
+	await expect(page).toHaveURL(`/tickets/${t.key}`);
+	await api(request, 'DELETE', `/tickets/${t.key}`);
+	await expect(page.getByRole('dialog')).toBeHidden();
+	await expect(page).toHaveURL(`/projects/${p.key}/board`);
+});

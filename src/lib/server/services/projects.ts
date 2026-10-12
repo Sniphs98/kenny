@@ -1,4 +1,9 @@
-import { createProjectSchema, updateProjectSchema, createColumnSchema, updateColumnSchema } from '$lib/contracts';
+import {
+	createProjectSchema,
+	updateProjectSchema,
+	createColumnSchema,
+	updateColumnSchema
+} from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';

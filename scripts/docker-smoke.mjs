@@ -34,10 +34,15 @@ if (create) {
 		body
 	});
 	assert.equal(response.status, 201, await response.text());
+	const completed = await request(`/tickets/${ticket.key}/close`, 'POST');
+	assert.equal(completed.closed, true);
 } else {
 	const tickets = await request('/projects/DOCKER/tickets');
 	assert.equal(tickets.length, 1);
 	assert.equal(tickets[0].title, 'Persistent container ticket');
+	assert.equal(tickets[0].closed, true);
+	const detail = await request(`/tickets/${tickets[0].id}`);
+	assert.equal(detail.status, 'Erledigt');
 	const attachments = await request(`/tickets/${tickets[0].id}/attachments`);
 	assert.equal(attachments.length, 1);
 	const response = await fetch(`${origin}${attachments[0].url}`, { headers: { cookie } });

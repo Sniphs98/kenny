@@ -153,3 +153,49 @@ test('Zeitplan über dem Board in der Höhe ziehen, Höhe bleibt gespeichert', a
 	await handle.dblclick();
 	await expect.poll(async () => (await gantt.boundingBox())!.height).toBeCloseTo(360, -1);
 });
+
+test('deadline-only tickets stay out of the schedule while start-only tickets remain visible', async ({
+	page,
+	request
+}) => {
+	const p = await createProject(request);
+	await createTicket(request, p.key, { title: 'Deadline only', dueDate: day(5) });
+	await createTicket(request, p.key, { title: 'Start only', startDate: day(1) });
+	await createTicket(request, p.key, { title: 'Planned interval', startDate: day(1), dueDate: day(3) });
+	await open(page, `/projects/${p.key}/gantt`);
+	await expect(row(page, 'Deadline only')).toHaveCount(0);
+	await expect(row(page, 'Start only')).toBeVisible();
+	await expect(row(page, 'Planned interval')).toBeVisible();
+	await open(page, `/projects/${p.key}/board`);
+	await expect(page.getByRole('button', { name: 'Zeitplan 2 eingeplant', exact: true })).toBeVisible();
+});
+
+test('planning deadline-only tickets preserves the original due date', async ({ page, request }) => {
+	const p = await createProject(request);
+	const t = await createTicket(request, p.key, { title: 'Keep this deadline', dueDate: day(8) });
+	await open(page, `/projects/${p.key}/gantt`);
+	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
+	await page.getByRole('option', { name: /Keep this deadline/ }).click();
+	await expect(row(page, t.title)).toBeVisible();
+	expect(await getTicket(request, t.key)).toMatchObject({ startDate: day(0), dueDate: day(8) });
+
+	const other = await createTicket(request, p.key, { title: 'Plan with the shortcut', dueDate: day(6) });
+	await open(page, `/tickets/${other.key}`);
+	await page.getByRole('button', { name: 'Ab heute planen', exact: true }).click();
+	await expect.poll(async () => (await getTicket(request, other.key)).startDate).toBe(day(0));
+	expect((await getTicket(request, other.key)).dueDate).toBe(day(6));
+	await expect(page.getByRole('button', { name: 'Ab heute planen', exact: true })).toHaveCount(0);
+});
+
+test('overdue deadlines are not silently moved when scheduling from today', async ({ page, request }) => {
+	const p = await createProject(request);
+	const t = await createTicket(request, p.key, { title: 'Past deadline', dueDate: day(-1) });
+	await open(page, `/tickets/${t.key}`);
+	await expect(page.getByRole('button', { name: 'Ab heute planen', exact: true })).toBeDisabled();
+	await open(page, `/projects/${p.key}/gantt`);
+	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
+	await page.getByRole('option', { name: /Past deadline/ }).click();
+	await expect(page.getByText('Das Startdatum darf nicht nach der Fälligkeit liegen.', { exact: true })).toBeVisible();
+	expect(await getTicket(request, t.key)).toMatchObject({ startDate: null, dueDate: day(-1) });
+	await expect(row(page, t.title)).toHaveCount(0);
+});

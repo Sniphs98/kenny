@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ganttSpan, planningDates } from '#lib/schedule.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
@@ -77,7 +78,6 @@
 
 	const px = $derived(ZOOMS[zoom]);
 
-	const toDay = (s: string) => Math.round(Date.parse(s + 'T00:00:00Z') / DAY);
 	const fromDay = (d: number) => new Date(d * DAY).toISOString().slice(0, 10);
 	const today = Math.floor(Date.now() / DAY);
 
@@ -107,7 +107,7 @@
 			const byId = new Map(list.map((t) => [t.id, t]));
 			const keep = new Set<number>();
 			for (const t of list) {
-				if (!t.startDate && !t.dueDate) continue;
+				if (!t.startDate) continue;
 				for (
 					let cur: Item | undefined = t;
 					cur && !keep.has(cur.id);
@@ -124,7 +124,7 @@
 			if (!children.has(parent)) children.set(parent, []);
 			children.get(parent)!.push(t);
 		}
-		const sortKey = (t: Item) => (t.startDate ?? t.dueDate ?? '9999') + String(t.number).padStart(6, '0');
+		const sortKey = (t: Item) => (t.startDate ?? '9999') + String(t.number).padStart(6, '0');
 		const out: { t: Item; depth: number; childCount: number }[] = [];
 		const walk = (parent: number | null, depth: number) => {
 			for (const t of (children.get(parent) ?? []).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))) {
@@ -145,10 +145,7 @@
 	}
 
 	function span(t: Item) {
-		if (!t.startDate && !t.dueDate) return null;
-		const s = toDay(t.startDate ?? t.dueDate!);
-		const e = toDay(t.dueDate ?? t.startDate!);
-		return { start: s, end: e };
+		return ganttSpan(t);
 	}
 
 	// Sichtbarer Zeitraum
@@ -291,8 +288,13 @@
 		if (span(t)) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const day = range.start + Math.floor((e.clientX - rect.left) / px);
+		const dates = planningDates(t, fromDay(day));
+		if (dates.startDate > dates.dueDate) {
+			toast.error(m.plan_after_deadline());
+			return;
+		}
 		try {
-			await updateTicket(t.id, { startDate: fromDay(day), dueDate: fromDay(day + 2) });
+			await updateTicket(t.id, dates);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -312,7 +314,7 @@
 	const planCandidates = $derived(
 		source
 			.filter((t) => !t.closed)
-			.map((t) => ({ t, backlog: backlogColumns.has(t.columnId), dated: !!(t.startDate || t.dueDate) }))
+			.map((t) => ({ t, backlog: backlogColumns.has(t.columnId), dated: !!t.startDate }))
 			.filter(({ backlog, dated }) => backlog || !dated)
 			.sort((a, b) => Number(b.backlog) - Number(a.backlog) || a.t.number - b.t.number)
 	);
@@ -331,7 +333,7 @@
 	}
 
 	const backlogColumn = $derived(columns.find((c) => c.isBacklog));
-	const undatedCount = $derived(source.filter((t) => !t.closed && !t.startDate && !t.dueDate).length);
+	const undatedCount = $derived(source.filter((t) => !t.closed && !t.startDate).length);
 
 	/** Termin entfernen; optional zurück in die Backlog-Spalte */
 	async function unschedule(t: Item, toBacklog: boolean) {
@@ -355,18 +357,21 @@
 		if (readOnly) return;
 		planOpen = false;
 		const start = planDay ?? today;
-		const s = span(t);
-		// Dauer behalten, wenn das Ticket schon Termine hat
-		const body: UpdateTicketInput = { startDate: fromDay(start), dueDate: fromDay(start + (s ? s.end - s.start : 2)) };
+		const body = planningDates(t, fromDay(start));
+		if (body.startDate > body.dueDate) {
+			toast.error(m.plan_after_deadline());
+			return;
+		}
+		const update: UpdateTicketInput = body;
 		if (backlogColumns.has(t.columnId)) {
 			// Aus dem Backlog holen, sonst wäre es im Gantt gleich wieder ausgeblendet
 			const target = columns.find((c) => !c.isBacklog && !c.isDone);
-			if (target) body.columnId = target.id;
+			if (target) update.columnId = target.id;
 		}
 		// Elterntickets aufklappen, damit eine eingeplante Unteraufgabe sichtbar ist
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
-			await updateTicket(t.id, body);
+			await updateTicket(t.id, update);
 			toast.success(m.scheduled_from({ value1: t.key, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);

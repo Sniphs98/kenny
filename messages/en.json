@@ -537,5 +537,8 @@
 	"command_navigation": "Navigation",
 	"command_appearance": "Appearance",
 	"command_new_ticket": "New ticket in {project}",
-	"command_theme": "Theme: {mode}"
+	"command_theme": "Theme: {mode}",
+	"plan_from_today": "Plan from today",
+	"plan_from_today_overdue": "The deadline is before today. Update it or choose an earlier start date.",
+	"plan_after_deadline": "The start date must not be after the deadline."
 }

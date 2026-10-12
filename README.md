@@ -1,4 +1,4 @@
-# Kenny – Boards, Zeitpläne und Tickets für Teams
+# Kenny – Boards, Timelines and Tickets for Teams
 
 Self-hosted project and ticket management with Kanban boards, Gantt timelines and submission forms. Kenny runs as a single Docker container with SQLite, so there is no separate database server to operate.
 

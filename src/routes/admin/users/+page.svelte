@@ -102,7 +102,11 @@
 							></td
 						>
 						<td class="p-3"
-							><Button
+							><a
+								class="mr-2 inline-flex rounded-md border px-3 py-1.5"
+								href={`/admin/users/${encodeURIComponent(user.id)}/projects`}>{m.um_user_projects()}</a
+							>
+							<Button
 								variant="outline"
 								size="sm"
 								disabled={busy}

@@ -3,6 +3,7 @@ import { requireProjectAccess, projectUsers } from '#lib/server/services/access.
 import { error } from '@sveltejs/kit';
 import { ApiError } from '#lib/server/errors.js';
 import { listTags } from '#lib/server/services/tags.js';
+import { listBuckets } from '#lib/server/services/buckets.js';
 import { getTicketDetail, listTickets, resolveTicket } from '#lib/server/services/tickets.js';
 
 export const load = ({ params, locals }) => {
@@ -12,9 +13,11 @@ export const load = ({ params, locals }) => {
 		return {
 			...detail,
 			canEdit: role !== 'reader',
+			canManage: role === 'admin',
 			projectTickets: listTickets(detail.project.id).map((t) => ({ id: t.id, key: t.key, title: t.title })),
 			users: projectUsers(detail.project.id),
-			tags: listTags(detail.project.id)
+			tags: listTags(detail.project.id),
+			buckets: listBuckets(detail.project.id)
 		};
 	} catch (e) {
 		if (e instanceof ApiError) error(e.status, localizeError(e.message));

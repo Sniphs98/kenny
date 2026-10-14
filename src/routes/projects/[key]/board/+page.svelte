@@ -98,7 +98,13 @@
 	} as const;
 	type Sort = keyof typeof SORTS;
 
-	const GROUPS = { none: m.none(), tag: m.tag(), assignee: m.assignee(), priority: m.priority_2() } as const;
+	const GROUPS = {
+		none: m.none(),
+		tag: m.tag(),
+		bucket: m.bucket(),
+		assignee: m.assignee(),
+		priority: m.priority_2()
+	} as const;
 	type Group = keyof typeof GROUPS;
 
 	let sortBy = $state<Sort>('manual');
@@ -238,6 +244,23 @@
 	};
 
 	const lanes = $derived.by((): Lane[] => {
+		if (groupBy === 'bucket')
+			return [
+				...data.buckets.map((b) => ({
+					key: `bucket:${b.id}`,
+					label: b.name,
+					kind: 'bucket' as const,
+					match: (t: Item) => t.bucketId === b.id,
+					preset: { bucketId: b.id }
+				})),
+				{
+					key: 'bucket:none',
+					label: m.no_bucket(),
+					kind: 'bucket',
+					match: (t: Item) => t.bucketId === null,
+					preset: { bucketId: null }
+				}
+			];
 		if (groupBy === 'tag') {
 			return [
 				...data.tags.map((g) => ({
@@ -302,7 +325,9 @@
 	const laneCount = (lane: Lane) => visible.filter(lane.match).length;
 	const columnCount = (columnId: number) => visible.filter((t) => t.columnId === columnId).length;
 	// Leere Bahnen ausblenden, außer es gibt gar keine Tickets
-	const shownLanes = $derived(groupBy === 'none' ? lanes : lanes.filter((l) => laneCount(l) > 0));
+	const shownLanes = $derived(
+		groupBy === 'none' || groupBy === 'bucket' ? lanes : lanes.filter((l) => laneCount(l) > 0)
+	);
 
 	// --- Drag & Drop ---
 	let drag = $state<{ id: number; lane: string } | null>(null);
@@ -752,6 +777,8 @@
 	projectKey={data.project.key}
 	users={data.users}
 	tags={data.tags}
+	buckets={data.buckets}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
 	canCreate={data.canEdit}
+	canManage={data.canManage}
 />

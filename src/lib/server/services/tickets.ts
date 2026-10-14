@@ -1,4 +1,5 @@
 import { requireProjectAccess, visibleUsers } from './access';
+import { resolveBucket } from './buckets';
 import { projectMember } from '../db/schema';
 import {
 	createTicketSchema,
@@ -101,6 +102,7 @@ function present(
 		closedAt: t.closedAt,
 		position: t.position,
 		parentId: t.parentId,
+		bucketId: t.bucketId,
 		assigneeId: assignees[0]?.id ?? null,
 		assigneeIds: assignees.map((a) => a.id),
 		startDate: t.startDate,
@@ -490,6 +492,7 @@ export function createTicket(
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId: checkParent(tx, { projectId: p.id }, input.parentId ?? input.parent),
+				bucketId: resolveBucket(p.id, input.bucketId ?? null),
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -525,6 +528,7 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 	const t = resolveTicket(ref);
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
+		if (input.bucketId !== undefined) patch.bucketId = resolveBucket(t.projectId, input.bucketId);
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');

@@ -37,6 +37,8 @@ Bug fixes need a regression test. New business rules need positive and negative 
 
 Generated UI primitives under `src/lib/components/ui/` are excluded from formatting and ESLint, but remain covered by type checking. Review changes to these components carefully.
 
+Prefer the existing shadcn components under `src/lib/components/ui/` for selections, menus, dialogs, and other controls whenever they fit the interaction.
+
 ## GitHub configuration
 
 The repository includes workflows and templates. `.github/rulesets/main.json` also contains an importable ruleset for a solo repository without mandatory reviews by another person. Import it in GitHub or activate it through the API; the file alone does not enable branch protection. After pushing, configure the repository settings:

@@ -26,6 +26,14 @@ it('upgrades populated databases from every earlier migration and can restart id
 			migrate(db, { migrationsFolder: 'drizzle' });
 			migrate(db, { migrationsFolder: 'drizzle' });
 			expect(client.prepare('SELECT title FROM ticket').get()).toEqual({ title: 'Existing ticket' });
+			expect(client.prepare('SELECT bucket_id FROM ticket').get()).toEqual({ bucket_id: null });
+			client.exec("INSERT INTO bucket (project_id, name) VALUES (1, 'Existing bucket')");
+			client.exec('UPDATE ticket SET bucket_id = 1');
+			client.exec('DELETE FROM bucket');
+			expect(client.prepare('SELECT title, bucket_id FROM ticket').get()).toEqual({
+				title: 'Existing ticket',
+				bucket_id: null
+			});
 			expect(client.prepare('SELECT is_backlog FROM board_column').get()).toEqual({ is_backlog: 0 });
 			expect(client.prepare('SELECT * FROM attachment').all()).toEqual([]);
 			// Formular löschen lässt eingereichte Tickets bestehen und leert nur die Herkunft

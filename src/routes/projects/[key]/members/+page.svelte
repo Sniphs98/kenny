@@ -2,7 +2,9 @@
 	import { refreshAll } from '$app/navigation';
 	import { m } from '#lib/paraglide/messages.js';
 	import { addProjectMember, changeProjectMember } from '#lib/api.js';
-	import { PROJECT_ROLES, type ProjectRole } from '#lib/contracts/index.js';
+	import { PROJECT_ROLES, addMemberSchema, type ProjectRole } from '#lib/contracts/index.js';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Label } from '#lib/components/ui/label/index.js';
@@ -10,11 +12,37 @@
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { toast } from 'svelte-sonner';
 	let { data } = $props();
-	let email = $state('');
-	let role = $state<ProjectRole>('member');
+	let search = $state('');
 	let busy = $state(false);
 	let selected = $state<string | null>(null);
 	let confirmOpen = $state(false);
+	const { form, errors, enhance, submitting } = superForm(
+		{ user: '', role: 'member' as ProjectRole },
+		{
+			SPA: true,
+			dataType: 'json',
+			validators: zod4Client(addMemberSchema),
+			multipleSubmits: 'prevent',
+			resetForm: false,
+			async onUpdate({ form: validated }) {
+				if (!validated.valid) return;
+				await run(async () => {
+					await addProjectMember(data.project.key, validated.data);
+					validated.data.user = '';
+					$form.user = '';
+					search = '';
+				});
+			}
+		}
+	);
+	const candidates = $derived(
+		data.candidates.filter(
+			(candidate) =>
+				candidate.email === $form.user ||
+				`${candidate.name} ${candidate.email}`.toLowerCase().includes(search.trim().toLowerCase())
+		)
+	);
+	const selectedEmail = $derived(data.candidates.some((candidate) => candidate.email === $form.user) ? $form.user : '');
 	const label = (value: ProjectRole) =>
 		value === 'admin' ? m.um_project_admin() : value === 'member' ? m.um_member() : m.um_reader();
 	async function run(fn: () => Promise<unknown>) {
@@ -30,13 +58,6 @@
 			busy = false;
 		}
 	}
-	async function add(e: SubmitEvent) {
-		e.preventDefault();
-		await run(async () => {
-			await addProjectMember(data.project.key, { user: email, role });
-			email = '';
-		});
-	}
 </script>
 
 <svelte:head><title>{m.um_members()} · {data.project.name} · Kenny</title></svelte:head>
@@ -45,19 +66,49 @@
 		<h2 class="text-xl font-semibold">{m.um_members()}</h2>
 		<p class="text-muted-foreground mt-1 text-sm">{m.um_members_description()}</p>
 	</div>
-	<form onsubmit={add} class="flex flex-wrap items-end gap-3 rounded-xl border p-4">
+	<form method="POST" use:enhance class="flex flex-wrap items-end gap-3 rounded-xl border p-4">
+		<div class="min-w-0 basis-full space-y-2">
+			<Label for="member-search">{m.um_search_users()}</Label><Input
+				id="member-search"
+				bind:value={search}
+				disabled={busy || $submitting}
+				placeholder={m.um_search_users()}
+			/>
+			<Label for="member-select">{m.um_choose_user()}</Label>
+			<select
+				id="member-select"
+				class="bg-background h-9 w-full rounded-md border px-3"
+				disabled={busy || $submitting}
+				value={selectedEmail}
+				onchange={(e) => ($form.user = e.currentTarget.value)}
+			>
+				<option value="">{m.um_choose_user_placeholder()}</option>
+				{#each candidates as candidate (candidate.id)}<option value={candidate.email}
+						>{candidate.name} — {candidate.email}</option
+					>{/each}
+			</select>
+			{#if !candidates.length}<p class="text-muted-foreground text-sm">{m.um_no_candidates()}</p>{/if}
+		</div>
 		<div class="min-w-0 basis-56 flex-1 space-y-2">
-			<Label for="member-email">{m.email()}</Label><Input id="member-email" type="email" required bind:value={email} />
+			<Label for="member-email">{m.email()}</Label><Input
+				id="member-email"
+				type="email"
+				required
+				bind:value={$form.user}
+				disabled={busy || $submitting}
+			/>
+			{#if $errors.user}<p class="text-destructive text-sm">{$errors.user}</p>{/if}
 		</div>
 		<div class="space-y-2">
 			<Label for="member-role">{m.um_role()}</Label><select
 				id="member-role"
-				bind:value={role}
+				bind:value={$form.role}
+				disabled={busy || $submitting}
 				class="bg-background h-9 rounded-md border px-3"
 				>{#each PROJECT_ROLES as value (value)}<option {value}>{label(value)}</option>{/each}</select
 			>
 		</div>
-		<Button type="submit" disabled={busy}>{m.um_add_member()}</Button>
+		<Button type="submit" disabled={busy || $submitting}>{m.um_add_member()}</Button>
 	</form>
 	<p class="text-muted-foreground text-sm">{m.um_roles_description()}</p>
 	<div class="overflow-x-auto rounded-xl border">

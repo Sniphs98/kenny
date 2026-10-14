@@ -34,8 +34,11 @@ const ticketFields = {
 	column: reference.nullable().optional(),
 	columnId: id.optional(),
 	position: z.number().int().nonnegative().nullable().optional(),
+	/** Eine zuständige Person (ersetzt alle bisherigen); null entfernt alle */
 	assignee: z.string().max(320).nullable().optional(),
 	assigneeId: z.string().max(320).nullable().optional(),
+	/** Mehrere Zuständige als Benutzer-IDs oder E-Mails; ersetzt die bisherige Liste, [] entfernt alle */
+	assignees: z.array(z.string().trim().min(1).max(320)).max(50).optional(),
 	parent: optionalReference,
 	parentId: optionalReference,
 	startDate: optionalDate,
@@ -123,7 +126,9 @@ export const ticketSchema = z.object({
 	closedAt: timestamp.nullable(),
 	position: z.number().int(),
 	parentId: id.nullable(),
+	/** Erste zuständige Person (kompatibel zu älteren Clients); alle stehen in assigneeIds */
 	assigneeId: z.string().nullable(),
+	assigneeIds: z.array(z.string()),
 	startDate: dateSchema.nullable(),
 	dueDate: dateSchema.nullable(),
 	createdAt: timestamp,
@@ -132,6 +137,7 @@ export const ticketSchema = z.object({
 export const ticketDtoSchema = ticketSchema.extend({ tags: z.array(tagSchema) });
 export const ticketListItemSchema = ticketDtoSchema.extend({
 	assigneeName: z.string().nullable(),
+	assignees: z.array(z.object({ id: z.string(), name: z.string() })),
 	subtaskCount: z.number().int(),
 	subtaskDone: z.number().int(),
 	attachmentCount: z.number().int(),
@@ -174,6 +180,7 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 	),
 	attachments: z.array(attachmentSchema),
 	assignee: userSchema.nullable(),
+	assignees: z.array(userSchema),
 	/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
 	submission: z.object({ form: z.string().nullable(), email: z.string().nullable() }).nullable()
 });
@@ -204,7 +211,7 @@ export const ticketFormSchema = z
 		title: ticketFields.title,
 		description: z.string().max(100_000).default(''),
 		priority: z.enum(PRIORITIES).default('medium'),
-		assigneeId: z.string().nullable().default(null),
+		assignees: z.array(z.string().max(320)).max(50).default([]),
 		tags: z.array(reference).max(100).default([]),
 		startDate: z.union([dateSchema, z.literal('')]).default(''),
 		dueDate: z.union([dateSchema, z.literal('')]).default(''),

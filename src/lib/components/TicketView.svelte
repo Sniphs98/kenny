@@ -63,6 +63,12 @@
 	$effect(() => title.update(data.ticket.title));
 	$effect(() => description.update(data.ticket.description));
 
+	/** Sofort sichtbare Auswahl, damit mehrere Klicks hintereinander aufeinander aufbauen */
+	let assigneeIds = $state(untrack(() => data.ticket.assigneeIds));
+	$effect(() => {
+		assigneeIds = data.ticket.assigneeIds;
+	});
+
 	let newSubtask = $state('');
 	let linkType = $state<'depends_on' | 'blocks' | 'relates'>('depends_on');
 	let linkTarget = $state('');
@@ -347,19 +353,19 @@
 					<div class="grid gap-2">
 						<Label>{m.assignee()}</Label>
 						<AssigneePicker
-							assignedName={data.assignee?.name}
+							assigned={data.assignees}
 							disabled={!data.canEdit}
 							users={data.users}
 							me={page.data.user?.id}
-							value={t.assigneeId}
-							onchange={(id) => patch({ assigneeId: id })}
+							value={assigneeIds}
+							onchange={(ids) => ((assigneeIds = ids), patch({ assignees: ids }))}
 						/>
-						{#if page.data.user && data.users.some((u) => u.id === page.data.user!.id) && t.assigneeId !== page.data.user.id}
+						{#if page.data.user && data.users.some((u) => u.id === page.data.user!.id) && !t.assigneeIds.includes(page.data.user.id)}
 							<Button
 								variant="link"
 								size="xs"
 								class="-mt-1 h-auto self-start px-0"
-								onclick={() => patch({ assigneeId: page.data.user!.id })}
+								onclick={() => patch({ assignees: [...t.assigneeIds, page.data.user!.id] })}
 							>
 								{m.assign_to_me()}
 							</Button>

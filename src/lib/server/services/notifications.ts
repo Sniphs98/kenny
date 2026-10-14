@@ -1,7 +1,7 @@
 // Teams-Benachrichtigungen: Ereignisse eines Projekts als Adaptive Card an einen Teams-Workflow senden.
 // Kenny sendet nur ausgehend; der Workflow („Bei Empfang einer Webhookanforderung in einem Kanal posten“)
 // stellt die Karte im Kanal zu. Funktioniert damit auch auf Servern im Firmennetz.
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { BETTER_AUTH_URL } from '$app/env/private';
 import {
 	NOTIFICATION_EVENTS,
@@ -14,7 +14,7 @@ import {
 } from '#lib/contracts/index.js';
 import { m } from '#lib/paraglide/messages.js';
 import { db } from '../db';
-import { intakeForm, project, projectNotification, ticket, user } from '../db/schema';
+import { intakeForm, project, projectNotification, ticket, ticketAssignee, user } from '../db/schema';
 import { ApiError } from '../errors';
 import { parseInput } from '../validation';
 import { requireProjectAccess } from './access';
@@ -122,21 +122,29 @@ export function ticketCard(event: NotificationEvent, ticketId: number, locale: L
 			dueDate: ticket.dueDate,
 			key: project.key,
 			project: project.name,
-			assignee: user.name,
 			form: intakeForm.name
 		})
 		.from(ticket)
 		.innerJoin(project, eq(project.id, ticket.projectId))
-		.leftJoin(user, eq(user.id, ticket.assigneeId))
 		.leftJoin(intakeForm, eq(intakeForm.id, ticket.intakeFormId))
 		.where(eq(ticket.id, ticketId))
 		.get();
 	if (!row) return null;
+	// Alle Zuständigen in der gewählten Reihenfolge, z. B. „Anna, Ben“
+	const names = db
+		.select({ name: user.name })
+		.from(ticketAssignee)
+		.innerJoin(user, eq(user.id, ticketAssignee.userId))
+		.where(eq(ticketAssignee.ticketId, ticketId))
+		.orderBy(asc(ticketAssignee.position))
+		.all()
+		.map((u) => u.name);
+	const assignee = names.length ? names.join(', ') : null;
 	const key = `${row.key}-${row.number}`;
 	const heading = {
 		created: () => m.notification_created({ key }, { locale }),
 		closed: () => m.notification_closed({ key }, { locale }),
-		assigned: () => m.notification_assigned({ key, name: row.assignee ?? '–' }, { locale })
+		assigned: () => m.notification_assigned({ key, name: assignee ?? '–' }, { locale })
 	}[event]();
 	const body = [
 		line(run(heading, { weight: 'Bolder', size: 'Medium', color: event === 'closed' ? 'Good' : 'Default' })),
@@ -146,7 +154,7 @@ export function ticketCard(event: NotificationEvent, ticketId: number, locale: L
 			: []),
 		fact(m.project({}, { locale }), row.project),
 		fact(m.priority_2({}, { locale }), priorityLabel(row.priority, locale)),
-		fact(m.notification_assignee({}, { locale }), row.assignee ?? m.notification_unassigned({}, { locale })),
+		fact(m.notification_assignee({}, { locale }), assignee ?? m.notification_unassigned({}, { locale })),
 		...(row.dueDate ? [fact(m.due({}, { locale }), row.dueDate)] : [])
 	];
 	return adaptiveCard(body, { title: m.notification_open({}, { locale }), url: `${baseUrl()}/tickets/${key}` });

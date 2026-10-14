@@ -103,7 +103,7 @@
 			title: '',
 			description: '',
 			priority: 'medium' as Priority,
-			assigneeId: null as string | null,
+			assignees: [] as string[],
 			tags: [] as (number | string)[],
 			startDate: '',
 			dueDate: '',
@@ -162,8 +162,8 @@
 					<AssigneePicker
 						{users}
 						me={page.data.user?.id}
-						value={$form.assigneeId}
-						onchange={(id) => ($form.assigneeId = id)}
+						value={$form.assignees}
+						onchange={(ids) => ($form.assignees = ids)}
 					/>
 				</div>
 				<div class="grid gap-2">

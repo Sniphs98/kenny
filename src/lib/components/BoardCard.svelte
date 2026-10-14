@@ -46,7 +46,7 @@
 		expanded: boolean;
 		dragging: boolean;
 		onToggleSubtasks: () => void;
-		onAssign: (id: string | null) => void;
+		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
@@ -164,12 +164,12 @@
 		{/if}
 		<span class="ml-auto">
 			<AssigneePicker
-				assignedName={t.assigneeName}
+				assigned={t.assignees}
 				disabled={readOnly}
 				compact
 				{users}
 				{me}
-				value={t.assigneeId}
+				value={t.assigneeIds}
 				onchange={onAssign}
 			/>
 		</span>

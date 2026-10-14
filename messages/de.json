@@ -167,7 +167,7 @@
 	"list_project_tags": "Tags des Projekts auflisten",
 	"delete_tag": "Tag löschen",
 	"ticket_with_subtasks_and_links": "Ticket mit Unteraufgaben und Verknüpfungen",
-	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Ticket ändern (auch column zum Verschieben, assignee zum Zuweisen, tags ersetzt alle Tags)",
+	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Ticket ändern (auch column zum Verschieben, assignees ersetzt alle Zuständigen, tags ersetzt alle Tags)",
 	"complete_ticket": "Ticket abschließen",
 	"reopen_ticket": "Ticket wieder öffnen",
 	"create_subtask": "Unteraufgabe anlegen",

@@ -167,7 +167,7 @@
 	"list_project_tags": "List project tags",
 	"delete_tag": "Delete tag",
 	"ticket_with_subtasks_and_links": "Ticket with subtasks and links",
-	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Update ticket (column moves it, assignee assigns it, tags replaces all tags)",
+	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Update ticket (column moves it, assignees replaces all assignees, tags replaces all tags)",
 	"complete_ticket": "Complete ticket",
 	"reopen_ticket": "Reopen ticket",
 	"create_subtask": "Create subtask",

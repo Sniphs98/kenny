@@ -226,7 +226,7 @@
     "description": "Optional",
     "priority": "high",
     "column": "In Arbeit",
-    "assignee": "name@firma.de",
+    "assignees": ["name@firma.de"],
     "startDate": "2026-10-10",
     "dueDate": "2026-10-17",
     "parent": "WEB-3",

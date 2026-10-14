@@ -205,9 +205,9 @@
 
 	function matchesAssignee(t: Item) {
 		if (assigneeFilter === 'all') return true;
-		if (assigneeFilter === 'me') return t.assigneeId === me;
-		if (assigneeFilter === 'none') return !t.assigneeId;
-		return t.assigneeId === assigneeFilter;
+		if (assigneeFilter === 'me') return !!me && t.assigneeIds.includes(me);
+		if (assigneeFilter === 'none') return !t.assigneeIds.length;
+		return t.assigneeIds.includes(assigneeFilter);
 	}
 
 	const visible = $derived(
@@ -261,16 +261,16 @@
 					label: u.id === me ? m.me_2({ value1: u.name }) : u.name,
 					kind: 'assignee' as const,
 					userName: u.name,
-					match: (t: Item) => t.assigneeId === u.id,
-					preset: { assigneeId: u.id }
+					match: (t: Item) => t.assigneeIds.includes(u.id),
+					preset: { assignees: [u.id] }
 				})),
 				{
 					key: 'user:none',
 					label: m.unassigned(),
 					kind: 'assignee',
 					userName: null,
-					match: (t) => !t.assigneeId,
-					preset: { assigneeId: null }
+					match: (t) => !t.assigneeIds.length,
+					preset: { assignees: [] }
 				}
 			];
 		}
@@ -342,6 +342,13 @@
 			const fromTag = (from.preset.tags as number[])[0];
 			const ids = t.tags.map((g) => g.id).filter((id) => id !== fromTag);
 			return { tags: [...new Set([...ids, ...(to.preset.tags as number[])])] };
+		}
+		if (to.kind === 'assignee') {
+			// Wie bei Tags: Person der alten Bahn durch die der neuen ersetzen, weitere Zuständige bleiben
+			if (!(to.preset.assignees as string[]).length) return { assignees: [] };
+			const fromUser = (from.preset.assignees as string[])[0];
+			const ids = t.assigneeIds.filter((id) => id !== fromUser);
+			return { assignees: [...new Set([...ids, ...(to.preset.assignees as string[])])] };
 		}
 		return to.preset;
 	}
@@ -421,13 +428,19 @@
 		await refreshAll();
 	}
 
-	async function assign(t: Item, assigneeId: string | null) {
-		t.assigneeId = assigneeId;
-		t.assigneeName = data.users.find((u) => u.id === assigneeId)?.name ?? null;
+	async function assign(t: Item, ids: string[]) {
+		const people = ids.map((id) => ({
+			id,
+			name: data.users.find((u) => u.id === id)?.name ?? t.assignees.find((a) => a.id === id)?.name ?? ''
+		}));
+		const names = people.map((p) => p.name);
+		t.assigneeIds = ids;
+		t.assigneeId = ids[0] ?? null;
+		t.assignees = people;
 		try {
-			await updateTicket(t.id, { assigneeId });
+			await updateTicket(t.id, { assignees: ids });
 			toast.success(
-				assigneeId ? m.assigned_to({ value1: t.key, value2: t.assigneeName ?? '' }) : m.unassigned_2({ value1: t.key })
+				ids.length ? m.assigned_to({ value1: t.key, value2: names.join(', ') }) : m.unassigned_2({ value1: t.key })
 			);
 		} catch (err) {
 			toast.error((err as Error).message);

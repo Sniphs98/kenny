@@ -18,6 +18,7 @@ import {
 	PRIORITIES,
 	project,
 	ticket,
+	ticketAssignee,
 	ticketLink,
 	user,
 	type LinkType,
@@ -59,8 +60,33 @@ export function resolveTicket(ref: string | number, tx: Tx | typeof db = db): Ti
 	return row;
 }
 
+type Person = { id: string; name: string; email: string };
+
+/** Zuständige je Ticket in der gewählten Reihenfolge */
+export function assigneesByTicket(ids: number[], tx: Tx | typeof db = db) {
+	const map = new Map<number, Person[]>();
+	if (!ids.length) return map;
+	const rows = tx
+		.select({ ticketId: ticketAssignee.ticketId, id: user.id, name: user.name, email: user.email })
+		.from(ticketAssignee)
+		.innerJoin(user, eq(user.id, ticketAssignee.userId))
+		.where(inArray(ticketAssignee.ticketId, ids))
+		.orderBy(asc(ticketAssignee.position), asc(user.name))
+		.all();
+	for (const { ticketId, ...person } of rows) {
+		if (!map.has(ticketId)) map.set(ticketId, []);
+		map.get(ticketId)!.push(person);
+	}
+	return map;
+}
+
 /** Öffentliche Darstellung eines Tickets für API und Oberfläche */
-function present(t: Ticket, projectKey: string, column?: { name: string; isDone: boolean }) {
+function present(
+	t: Ticket,
+	projectKey: string,
+	column?: { name: string; isDone: boolean },
+	assignees: { id: string }[] = []
+) {
 	return {
 		id: t.id,
 		key: `${projectKey}-${t.number}`,
@@ -75,7 +101,8 @@ function present(t: Ticket, projectKey: string, column?: { name: string; isDone:
 		closedAt: t.closedAt,
 		position: t.position,
 		parentId: t.parentId,
-		assigneeId: t.assigneeId,
+		assigneeId: assignees[0]?.id ?? null,
+		assigneeIds: assignees.map((a) => a.id),
 		startDate: t.startDate,
 		dueDate: t.dueDate,
 		createdAt: t.createdAt,
@@ -89,7 +116,10 @@ export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);
 	const p = getProject(t.projectId);
 	const col = db.select().from(boardColumn).where(eq(boardColumn.id, t.columnId)).get();
-	return { ...present(t, p.key, col), tags: tagsByTicket([t.id]).get(t.id) ?? [] };
+	return {
+		...present(t, p.key, col, assigneesByTicket([t.id]).get(t.id)),
+		tags: tagsByTicket([t.id]).get(t.id) ?? []
+	};
 }
 
 /** Alle Tickets eines Projekts inkl. Unteraufgaben-Zähler und Abhängigkeiten */
@@ -101,9 +131,8 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 	if (filter.closed === false) conds.push(isNull(ticket.closedAt));
 
 	const rows = db
-		.select({ t: ticket, assigneeName: user.name })
+		.select({ t: ticket })
 		.from(ticket)
-		.leftJoin(user, eq(user.id, ticket.assigneeId))
 		.where(and(...conds))
 		.orderBy(asc(ticket.position), asc(ticket.number))
 		.all();
@@ -129,15 +158,17 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 		.all();
 	const subMap = new Map(subs.map((s) => [s.parentId, s]));
 	const tags = tagsByTicket(ids);
+	const assignees = assigneesByTicket(ids);
 	const attachments = countAttachments(projectId);
 
-	return rows.map(({ t, assigneeName }) => {
+	return rows.map(({ t }) => {
 		const myDeps = deps.filter((d) => d.sourceId === t.id);
 		const s = subMap.get(t.id);
 		return {
-			...present(t, p.key, cols.get(t.columnId)),
+			...present(t, p.key, cols.get(t.columnId), assignees.get(t.id)),
 			tags: tags.get(t.id) ?? [],
-			assigneeName,
+			assigneeName: assignees.get(t.id)?.[0]?.name ?? null,
+			assignees: (assignees.get(t.id) ?? []).map(({ id, name }) => ({ id, name })),
 			subtaskCount: s?.total ?? 0,
 			subtaskDone: Number(s?.done ?? 0),
 			attachmentCount: attachments.get(t.id) ?? 0,
@@ -169,7 +200,10 @@ export function searchTickets(userId: string, rawInput: unknown): TicketSearchRe
 
 	const candidates = projects
 		.flatMap((p) => listTickets(p.id, { closed: input.closed }))
-		.filter((t) => assigneeId === undefined || t.assigneeId === assigneeId);
+		.filter(
+			(t) =>
+				assigneeId === undefined || (assigneeId === null ? !t.assigneeIds.length : t.assigneeIds.includes(assigneeId))
+		);
 	// Mit Suchbegriff nach Treffergüte: ganzer Ausdruck vor einzelnen Wörtern (siehe searchRank)
 	const tickets = !query
 		? candidates
@@ -204,8 +238,11 @@ function searchRank(t: TicketListItem, query: string) {
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
 export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	requireProjectAccess(userId, resolveTicket(ref).projectId);
-	const { ticket, parent, subtasks, links, attachments, assignee, submission } = getTicketDetail(ref, userId);
-	return { ...ticket, parent, subtasks, links, attachments, assignee, submission };
+	const { ticket, parent, subtasks, links, attachments, assignee, assignees, submission } = getTicketDetail(
+		ref,
+		userId
+	);
+	return { ...ticket, parent, subtasks, links, attachments, assignee, assignees, submission };
 }
 
 /** Anzahl offener Voraussetzungen (depends_on auf nicht erledigte Tickets) je Ticket */
@@ -274,26 +311,29 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	});
 
 	const subtaskRows = db.select().from(ticket).where(eq(ticket.parentId, t.id)).orderBy(asc(ticket.number)).all();
+	const parent = t.parentId ? db.select().from(ticket).where(eq(ticket.id, t.parentId)).get() : null;
 	const blockers = openBlockerCounts(subtaskRows.map((s) => s.id));
+	const people = assigneesByTicket([t.id, ...subtaskRows.map((s) => s.id), ...(parent ? [parent.id] : [])]);
 	const subtasks = subtaskRows.map((s) => ({
-		...present(s, p.key, colMap.get(s.columnId)),
+		...present(s, p.key, colMap.get(s.columnId), people.get(s.id)),
 		openBlockers: blockers.get(s.id) ?? 0
 	}));
 
-	const parent = t.parentId ? db.select().from(ticket).where(eq(ticket.id, t.parentId)).get() : null;
-	const assignee = t.assigneeId
-		? db.select({ id: user.id, name: user.name, email: user.email }).from(user).where(eq(user.id, t.assigneeId)).get()
-		: null;
+	const assignees = people.get(t.id) ?? [];
 
 	return {
-		ticket: { ...present(t, p.key, colMap.get(t.columnId)), tags: tagsByTicket([t.id]).get(t.id) ?? [] },
+		ticket: {
+			...present(t, p.key, colMap.get(t.columnId), assignees),
+			tags: tagsByTicket([t.id]).get(t.id) ?? []
+		},
 		project: p,
 		columns: cols,
-		parent: parent ? present(parent, p.key, colMap.get(parent.columnId)) : null,
+		parent: parent ? present(parent, p.key, colMap.get(parent.columnId), people.get(parent.id)) : null,
 		subtasks,
 		links,
 		attachments: listAttachments(t.id),
-		assignee: assignee ?? null,
+		assignee: assignees[0] ?? null,
+		assignees,
 		submission:
 			t.intakeFormId !== null || t.reporterEmail !== null
 				? {
@@ -344,22 +384,66 @@ function checkDates(start: string | null, due: string | null) {
 	if (start && due && start > due) throw new ApiError(400, 'Startdatum liegt nach dem Fälligkeitsdatum.');
 }
 
-function checkAssignee(tx: Tx, id: unknown, projectId: number) {
-	if (id === null || id === undefined || id === '') return null;
+/** Benutzer per ID oder E-Mail finden */
+function resolveUser(tx: Tx, ref: string) {
 	const u = tx
-		.select({ id: user.id })
+		.select({ id: user.id, active: user.active })
 		.from(user)
-		.where(or(eq(user.id, String(id)), eq(user.email, String(id))))
+		.where(or(eq(user.id, ref), eq(user.email, ref)))
 		.get();
-	if (!u) throw new ApiError(400, `Benutzer "${id}" nicht gefunden.`);
-	const active = tx.select({ active: user.active }).from(user).where(eq(user.id, u.id)).get();
-	const membership = tx
-		.select()
-		.from(projectMember)
-		.where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, u.id)))
-		.get();
-	if (!active?.active || !membership) throw new ApiError(400, 'Zuständige müssen aktive Projektmitglieder sein.');
-	return u.id;
+	if (!u) throw new ApiError(400, `Benutzer "${ref}" nicht gefunden.`);
+	return u;
+}
+
+/** Zuständige aus der Eingabe: Liste (assignees) oder eine Person (assigneeId/assignee); undefined = unverändert */
+function assigneeInput(input: {
+	assignees?: string[];
+	assigneeId?: string | null;
+	assignee?: string | null;
+}): string[] | undefined {
+	if (input.assignees !== undefined) return input.assignees;
+	if (input.assigneeId === undefined && input.assignee === undefined) return undefined;
+	const one = input.assigneeId ?? input.assignee;
+	return one ? [one] : [];
+}
+
+/**
+ * Zuständige eines Tickets ersetzen. Neu hinzukommende Personen müssen aktive Projektmitglieder sein.
+ * Mit `keepExisting` (Liste `assignees`) dürfen bereits Zuständige bleiben, auch wenn ihr Konto inzwischen
+ * deaktiviert ist – sonst ließe sich neben ihnen niemand mehr hinzufügen.
+ * Gibt die IDs der neu hinzugekommenen Personen zurück.
+ */
+function setAssignees(tx: Tx, ticketId: number, projectId: number, refs: string[], keepExisting: boolean) {
+	const current = new Set(
+		tx
+			.select({ id: ticketAssignee.userId })
+			.from(ticketAssignee)
+			.where(eq(ticketAssignee.ticketId, ticketId))
+			.all()
+			.map((r) => r.id)
+	);
+	const ids: string[] = [];
+	for (const ref of refs) {
+		const u = resolveUser(tx, ref);
+		if (ids.includes(u.id)) continue;
+		if (!keepExisting || !current.has(u.id)) {
+			const membership = tx
+				.select()
+				.from(projectMember)
+				.where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, u.id)))
+				.get();
+			if (!u.active || !membership) throw new ApiError(400, 'Zuständige müssen aktive Projektmitglieder sein.');
+		}
+		ids.push(u.id);
+	}
+	tx.delete(ticketAssignee).where(eq(ticketAssignee.ticketId, ticketId)).run();
+	ids.forEach((userId, position) => tx.insert(ticketAssignee).values({ ticketId, userId, position }).run());
+	// Für ältere Versionen und Werkzeuge, die nur eine Person kennen
+	tx.update(ticket)
+		.set({ assigneeId: ids[0] ?? null })
+		.where(eq(ticket.id, ticketId))
+		.run();
+	return ids.filter((id) => !current.has(id));
 }
 
 /** Herkunft eines Tickets aus einem Formular (nur intern, nicht über die API setzbar) */
@@ -406,7 +490,6 @@ export function createTicket(
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId: checkParent(tx, { projectId: p.id }, input.parentId ?? input.parent),
-				assigneeId: checkAssignee(tx, input.assigneeId ?? input.assignee, p.id),
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -426,28 +509,27 @@ export function createTicket(
 		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates', userId);
 
 		if (input.tags !== undefined) setTicketTags(tx, t.id, p.id, input.tags);
+		const added = setAssignees(tx, t.id, p.id, assigneeInput(input) ?? [], false);
 
-		return t;
+		return { ...t, added };
 	});
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
-	if (created.assigneeId) notifyTicket('assigned', p.id, created.id);
+	if (created.added.length) notifyTicket('assigned', p.id, created.id);
 	return result;
 }
 
 export function updateTicket(ref: string | number, rawInput: unknown) {
 	const input = parseInput(updateTicketSchema, rawInput);
 	const t = resolveTicket(ref);
-	db.transaction((tx) => {
+	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');
 		if (input.startDate !== undefined) patch.startDate = optDate(input.startDate, 'startDate');
 		if (input.dueDate !== undefined) patch.dueDate = optDate(input.dueDate, 'dueDate');
-		if (input.assigneeId !== undefined || input.assignee !== undefined)
-			patch.assigneeId = checkAssignee(tx, input.assigneeId ?? input.assignee, t.projectId);
 		if (input.parentId !== undefined || input.parent !== undefined)
 			patch.parentId = checkParent(tx, t, input.parentId ?? input.parent);
 		checkDates(
@@ -459,23 +541,27 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 			setTicketTags(tx, t.id, t.projectId, input.tags);
 			if (!Object.keys(patch).length) tx.update(ticket).set({ updatedAt: new Date() }).where(eq(ticket.id, t.id)).run();
 		}
+		const people = assigneeInput(input);
+		const added =
+			people !== undefined ? setAssignees(tx, t.id, t.projectId, people, input.assignees !== undefined) : [];
 
 		const colRef = input.column ?? input.columnId;
 		if (colRef !== undefined || input.position !== undefined) {
 			const col = colRef !== undefined ? resolveColumn(t.projectId, colRef) : resolveColumn(t.projectId, t.columnId);
 			moveTicket(tx, t, col, optInt(input.position, 'position'));
 		}
+		return added;
 	});
 	const result = getTicket(t.id);
 	publish(t.projectId, { ticket: result.key });
 	notifyChanges(t, resolveTicket(t.id));
+	if (added.length) notifyTicket('assigned', t.projectId, t.id);
 	return result;
 }
 
-/** Benachrichtigungen für Statuswechsel und neue Zuständigkeit (Vergleich vorher/nachher) */
+/** Benachrichtigung, wenn ein Ticket erledigt wurde (Vergleich vorher/nachher) */
 function notifyChanges(before: Ticket, after: Ticket) {
 	if (before.closedAt === null && after.closedAt !== null) notifyTicket('closed', after.projectId, after.id);
-	if (after.assigneeId && after.assigneeId !== before.assigneeId) notifyTicket('assigned', after.projectId, after.id);
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */

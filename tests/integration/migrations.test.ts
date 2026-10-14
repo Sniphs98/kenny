@@ -26,6 +26,14 @@ it('upgrades populated databases from every earlier migration and can restart id
 			migrate(db, { migrationsFolder: 'drizzle' });
 			migrate(db, { migrationsFolder: 'drizzle' });
 			expect(client.prepare('SELECT title FROM ticket').get()).toEqual({ title: 'Existing ticket' });
+			expect(client.prepare('SELECT bucket_id FROM ticket').get()).toEqual({ bucket_id: null });
+			client.exec("INSERT INTO bucket (project_id, name) VALUES (1, 'Existing bucket')");
+			client.exec('UPDATE ticket SET bucket_id = 1');
+			client.exec('DELETE FROM bucket');
+			expect(client.prepare('SELECT title, bucket_id FROM ticket').get()).toEqual({
+				title: 'Existing ticket',
+				bucket_id: null
+			});
 			expect(client.prepare('SELECT is_backlog FROM board_column').get()).toEqual({ is_backlog: 0 });
 			expect(client.prepare('SELECT * FROM attachment').all()).toEqual([]);
 			// Formular löschen lässt eingereichte Tickets bestehen und leert nur die Herkunft
@@ -67,11 +75,19 @@ it('preserves shared project access and chooses the oldest existing account duri
 			"INSERT INTO user (id, name, email, created_at) VALUES ('first', 'First', 'first@example.com', 1), ('owner', 'Owner', 'owner@example.com', 2)"
 		);
 		client.exec(
+			"INSERT INTO api_token (user_id, name, token_hash, prefix) VALUES ('first', 'Existing token', 'fixture-token-hash', 'kny_fixture')"
+		);
+		client.exec(
 			"INSERT INTO project (key, name, owner_id) VALUES ('OWNED', 'Owned', 'owner'), ('SHARED', 'Shared', NULL)"
 		);
 		const db = drizzle(client);
 		migrate(db, { migrationsFolder: 'drizzle' });
 		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT token_hash, read_only, expires_at FROM api_token').get()).toEqual({
+			token_hash: 'fixture-token-hash',
+			read_only: 0,
+			expires_at: null
+		});
 		expect(client.prepare('SELECT id, role, active FROM user ORDER BY id').all()).toEqual([
 			{ id: 'first', role: 'admin', active: 1 },
 			{ id: 'owner', role: 'user', active: 1 }

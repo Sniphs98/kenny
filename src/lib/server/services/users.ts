@@ -1,10 +1,75 @@
 import { and, asc, eq, ne, or } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { hashPassword } from 'better-auth/crypto';
 import { db } from '../db';
-import { account, apiToken, projectMember, session, user } from '../db/schema';
+import { account, apiToken, project, projectMember, session, user } from '../db/schema';
 import { ApiError } from '../errors';
 import { parseInput } from '../validation';
-import { addMemberSchema, managedUserSchema, updateMemberSchema, updateUserSchema } from '#lib/contracts/index.js';
-import { requireActiveUser, requireAdmin, requireProjectAccess } from './access';
+import {
+	addMemberSchema,
+	createUserSchema,
+	managedUserSchema,
+	updateMemberSchema,
+	updateUserSchema,
+	assignUserProjectSchema,
+	userProjectSchema
+} from '#lib/contracts/index.js';
+import { requireActiveUser, requireAdmin, requireProjectAccess, visibleUsers } from './access';
+import { getProject } from './projects';
+
+export function getManagedUser(actorId: string, userId: string) {
+	requireAdmin(actorId);
+	return presentUser(userId);
+}
+
+export function listUserProjects(actorId: string, userId: string) {
+	requireAdmin(actorId);
+	requireActiveOrExistingUser(userId);
+	return db
+		.select({ projectId: project.id, key: project.key, name: project.name, role: projectMember.role })
+		.from(projectMember)
+		.innerJoin(project, eq(project.id, projectMember.projectId))
+		.where(eq(projectMember.userId, userId))
+		.orderBy(asc(project.name), asc(project.id))
+		.all()
+		.map((row) => userProjectSchema.parse(row));
+}
+
+export function assignUserProject(actorId: string, userId: string, raw: unknown) {
+	requireAdmin(actorId);
+	const input = parseInput(assignUserProjectSchema, raw);
+	const p = getProject(input.projectId);
+	const member = addMember(actorId, p.id, { user: userId, role: input.role });
+	return userProjectSchema.parse({ projectId: p.id, key: p.key, name: p.name, role: member.role });
+}
+
+export function changeUserProject(actorId: string, userId: string, projectRef: string | number, raw: unknown | null) {
+	requireAdmin(actorId);
+	requireActiveOrExistingUser(userId);
+	return changeMember(actorId, getProject(projectRef).id, userId, raw);
+}
+
+export function registrationAllowed() {
+	return !db.select({ id: user.id }).from(user).limit(1).get();
+}
+
+/** Create credentials without signing out or replacing the administrator's session. */
+export async function createManagedUser(actorId: string, raw: unknown) {
+	requireAdmin(actorId);
+	const input = parseInput(createUserSchema, raw);
+	const password = await hashPassword(input.password);
+	const id = randomUUID();
+	db.transaction((tx) => {
+		requireAdmin(actorId);
+		if (tx.select({ id: user.id }).from(user).where(eq(user.email, input.email)).get())
+			throw new ApiError(409, 'Benutzer existiert bereits.');
+		tx.insert(user).values({ id, name: input.name, email: input.email }).run();
+		tx.insert(account)
+			.values({ id: randomUUID(), accountId: id, providerId: 'credential', userId: id, password })
+			.run();
+	});
+	return presentUser(id);
+}
 
 export function bootstrapAdministrator() {
 	db.transaction((tx) => {
@@ -71,6 +136,15 @@ export function listMembers(actorId: string, projectId: number) {
 		.all();
 }
 
+/** Only project managers can load candidates; the directory keeps its existing visibility rules. */
+export function listMemberCandidates(actorId: string, projectId: number) {
+	requireProjectAccess(actorId, projectId, 'admin');
+	const existing = new Set(listMembers(actorId, projectId).map((member) => member.id));
+	return visibleUsers(actorId)
+		.filter((candidate) => !existing.has(candidate.id))
+		.sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email));
+}
+
 export function addMember(actorId: string, projectId: number, raw: unknown) {
 	const input = parseInput(addMemberSchema, raw);
 	return db.transaction((tx) => {
@@ -104,8 +178,14 @@ export function changeMember(actorId: string, projectId: number, userId: string,
 			const other = tx
 				.select()
 				.from(projectMember)
+				.innerJoin(user, eq(user.id, projectMember.userId))
 				.where(
-					and(eq(projectMember.projectId, projectId), eq(projectMember.role, 'admin'), ne(projectMember.userId, userId))
+					and(
+						eq(projectMember.projectId, projectId),
+						eq(projectMember.role, 'admin'),
+						ne(projectMember.userId, userId),
+						eq(user.active, true)
+					)
 				)
 				.get();
 			if (!other) throw new ApiError(409, 'Der letzte Projektadministrator kann nicht entfernt werden.');

@@ -15,7 +15,7 @@ test('Ticket über die Auswahl verknüpfen', async ({ page, request }) => {
 	await page.getByRole('button', { name: 'Ticket wählen' }).click();
 	await expect(page.getByRole('option', { name: new RegExp(b.key) })).toHaveCount(0);
 	await page.getByPlaceholder('Nummer oder Titel suchen…').fill('entwerfen');
-	await expect(page.getByRole('option')).toHaveCount(1);
+	await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);
 	await page.getByRole('option', { name: /API entwerfen/ }).click();
 
 	await expect(link).toBeEnabled();

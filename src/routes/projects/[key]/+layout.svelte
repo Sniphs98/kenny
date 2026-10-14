@@ -43,13 +43,16 @@
 			</div>
 		</div>
 	</div>
-	<nav aria-label={m.mobile_project_navigation()} class="mt-4 flex gap-1 overflow-x-auto">
+	<nav
+		aria-label={m.mobile_project_navigation()}
+		class="project-tabs mt-4 flex gap-1 overflow-x-auto overflow-y-hidden"
+	>
 		{#each tabs as t (t.href)}
 			{@const active = page.route.id?.endsWith('/' + t.href)}
 			<a
 				href="/projects/{data.project.key}/{t.href}"
 				class={cn(
-					'text-muted-foreground hover:text-foreground -mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+					'text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
 					active && 'border-primary text-foreground'
 				)}
 			>
@@ -70,3 +73,12 @@
 		goto('/', { refreshAll: true });
 	}}
 />
+
+<style>
+	.project-tabs {
+		scrollbar-width: none;
+	}
+	.project-tabs::-webkit-scrollbar {
+		display: none;
+	}
+</style>

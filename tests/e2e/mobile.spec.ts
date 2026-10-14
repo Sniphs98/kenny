@@ -133,7 +133,7 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 		storageState: { cookies: [], origins: [] }
 	});
 	try {
-		const signup = await context.request.post('/api/auth/sign-up/email', {
+		const signup = await request.post('/api/v1/admin/users', {
 			headers: { origin: baseURL! },
 			data: {
 				name: 'Mobile reader',
@@ -142,7 +142,15 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 			}
 		});
 		expect(signup.ok()).toBeTruthy();
-		const { user } = await signup.json();
+		const user = await signup.json();
+		expect(
+			(
+				await context.request.post('/api/auth/sign-in/email', {
+					headers: { origin: baseURL! },
+					data: { email: user.email, password: 'mobile-reader-password' }
+				})
+			).ok()
+		).toBeTruthy();
 		const p = await createProject(request, 'Mobile read-only');
 		const t = await createTicket(request, p.key, { title: 'Read-only touch ticket', dueDate: day(3) });
 		await api(request, 'POST', `/projects/${p.key}/members`, { user: user.id, role: 'reader' });

@@ -6,6 +6,13 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
+	{ pattern: /^Bucket existiert bereits\.$/, translate: () => m.bucket_error_duplicate() },
+	{ pattern: /^Bucket gehört nicht zu diesem Projekt\.$/, translate: () => m.bucket_error_project() },
+	{ pattern: /^API-Token abgelaufen\.$/, translate: () => m.token_error_expired() },
+	{ pattern: /^Dieses API-Token erlaubt nur Lesezugriff\.$/, translate: () => m.token_error_read_only() },
+	{ pattern: /^Neue Konten werden durch Administratoren angelegt\.$/, translate: () => m.um_error_registration() },
+	{ pattern: /^Benutzer existiert bereits\.$/, translate: () => m.um_error_duplicate() },
+	{ pattern: /^Ungültige Token-Einstellungen\.$/, translate: () => m.token_error_settings() },
 	{ pattern: /^Konto gesperrt oder nicht verfügbar\.$/, translate: () => m.um_error_account() },
 	{ pattern: /^Administratorrechte erforderlich\.$/, translate: () => m.um_error_admin() },
 	{ pattern: /^Projekt nicht gefunden oder kein Zugriff\.$/, translate: () => m.um_error_project() },

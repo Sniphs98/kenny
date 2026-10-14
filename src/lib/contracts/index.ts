@@ -33,6 +33,7 @@ const ticketFields = {
 	priority: z.enum(PRIORITIES).optional(),
 	column: reference.nullable().optional(),
 	columnId: id.optional(),
+	bucketId: id.nullable().optional(),
 	position: z.number().int().nonnegative().nullable().optional(),
 	/** Eine zuständige Person (ersetzt alle bisherigen); null entfernt alle */
 	assignee: z.string().max(320).nullable().optional(),
@@ -94,6 +95,12 @@ export const createLinkSchema = z
 	});
 
 export const tagSchema = z.object({ id, name: z.string(), color: colorSchema });
+export const bucketSchema = z.object({ id, name: z.string() });
+export const createBucketSchema = z.strictObject({
+	name: z.string().trim().min(1, 'Bitte einen Namen angeben.').max(80)
+});
+export const updateBucketSchema = createBucketSchema.partial();
+export type BucketDto = z.output<typeof bucketSchema>;
 export const columnSchema = z.object({
 	id,
 	projectId: id,
@@ -126,6 +133,7 @@ export const ticketSchema = z.object({
 	closedAt: timestamp.nullable(),
 	position: z.number().int(),
 	parentId: id.nullable(),
+	bucketId: id.nullable(),
 	/** Erste zuständige Person (kompatibel zu älteren Clients); alle stehen in assigneeIds */
 	assigneeId: z.string().nullable(),
 	assigneeIds: z.array(z.string()),
@@ -212,6 +220,7 @@ export const ticketFormSchema = z
 		description: z.string().max(100_000).default(''),
 		priority: z.enum(PRIORITIES).default('medium'),
 		assignees: z.array(z.string().max(320)).max(50).default([]),
+		bucketId: id.nullable().default(null),
 		tags: z.array(reference).max(100).default([]),
 		startDate: z.union([dateSchema, z.literal('')]).default(''),
 		dueDate: z.union([dateSchema, z.literal('')]).default(''),
@@ -311,6 +320,16 @@ export type IntakeSubmissionInput = z.input<typeof intakeSubmissionSchema>;
 export type IntakeFormDto = z.output<typeof intakeFormDtoSchema>;
 export type PublicIntakeForm = z.output<typeof publicIntakeFormSchema>;
 export const GLOBAL_ROLES = ['admin', 'user'] as const;
+export const createUserSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120),
+	email: z.email().trim().toLowerCase().max(254),
+	password: z.string().min(8).max(128)
+});
+export const createApiTokenSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120),
+	readOnly: z.boolean().default(false),
+	lifetimeDays: z.number().int().min(1).max(365).default(90)
+});
 export const PROJECT_ROLES = ['admin', 'member', 'reader'] as const;
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 export const updateUserSchema = z.strictObject({
@@ -329,6 +348,15 @@ export const managedUserSchema = userSchema.extend({
 	providers: z.array(z.string())
 });
 export const memberSchema = userSchema.extend({ role: z.enum(PROJECT_ROLES), active: z.boolean() });
+export const userProjectSchema = z.object({
+	projectId: id,
+	key: z.string(),
+	name: z.string(),
+	role: z.enum(PROJECT_ROLES)
+});
+export const assignUserProjectSchema = z.strictObject({ projectId: id, role: z.enum(PROJECT_ROLES) });
+export type UserProject = z.output<typeof userProjectSchema>;
+export type AssignUserProjectInput = z.input<typeof assignUserProjectSchema>;
 export type ManagedUser = z.output<typeof managedUserSchema>;
 export type ProjectMember = z.output<typeof memberSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;

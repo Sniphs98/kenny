@@ -94,12 +94,20 @@ test('live streams enforce project access when connecting and after membership r
 }) => {
 	const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
 	try {
-		const signup = await context.request.post('/api/auth/sign-up/email', {
+		const signup = await request.post('/api/v1/admin/users', {
 			headers: { origin: baseURL! },
 			data: { name: 'Live reader', email: `live-${Date.now()}@example.com`, password: 'live-permissions-password' }
 		});
 		expect(signup.ok()).toBeTruthy();
-		const { user } = await signup.json();
+		const user = await signup.json();
+		expect(
+			(
+				await context.request.post('/api/auth/sign-in/email', {
+					headers: { origin: baseURL! },
+					data: { email: user.email, password: 'live-permissions-password' }
+				})
+			).ok()
+		).toBeTruthy();
 		const allowed = await createProject(request, 'Live accessible');
 		const revoked = await createProject(request, 'Live revoked');
 		const hidden = await createProject(request, 'Live hidden');

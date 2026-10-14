@@ -16,7 +16,7 @@ import {
 import { db, schema } from './db';
 import { APIError } from 'better-auth/api';
 import { requireActiveUser } from './services/access';
-import { bootstrapAdministrator } from './services/users';
+import { bootstrapAdministrator, registrationAllowed } from './services/users';
 import { teamsEnabled } from './teams';
 
 // Microsoft-Login wird nur aktiviert, wenn die Zugangsdaten gesetzt sind (siehe README)
@@ -51,6 +51,10 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
+				before: async () => {
+					if (!registrationAllowed())
+						throw new APIError('FORBIDDEN', { message: 'Neue Konten werden durch Administratoren angelegt.' });
+				},
 				after: async () => {
 					bootstrapAdministrator();
 				}

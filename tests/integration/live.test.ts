@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '#lib/server/db/index.js';
-import { project } from '#lib/server/db/schema.js';
+import { project, user } from '#lib/server/db/schema.js';
 import { listenerCount, liveOrigin, subscribe, type LiveEvent } from '#lib/server/live.js';
 import { addAttachments, deleteAttachment } from '#lib/server/services/attachments.js';
 import { addColumn, createProject, deleteProject, updateProject } from '#lib/server/services/projects.js';
@@ -27,14 +27,18 @@ afterEach(() => unsubscribe());
 
 describe('live updates from services', () => {
 	it('publishes every successful change with project and ticket', async () => {
-		const p = createProject({ name: 'Web', key: 'WEB' }, null);
+		db.insert(user)
+			.values({ id: 'live-admin', name: 'Live admin', email: 'live-admin@example.com', role: 'admin' })
+			.onConflictDoNothing()
+			.run();
+		const p = createProject({ name: 'Web', key: 'WEB' }, 'live-admin');
 		const a = createTicket(p.key, { title: 'A' }, null);
 		const b = createTicket(p.key, { title: 'B' }, null);
 		updateTicket(a.key, { title: 'A2' });
 		closeTicket(a.key);
 		reopenTicket(a.key);
 		const link = addLink(b.key, { target: a.key, type: 'depends_on' });
-		removeLink(b.key, link.id);
+		removeLink(b.key, link.id, 'live-admin');
 		createTag(p.key, { name: 'Neu' });
 		addColumn(p.id, { name: 'QA' });
 		updateProject(p.id, { name: 'Web 2' });

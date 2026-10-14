@@ -3,22 +3,215 @@ import { userSchema } from '../../src/lib/contracts';
 import { api, createProject, createTicket, open } from './helpers';
 
 let counter = 0;
+test('global user management assigns projects, changes roles and removes memberships per user', async ({
+	page,
+	request,
+	browser,
+	baseURL
+}) => {
+	const target = await register(browser, baseURL!, 'Central member');
+	try {
+		const p = await createProject(request, `Central access ${Date.now()}`);
+		await page.context().addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL! }]);
+		await open(page, '/admin/users');
+		await page.getByRole('textbox', { name: 'Search by name or email' }).fill(target.user.email);
+		await page
+			.getByRole('row')
+			.filter({ hasText: target.user.email })
+			.getByRole('link', { name: 'Projects', exact: true })
+			.click();
+		await expect(page.getByRole('heading', { name: 'Projects for Central member', exact: true })).toBeVisible();
+		await page.getByLabel('Search projects', { exact: true }).fill(p.key);
+		await page.getByLabel('Select project', { exact: true }).selectOption(String(p.id));
+		await page.getByLabel('Role', { exact: true }).selectOption('reader');
+		await page.getByRole('button', { name: 'Assign project', exact: true }).click();
+		const row = page.getByRole('row').filter({ hasText: p.key });
+		await expect(row).toBeVisible();
+		expect((await target.context.request.get(`/api/v1/projects/${p.key}`)).status()).toBe(200);
+		expect(
+			(
+				await target.context.request.post(`/api/v1/projects/${p.key}/tickets`, { data: { title: 'Forbidden' } })
+			).status()
+		).toBe(403);
+		await row.getByRole('combobox').selectOption('member');
+		await expect
+			.poll(
+				async () => (await api<{ role: string }[]>(request, 'GET', `/admin/users/${target.user.id}/projects`))[0]?.role
+			)
+			.toBe('member');
+		expect(
+			(await target.context.request.post(`/api/v1/projects/${p.key}/tickets`, { data: { title: 'Allowed' } })).status()
+		).toBe(201);
+		expect((await target.context.request.get(`/admin/users/${target.user.id}/projects`)).status()).toBe(403);
+		expect((await target.context.request.get(`/api/v1/admin/users/${target.user.id}/projects`)).status()).toBe(403);
+		expect(
+			(
+				await target.context.request.post(`/api/v1/admin/users/${target.user.id}/projects`, {
+					data: { projectId: p.id, role: 'admin' }
+				})
+			).status()
+		).toBe(403);
+		expect(
+			(
+				await target.context.request.patch(`/api/v1/admin/users/${target.user.id}/projects/${p.id}`, {
+					data: { role: 'admin' }
+				})
+			).status()
+		).toBe(403);
+		expect(
+			(
+				await target.context.request.delete(`/api/v1/admin/users/${target.user.id}/projects/${p.id}`, {
+					headers: { 'content-type': 'application/json' }
+				})
+			).status()
+		).toBe(403);
+		await row.getByRole('button', { name: 'Remove', exact: true }).click();
+		await page.getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true }).click();
+		await expect(row).toHaveCount(0);
+		expect((await target.context.request.get(`/api/v1/projects/${p.key}`)).status()).toBe(404);
+		expect(
+			(
+				await request.delete(
+					`/api/v1/admin/users/${(await api<{ id: string }>(request, 'GET', '/me')).id}/projects/${p.id}`,
+					{ headers: { 'content-type': 'application/json' } }
+				)
+			).status()
+		).toBe(409);
+		await api(request, 'PATCH', `/admin/users/${target.user.id}`, { active: false });
+		await page.reload();
+		await expect(page.getByRole('button', { name: 'Assign project', exact: true })).toBeDisabled();
+	} finally {
+		await target.context.close();
+	}
+});
+test('only administrators can create accounts after bootstrap and keep their own session', async ({
+	page,
+	request,
+	browser,
+	baseURL
+}) => {
+	const anonymous = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+	try {
+		const data = {
+			name: 'Blocked signup',
+			email: `blocked-${Date.now()}@example.com`,
+			password: 'blocked-password',
+			role: 'admin',
+			active: false
+		};
+		expect(
+			(await anonymous.request.post('/api/auth/sign-up/email', { headers: { origin: baseURL! }, data })).ok()
+		).toBe(false);
+		expect((await anonymous.request.post('/api/v1/admin/users', { data })).status()).toBe(401);
+		const before = await api<{ id: string }>(request, 'GET', '/me');
+		await page.context().addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL! }]);
+		await open(page, '/admin/users');
+		const form = page.locator('form');
+		const email = `admin-created-${Date.now()}@example.com`;
+		await form.getByLabel('Name', { exact: true }).fill('Created in UI');
+		await form.getByLabel('Email', { exact: true }).fill(email);
+		await form.getByLabel('Password', { exact: true }).fill('admin-created-password');
+		await form.getByRole('button', { name: 'Create user', exact: true }).click();
+		await expect(page.getByRole('status')).toContainText('User created.');
+		expect((await api<{ id: string }>(request, 'GET', '/me')).id).toBe(before.id);
+		expect(
+			(
+				await anonymous.request.post('/api/auth/sign-in/email', {
+					headers: { origin: baseURL! },
+					data: { email, password: 'admin-created-password' }
+				})
+			).ok()
+		).toBe(true);
+		expect(
+			(
+				await anonymous.request.post('/api/v1/admin/users', {
+					data: { name: 'Forbidden', email: data.email, password: data.password }
+				})
+			).status()
+		).toBe(403);
+		await anonymous.clearCookies();
+		const login = await anonymous.newPage();
+		await open(login, '/login');
+		await expect(login.locator('a[href="#register"]')).toHaveCount(0);
+	} finally {
+		await anonymous.close();
+	}
+});
 async function register(browser: Browser, baseURL: string, name: string) {
 	const context = await browser.newContext({ baseURL, locale: 'en-GB', storageState: { cookies: [], origins: [] } });
 	const email = `access-${Date.now()}-${counter++}@example.com`;
-	const response = await context.request.post('/api/auth/sign-up/email', {
+	const admin = await browser.newContext({ baseURL, storageState: 'playwright/.auth/user.json' });
+	const response = await admin.request.post('/api/v1/admin/users', {
 		headers: { origin: baseURL },
-		data: { name, email, password: 'permission-test-password', role: 'admin', active: false }
+		data: { name, email, password: 'permission-test-password' }
 	});
 	expect(response.ok(), await response.text()).toBeTruthy();
-	const { user } = await response.json();
-	const identity = userSchema.parse(user);
+	const identity = userSchema.parse(await response.json());
+	await admin.close();
+	const signin = await context.request.post('/api/auth/sign-in/email', {
+		headers: { origin: baseURL },
+		data: { email, password: 'permission-test-password' }
+	});
+	expect(signin.ok()).toBeTruthy();
 	await context.addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL }]);
 	return { context, user: identity };
 }
 async function dispose(contexts: BrowserContext[]) {
 	await Promise.all(contexts.map((c) => c.close()));
 }
+
+test('administrators can search and select active users from the membership list', async ({
+	page,
+	request,
+	browser,
+	baseURL
+}) => {
+	const target = await register(browser, baseURL!, 'Selectable colleague');
+	const disabled = await register(browser, baseURL!, 'Disabled colleague');
+	try {
+		await api(request, 'PATCH', `/admin/users/${disabled.user.id}`, { active: false });
+		const p = await createProject(request, 'User selection');
+		await page.context().addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL! }]);
+		await open(page, `/projects/${p.key}/members`);
+		const select = page.getByLabel('Select user', { exact: true });
+		await expect(select.getByRole('option', { name: new RegExp(disabled.user.email) })).toHaveCount(0);
+		await page.getByLabel('Search by name or email', { exact: true }).fill('Selectable colleague');
+		await expect(select.getByRole('option')).toHaveCount(2);
+		await select.selectOption(target.user.email);
+		await expect(page.getByLabel('Email', { exact: true })).toHaveValue(target.user.email);
+		await page.getByLabel('Role', { exact: true }).selectOption('reader');
+		await page.getByRole('button', { name: 'Add member', exact: true }).click();
+		await expect(page.getByRole('row').filter({ hasText: target.user.email })).toBeVisible();
+		await expect(select.getByRole('option', { name: new RegExp(target.user.email) })).toHaveCount(0);
+		await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
+	} finally {
+		await dispose([target.context, disabled.context]);
+	}
+});
+
+test('cross-project links require edit access to both projects when deleted', async ({ request, browser, baseURL }) => {
+	const actor = await register(browser, baseURL!, 'Cross-project member');
+	try {
+		const first = await createProject(request, 'First link project');
+		const second = await createProject(request, 'Second link project');
+		const source = await createTicket(request, first.key, { title: 'Source' });
+		const target = await createTicket(request, second.key, { title: 'Target' });
+		await api(request, 'POST', `/projects/${first.key}/members`, { user: actor.user.id, role: 'member' });
+		const link = await api<{ id: number }>(request, 'POST', `/tickets/${source.key}/links`, {
+			target: target.key,
+			type: 'depends_on'
+		});
+		const path = `/api/v1/tickets/${source.key}/links/${link.id}`;
+		const options = { headers: { 'content-type': 'application/json' } };
+		expect((await actor.context.request.delete(path, options)).status()).toBe(404);
+		await api(request, 'POST', `/projects/${second.key}/members`, { user: actor.user.id, role: 'reader' });
+		expect((await actor.context.request.delete(path, options)).status()).toBe(403);
+		await api(request, 'PATCH', `/projects/${second.key}/members/${actor.user.id}`, { role: 'member' });
+		expect((await actor.context.request.delete(path, options)).status()).toBe(200);
+	} finally {
+		await actor.context.close();
+	}
+});
 
 test('project roles protect every resource and do not allow signup to elevate privileges', async ({
 	request,

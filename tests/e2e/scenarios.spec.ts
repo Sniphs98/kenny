@@ -29,7 +29,8 @@ test('Szenario über die API befüllen', async ({ request, baseURL }) => {
 	const scenario = unique(gantt);
 	const key = scenario.projects![0].key;
 
-	const result = await seedScenario(baseURL!, scenario);
+	const adminCookie = (await request.storageState()).cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+	const result = await seedScenario(baseURL!, scenario, { adminCookie });
 	expect(result).toEqual({ users: 2, projects: 1, tickets: 12 });
 
 	const tickets = await api<{ key: string; title: string; closed: boolean; startDate: string | null }[]>(
@@ -63,7 +64,8 @@ test('Szenario über die API befüllen', async ({ request, baseURL }) => {
 
 test('demo seeding preserves closed tickets and multipart attachments', async ({ request, baseURL }) => {
 	const scenario = unique(demo);
-	const result = await seedScenario(baseURL!, scenario);
+	const adminCookie = (await request.storageState()).cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+	const result = await seedScenario(baseURL!, scenario, { adminCookie });
 	expect(result.users).toBe(3);
 	expect(result.projects).toBe(2);
 	const tickets = await api<{ key: string; title: string; closed: boolean }[]>(

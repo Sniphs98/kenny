@@ -120,12 +120,12 @@
 		</Card.Root>
 
 		<p class="text-muted-foreground mt-5 text-center text-sm">
-			{#if mode === 'login'}
+			{#if mode === 'login' && data.registrationAllowed}
 				{m.don_t_have_an_account()}
 				<a class="text-primary font-medium hover:underline" href="#register" onclick={() => (mode = 'register')}
 					>{m.sign_up()}</a
 				>
-			{:else}
+			{:else if mode === 'register'}
 				{m.already_registered()}
 				<a class="text-primary font-medium hover:underline" href="#login" onclick={() => (mode = 'login')}
 					>{m.sign_in()}</a

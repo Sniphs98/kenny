@@ -11,6 +11,7 @@
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import TicketPicker from '#lib/components/TicketPicker.svelte';
 	import TagPicker from '#lib/components/TagPicker.svelte';
+	import BucketPicker from '#lib/components/BucketPicker.svelte';
 	import * as Alert from '#lib/components/ui/alert/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -342,6 +343,16 @@
 						</Select.Root>
 					</div>
 					<div class="grid gap-2">
+						<Label>{m.bucket()}</Label>
+						<BucketPicker
+							project={data.project.key}
+							buckets={data.buckets}
+							value={t.bucketId}
+							canManage={data.canManage}
+							disabled={!data.canEdit}
+							{refresh}
+							onchange={(id) => patch({ bucketId: id })}
+						/>
 						<Label>{m.tags()}</Label>
 						<TagPicker
 							disabled={!data.canEdit}

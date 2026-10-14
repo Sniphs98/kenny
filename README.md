@@ -7,9 +7,10 @@ Self-hosted project and ticket management with Kanban boards, Gantt timelines an
 **Plan and track**
 
 - **Projects** with their own key and color; tickets get identifiers such as `WEB-1`, `WEB-2`, …
-- **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by tag, assignee or priority, and sorting per board or per column
+- **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by bucket, tag, assignee or priority, and sorting per board or per column
 - **Gantt timeline** for tickets with a start date (a due date alone remains a deadline), draggable and resizable bars, a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
 - **Tickets** with priority, one or more assignees, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
+- **Buckets:** project administrators manage buckets in project settings or create one directly through **+ New bucket** in the searchable ticket picker. Each ticket can belong to one bucket; group the board by bucket to get a separate Kanban area for each bucket and a “No bucket” area. Empty bucket areas remain available for drag and drop and quick creation. Deleting a bucket preserves its tickets and clears their assignment.
 - **Create more:** keep the new-ticket dialog open to enter many tickets in a row
 
 **Find and navigate**
@@ -293,6 +294,8 @@ Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
 | GET              | `/attachments/:id`                            | Download an attachment (`?download` forces download)                              |
 | DELETE           | `/attachments/:id`                            | Delete an attachment                                                              |
 
+`GET/POST /api/v1/projects/:project/buckets` lists or creates buckets (`{ "name": "Frontend" }`); `PATCH/DELETE /api/v1/projects/:project/buckets/:id` renames or deletes one. Reads require project access and mutations require project administrator access. Tickets accept `bucketId` from the same project. Omit it on PATCH to preserve the assignment; send `null` to clear it.
+
 Fields for creating or updating a ticket (all optional except `title` when creating):
 
 ```json
@@ -369,7 +372,7 @@ src/routes/tickets/[key]/   Ticket details
 
 ## User management and project access
 
-Instance administrators can manage accounts through **Users** in the user menu. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
+Instance administrators can create and manage accounts through **Users** in the user menu. After the initial administrator registration, self-registration is disabled. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
 
 See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.
 

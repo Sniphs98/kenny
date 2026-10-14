@@ -14,12 +14,12 @@ async function addPerson(
 ) {
 	const anonymous = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
 	try {
-		const response = await anonymous.post('/api/auth/sign-up/email', {
+		const response = await request.post('/api/v1/admin/users', {
 			headers: { origin: baseURL },
 			data: { name, email: `assignee-${Date.now()}-${counter++}@example.com`, password: 'assignee-test-password' }
 		});
 		expect(response.ok(), await response.text()).toBeTruthy();
-		const user = userSchema.parse((await response.json()).user);
+		const user = userSchema.parse(await response.json());
 		await api(request, 'POST', `/projects/${projectKey}/members`, { user: user.id, role: 'member' });
 		return user;
 	} finally {

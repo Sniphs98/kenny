@@ -103,15 +103,15 @@ export function validateScenario(scenario) {
  * Befüllt eine laufende Instanz mit einem Szenario.
  * @param {string} baseUrl z.B. http://localhost:5173
  * @param {Scenario} scenario
- * @param {{ log?: (message: string) => void }} [options]
+ * @param {{ log?: (message: string) => void; adminCookie?: string }} [options]
  * @returns {Promise<{ users: number; projects: number; tickets: number }>}
  */
-export async function seedScenario(baseUrl, scenario, { log = () => {} } = {}) {
+export async function seedScenario(baseUrl, scenario, { log = () => {}, adminCookie = '' } = {}) {
 	const errors = validateScenario(scenario);
 	if (errors.length) throw new Error(`Szenario ist ungültig:\n- ${errors.join('\n- ')}`);
 
 	const origin = new URL(baseUrl).origin;
-	let cookie = '';
+	let cookie = adminCookie;
 
 	/**
 	 * @param {string} method
@@ -138,12 +138,12 @@ export async function seedScenario(baseUrl, scenario, { log = () => {} } = {}) {
 	for (const [index, user] of scenario.users.entries()) {
 		const { res } = await call(
 			'POST',
-			'/api/auth/sign-up/email',
+			index === 0 && !adminCookie ? '/api/auth/sign-up/email' : '/api/v1/admin/users',
 			{ name: user.name, email: user.email, password: SCENARIO_PASSWORD },
-			{ anonymous: true }
+			{ anonymous: index === 0 && !adminCookie }
 		);
 		// Mit der Sitzung des ersten Benutzers wird alles Weitere angelegt
-		if (index === 0)
+		if (index === 0 && !adminCookie)
 			cookie = res.headers
 				.getSetCookie()
 				.map((c) => c.split(';')[0])
@@ -155,7 +155,7 @@ export async function seedScenario(baseUrl, scenario, { log = () => {} } = {}) {
 	let tickets = 0;
 	for (const p of scenario.projects ?? []) {
 		await call('POST', '/api/v1/projects', { name: p.name, key: p.key, color: p.color, description: p.description });
-		for (const user of scenario.users.slice(1))
+		for (const user of adminCookie ? scenario.users : scenario.users.slice(1))
 			await call('POST', `/api/v1/projects/${p.key}/members`, { user: user.email, role: 'member' });
 		for (const tag of p.tags ?? []) await call('POST', `/api/v1/projects/${p.key}/tags`, tag);
 

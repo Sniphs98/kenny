@@ -4,6 +4,7 @@ import { error } from '@sveltejs/kit';
 import { ApiError } from '#lib/server/errors.js';
 import { getColumns, getProject } from '#lib/server/services/projects.js';
 import { listTags } from '#lib/server/services/tags.js';
+import { listBuckets } from '#lib/server/services/buckets.js';
 import { listDependencies, listTickets } from '#lib/server/services/tickets.js';
 
 export const load = ({ params, locals }) => {
@@ -18,7 +19,8 @@ export const load = ({ params, locals }) => {
 			columns: getColumns(project.id),
 			tickets: listTickets(project.id),
 			tags: listTags(project.id),
-			dependencies: listDependencies(project.id),
+			buckets: listBuckets(project.id),
+			dependencies: listDependencies(project.id, locals.user!.id),
 			users: projectUsers(project.id)
 		};
 	} catch (e) {

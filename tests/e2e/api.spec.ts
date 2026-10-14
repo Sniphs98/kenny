@@ -1,6 +1,43 @@
 import { expect, test } from '@playwright/test';
 import { createProject, createTicket, getTicket, open } from './helpers';
 
+test('read-only personal tokens work for reads and MCP but cannot write even with a browser session', async ({
+	page,
+	request,
+	playwright,
+	baseURL
+}) => {
+	const project = await createProject(request);
+	await open(page, '/settings/api');
+	await page.getByPlaceholder('Name, z.B. CI-Pipeline').fill(`Read only ${Date.now()}`);
+	await page.getByLabel('Nur lesen', { exact: true }).check();
+	await page.getByLabel('Gültigkeit', { exact: true }).selectOption('30');
+	await page.getByRole('button', { name: 'Token erstellen' }).click();
+	const code = page.locator('code').filter({ hasText: /^kny_[A-Za-z0-9_-]+$/ });
+	await expect(code).toBeVisible();
+	const token = await code.innerText();
+	const client = await playwright.request.newContext({
+		baseURL,
+		storageState: 'playwright/.auth/user.json',
+		extraHTTPHeaders: { authorization: `Bearer ${token}` }
+	});
+	try {
+		expect((await client.get('/api/v1/projects')).status()).toBe(200);
+		expect(
+			(
+				await client.post(`/api/v1/projects/${project.key}/tickets`, { data: { title: 'Forbidden token write' } })
+			).status()
+		).toBe(403);
+		const mcp = await client.post('/api/v1/mcp', {
+			headers: { accept: 'application/json, text/event-stream' },
+			data: { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }
+		});
+		expect(mcp.status()).toBe(200);
+	} finally {
+		await client.dispose();
+	}
+});
+
 test('API rejects missing or invalid authentication', async ({ playwright, baseURL }) => {
 	const anonymous = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
 	try {

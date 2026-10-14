@@ -1,12 +1,15 @@
 import { localizeError } from '#lib/i18n.js';
 import { error } from '@sveltejs/kit';
 import { ApiError } from '#lib/server/errors.js';
-import { listMembers } from '#lib/server/services/users.js';
+import { listMembers, listMemberCandidates } from '#lib/server/services/users.js';
 export const load = async ({ parent, locals }) => {
 	const data = await parent();
 	if (!data.canManage) error(403, localizeError('Unzureichende Projektberechtigungen.'));
 	try {
-		return { members: listMembers(locals.user!.id, data.project.id) };
+		return {
+			members: listMembers(locals.user!.id, data.project.id),
+			candidates: listMemberCandidates(locals.user!.id, data.project.id)
+		};
 	} catch (e) {
 		if (e instanceof ApiError) error(e.status, localizeError(e.message));
 		throw e;

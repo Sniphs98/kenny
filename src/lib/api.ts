@@ -3,6 +3,12 @@ import { clientId, LIVE_ORIGIN_HEADER } from '#lib/live-client.js';
 import { m } from '#lib/paraglide/messages.js';
 import { z } from 'zod';
 import {
+	userProjectSchema,
+	assignUserProjectSchema,
+	type AssignUserProjectInput,
+	bucketSchema,
+	createBucketSchema,
+	updateBucketSchema,
 	managedUserSchema,
 	updateUserSchema,
 	memberSchema,
@@ -53,6 +59,37 @@ export async function api(method: string, path: string, body?: unknown): Promise
 }
 
 const ref = (value: string | number) => encodeURIComponent(String(value));
+export async function assignUserProject(user: string, input: AssignUserProjectInput) {
+	return userProjectSchema.parse(
+		await api('POST', `/admin/users/${ref(user)}/projects`, assignUserProjectSchema.parse(input))
+	);
+}
+export async function changeUserProject(user: string, project: number, role: ProjectRole | null) {
+	return z
+		.object({ ok: z.literal(true) })
+		.parse(
+			await api(
+				role === null ? 'DELETE' : 'PATCH',
+				`/admin/users/${ref(user)}/projects/${project}`,
+				role === null ? undefined : updateMemberSchema.parse({ role })
+			)
+		);
+}
+export async function createBucket(project: string | number, input: z.input<typeof createBucketSchema>) {
+	return bucketSchema.parse(await api('POST', `/projects/${ref(project)}/buckets`, createBucketSchema.parse(input)));
+}
+export async function updateBucket(
+	project: string | number,
+	bucket: number,
+	input: z.input<typeof updateBucketSchema>
+) {
+	return bucketSchema.parse(
+		await api('PATCH', `/projects/${ref(project)}/buckets/${bucket}`, updateBucketSchema.parse(input))
+	);
+}
+export async function deleteBucket(project: string | number, bucket: number) {
+	await api('DELETE', `/projects/${ref(project)}/buckets/${bucket}`);
+}
 export async function createProject(input: CreateProjectInput) {
 	return projectSchema.parse(await api('POST', '/projects', createProjectSchema.parse(input)));
 }

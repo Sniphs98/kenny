@@ -37,7 +37,9 @@
 	projectKey={data.project.key}
 	users={data.users}
 	tags={data.tags}
+	buckets={data.buckets}
 	parents={data.tickets.map((t) => ({ id: t.id, label: `${t.key} ${t.title}` }))}
 	canCreate={data.canEdit}
+	canManage={data.canManage}
 	{preset}
 />

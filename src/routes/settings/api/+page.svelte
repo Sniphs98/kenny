@@ -109,11 +109,23 @@
 			{/if}
 			{#if form?.error}<p class="text-destructive text-sm">{localizeError(form.error)}</p>{/if}
 
-			<form method="POST" action="?/create" class="flex gap-2" use:enhance>
+			<form method="POST" action="?/create" class="flex flex-wrap gap-2" use:enhance>
 				<InputGroup.Root>
 					<InputGroup.Addon><KeyRound /></InputGroup.Addon>
 					<InputGroup.Input name="name" placeholder={m.name_e_g_ci_pipeline()} required />
 				</InputGroup.Root>
+				<label class="flex items-center gap-2 text-sm"
+					><input type="checkbox" name="readOnly" />{m.token_read_only()}</label
+				>
+				<label class="flex items-center gap-2 text-sm"
+					>{m.token_lifetime()}<select
+						aria-label={m.token_lifetime()}
+						class="bg-background rounded-md border p-2"
+						name="lifetimeDays"
+						><option value="30">30 {m.token_days()}</option><option value="90" selected>90 {m.token_days()}</option
+						><option value="365">365 {m.token_days()}</option></select
+					></label
+				>
 				<Button type="submit"><Plus /> {m.create_token()}</Button>
 			</form>
 
@@ -125,6 +137,8 @@
 							<Table.Head>{m.token()}</Table.Head>
 							<Table.Head>{m.created_2()}</Table.Head>
 							<Table.Head>{m.last_used()}</Table.Head>
+							<Table.Head>{m.um_role()}</Table.Head>
+							<Table.Head>{m.token_expires()}</Table.Head>
 							<Table.Head></Table.Head>
 						</Table.Row>
 					</Table.Header>
@@ -135,6 +149,8 @@
 								<Table.Cell><code class="text-muted-foreground font-mono text-xs">{t.prefix}…</code></Table.Cell>
 								<Table.Cell>{fmt(t.createdAt)}</Table.Cell>
 								<Table.Cell>{fmt(t.lastUsedAt)}</Table.Cell>
+								<Table.Cell>{t.readOnly ? m.token_read_only() : m.token_read_write()}</Table.Cell>
+								<Table.Cell>{t.expiresAt ? fmt(t.expiresAt) : m.token_no_expiry()}</Table.Cell>
 								<Table.Cell class="text-right">
 									<form method="POST" action="?/delete" use:enhance>
 										<input type="hidden" name="id" value={t.id} />

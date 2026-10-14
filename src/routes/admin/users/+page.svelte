@@ -8,7 +8,17 @@
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { toast } from 'svelte-sonner';
+	import { superForm } from 'sveltekit-superforms';
+	import { untrack } from 'svelte';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
+	import { createUserSchema } from '#lib/contracts/index.js';
 	let { data } = $props();
+	const { form, errors, message, enhance, submitting } = superForm(
+		untrack(() => data.form),
+		{
+			validators: zod4Client(createUserSchema)
+		}
+	);
 	let search = $state('');
 	let busy = $state(false);
 	let selected = $state<ManagedUser | null>(null);
@@ -35,6 +45,28 @@
 		<h1 class="text-2xl font-semibold">{m.um_users()}</h1>
 		<p class="text-muted-foreground mt-1 text-sm">{m.um_users_description()}</p>
 	</div>
+	<form method="POST" use:enhance class="grid gap-3 rounded-xl border p-4">
+		<h2 class="font-semibold">{m.um_create_user()}</h2>
+		<label>{m.name()}<Input name="name" bind:value={$form.name} required autocomplete="off" /></label>
+		{#if $errors.name}<p class="text-destructive text-sm">{$errors.name}</p>{/if}
+		<label>{m.email()}<Input name="email" type="email" bind:value={$form.email} required autocomplete="off" /></label>
+		{#if $errors.email}<p class="text-destructive text-sm">{$errors.email}</p>{/if}
+		<label
+			>{m.um_password()}<Input
+				name="password"
+				type="password"
+				bind:value={$form.password}
+				required
+				minlength={8}
+				maxlength={128}
+				autocomplete="new-password"
+			/></label
+		>
+		{#if $errors.password}<p class="text-destructive text-sm">{$errors.password}</p>{/if}
+		<p class="text-muted-foreground text-sm">{m.um_create_user_hint()}</p>
+		{#if $message}<p role="status">{$message === 'created' ? m.um_user_created() : $message}</p>{/if}
+		<Button type="submit" disabled={$submitting}>{m.um_create_user()}</Button>
+	</form>
 	<Input aria-label={m.um_search_users()} placeholder={m.um_search_users()} bind:value={search} class="max-w-sm" />
 	<div class="overflow-x-auto rounded-xl border">
 		<table class="w-full text-left text-sm">
@@ -70,7 +102,11 @@
 							></td
 						>
 						<td class="p-3"
-							><Button
+							><a
+								class="mr-2 inline-flex rounded-md border px-3 py-1.5"
+								href={`/admin/users/${encodeURIComponent(user.id)}/projects`}>{m.um_user_projects()}</a
+							>
+							<Button
 								variant="outline"
 								size="sm"
 								disabled={busy}

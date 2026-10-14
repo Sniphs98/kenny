@@ -1,4 +1,5 @@
 import { requireProjectAccess, visibleUsers } from './access';
+import { resolveBucket } from './buckets';
 import { projectMember } from '../db/schema';
 import {
 	createTicketSchema,
@@ -101,6 +102,7 @@ function present(
 		closedAt: t.closedAt,
 		position: t.position,
 		parentId: t.parentId,
+		bucketId: t.bucketId,
 		assigneeId: assignees[0]?.id ?? null,
 		assigneeIds: assignees.map((a) => a.id),
 		startDate: t.startDate,
@@ -490,6 +492,7 @@ export function createTicket(
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId: checkParent(tx, { projectId: p.id }, input.parentId ?? input.parent),
+				bucketId: resolveBucket(p.id, input.bucketId ?? null),
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -525,6 +528,7 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 	const t = resolveTicket(ref);
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
+		if (input.bucketId !== undefined) patch.bucketId = resolveBucket(t.projectId, input.bucketId);
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');
@@ -708,8 +712,17 @@ export function addLink(ref: string | number, rawInput: unknown, actorId?: strin
 	return link;
 }
 
-export function removeLink(ref: string | number, linkId: number) {
+export function removeLink(ref: string | number, linkId: number, actorId: string) {
 	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId, 'member');
+	const link = db
+		.select()
+		.from(ticketLink)
+		.where(and(eq(ticketLink.id, linkId), or(eq(ticketLink.sourceId, t.id), eq(ticketLink.targetId, t.id))))
+		.get();
+	if (!link) throw new ApiError(404, 'Verknüpfung nicht gefunden.');
+	const other = resolveTicket(link.sourceId === t.id ? link.targetId : link.sourceId);
+	requireProjectAccess(actorId, other.projectId, 'member');
 	const res = db
 		.delete(ticketLink)
 		.where(and(eq(ticketLink.id, linkId), or(eq(ticketLink.sourceId, t.id), eq(ticketLink.targetId, t.id))))
@@ -719,12 +732,22 @@ export function removeLink(ref: string | number, linkId: number) {
 }
 
 /** Alle Abhängigkeiten innerhalb eines Projekts (für die Pfeile im Gantt-Chart) */
-export function listDependencies(projectId: number) {
+export function listDependencies(projectId: number, actorId: string) {
+	requireProjectAccess(actorId, projectId);
 	const src = alias(ticket, 'src');
+	const target = alias(ticket, 'dependency_target');
+	const accessibleProjects = listProjects(actorId).map((p) => p.id);
 	return db
 		.select({ id: ticketLink.id, sourceId: ticketLink.sourceId, targetId: ticketLink.targetId })
 		.from(ticketLink)
 		.innerJoin(src, eq(src.id, ticketLink.sourceId))
-		.where(and(eq(src.projectId, projectId), eq(ticketLink.type, 'depends_on')))
+		.innerJoin(target, eq(target.id, ticketLink.targetId))
+		.where(
+			and(
+				eq(src.projectId, projectId),
+				eq(ticketLink.type, 'depends_on'),
+				inArray(target.projectId, accessibleProjects)
+			)
+		)
 		.all();
 }

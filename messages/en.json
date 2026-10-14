@@ -540,5 +540,11 @@
 	"command_theme": "Theme: {mode}",
 	"plan_from_today": "Plan from today",
 	"plan_from_today_overdue": "The deadline is before today. Update it or choose an earlier start date.",
-	"plan_after_deadline": "The start date must not be after the deadline."
+	"plan_after_deadline": "The start date must not be after the deadline.",
+	"add_description": "Add a description…",
+	"description_save_hint": "Saves when you leave the field · Esc discards",
+	"subtasks_waiting": "{count} subtask(s) waiting for prerequisites",
+	"column_order_manual": "“{column}” now uses your own order",
+	"ticket_not_in_column": "Ticket {value1} is not in this column.",
+	"duplicate_ticket_in_order": "Each ticket may only appear once."
 }

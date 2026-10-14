@@ -55,6 +55,17 @@ export const createTicketSchema = z
 	.refine(validDateRange, rangeError);
 export const updateTicketSchema = z.strictObject(ticketFields).partial().refine(validDateRange, rangeError);
 
+/** Manuelle Reihenfolge einer Spalte: die genannten Tickets zuerst, übrige Tickets der Spalte danach */
+export const reorderTicketsSchema = z.strictObject({
+	column: reference,
+	tickets: z
+		.array(id)
+		.min(1)
+		.max(2000)
+		.refine((ids) => new Set(ids).size === ids.length, 'Jedes Ticket darf nur einmal vorkommen.')
+});
+export const ticketOrderSchema = z.object({ columnId: id, tickets: z.array(id) });
+
 export const createColumnSchema = z.strictObject({
 	name: z.string().trim().min(1).max(60),
 	isDone: z.boolean().optional(),
@@ -151,7 +162,8 @@ export const dependencySchema = z.object({ id, sourceId: id, targetId: id });
 export const userSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
 export const ticketDetailSchema = ticketDtoSchema.extend({
 	parent: ticketSchema.nullable(),
-	subtasks: z.array(ticketSchema),
+	/** openBlockers: offene Voraussetzungen (depends_on) der Unteraufgabe */
+	subtasks: z.array(ticketSchema.extend({ openBlockers: z.number().int() })),
 	links: z.array(
 		z.object({
 			id,
@@ -170,6 +182,7 @@ export type CreateProjectInput = z.input<typeof createProjectSchema>;
 export type UpdateProjectInput = z.input<typeof updateProjectSchema>;
 export type CreateTicketInput = z.input<typeof createTicketSchema>;
 export type UpdateTicketInput = z.input<typeof updateTicketSchema>;
+export type ReorderTicketsInput = z.input<typeof reorderTicketsSchema>;
 export type TagDto = z.output<typeof tagSchema>;
 export type BoardColumnDto = z.output<typeof columnSchema>;
 export type TicketDto = z.output<typeof ticketDtoSchema>;

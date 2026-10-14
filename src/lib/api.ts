@@ -15,6 +15,9 @@ import {
 	updateProjectSchema,
 	createTicketSchema,
 	updateTicketSchema,
+	reorderTicketsSchema,
+	ticketOrderSchema,
+	type ReorderTicketsInput,
 	projectSchema,
 	ticketDtoSchema,
 	ticketDetailSchema,
@@ -61,6 +64,12 @@ export async function createTicket(project: string | number, input: CreateTicket
 }
 export async function updateTicket(ticket: string | number, input: UpdateTicketInput) {
 	return ticketDtoSchema.parse(await api('PATCH', `/tickets/${ref(ticket)}`, updateTicketSchema.parse(input)));
+}
+/** Manuelle Reihenfolge einer Spalte setzen */
+export async function reorderTickets(project: string | number, input: ReorderTicketsInput) {
+	return ticketOrderSchema.parse(
+		await api('PUT', `/projects/${ref(project)}/tickets/order`, reorderTicketsSchema.parse(input))
+	);
 }
 export async function closeTicket(ticket: string | number) {
 	return ticketDtoSchema.parse(await api('POST', `/tickets/${ref(ticket)}/close`));

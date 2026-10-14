@@ -6,6 +6,8 @@ import {
 	createColumnSchema,
 	ticketDtoSchema,
 	isAllowedWebhookUrl,
+	reorderTicketsSchema,
+	ticketOrderSchema,
 	updateNotificationsSchema
 } from '#lib/contracts/index.js';
 import { parseInput } from '#lib/server/validation.js';
@@ -44,6 +46,15 @@ describe('HTTP input contracts', () => {
 		{ title: 'Test', assigneeId: {} }
 	])('rejects malformed or unexpected ticket fields: %j', (input) => {
 		expect(createTicketSchema.safeParse(input).success).toBe(false);
+	});
+	it('accepts a manual column order only with unique ticket IDs', () => {
+		expect(reorderTicketsSchema.parse({ column: 'Review', tickets: [3, 1] })).toEqual({
+			column: 'Review',
+			tickets: [3, 1]
+		});
+		expect(reorderTicketsSchema.safeParse({ column: 2, tickets: [3, 3] }).success).toBe(false);
+		expect(reorderTicketsSchema.safeParse({ column: 2, tickets: [] }).success).toBe(false);
+		expect(ticketOrderSchema.parse({ columnId: 2, tickets: [3, 1] })).toEqual({ columnId: 2, tickets: [3, 1] });
 	});
 	it('rejects truthy strings instead of interpreting them as booleans', () => {
 		expect(createColumnSchema.safeParse({ name: 'Done', isDone: 'false' }).success).toBe(false);

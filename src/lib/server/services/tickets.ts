@@ -1,6 +1,12 @@
 import { requireProjectAccess, visibleUsers } from './access';
 import { projectMember } from '../db/schema';
-import { createTicketSchema, updateTicketSchema, createLinkSchema, ticketSearchSchema } from '#lib/contracts/index.js';
+import {
+	createTicketSchema,
+	updateTicketSchema,
+	createLinkSchema,
+	reorderTicketsSchema,
+	ticketSearchSchema
+} from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
@@ -202,6 +208,19 @@ export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	return { ...ticket, parent, subtasks, links, attachments, assignee, submission };
 }
 
+/** Anzahl offener Voraussetzungen (depends_on auf nicht erledigte Tickets) je Ticket */
+function openBlockerCounts(ids: number[]) {
+	if (!ids.length) return new Map<number, number>();
+	const rows = db
+		.select({ sourceId: ticketLink.sourceId, count: sql<number>`count(*)` })
+		.from(ticketLink)
+		.innerJoin(ticket, eq(ticket.id, ticketLink.targetId))
+		.where(and(eq(ticketLink.type, 'depends_on'), inArray(ticketLink.sourceId, ids), isNull(ticket.closedAt)))
+		.groupBy(ticketLink.sourceId)
+		.all();
+	return new Map(rows.map((r) => [r.sourceId, Number(r.count)]));
+}
+
 /** Detailansicht: Ticket mit Projekt, Unteraufgaben, übergeordnetem Ticket und Verknüpfungen */
 export function getTicketDetail(ref: string | number, actorId?: string) {
 	const t = resolveTicket(ref);
@@ -254,13 +273,12 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 		};
 	});
 
-	const subtasks = db
-		.select()
-		.from(ticket)
-		.where(eq(ticket.parentId, t.id))
-		.orderBy(asc(ticket.number))
-		.all()
-		.map((s) => present(s, p.key, colMap.get(s.columnId)));
+	const subtaskRows = db.select().from(ticket).where(eq(ticket.parentId, t.id)).orderBy(asc(ticket.number)).all();
+	const blockers = openBlockerCounts(subtaskRows.map((s) => s.id));
+	const subtasks = subtaskRows.map((s) => ({
+		...present(s, p.key, colMap.get(s.columnId)),
+		openBlockers: blockers.get(s.id) ?? 0
+	}));
 
 	const parent = t.parentId ? db.select().from(ticket).where(eq(ticket.id, t.parentId)).get() : null;
 	const assignee = t.assigneeId
@@ -480,6 +498,35 @@ function moveTicket(tx: Tx, t: Ticket, col: { id: number; isDone: boolean }, pos
 		})
 		.where(eq(ticket.id, t.id))
 		.run();
+}
+
+/**
+ * Manuelle Reihenfolge einer Spalte festlegen (z. B. aus einer sortierten Ansicht übernommen).
+ * Die genannten Tickets kommen in dieser Reihenfolge nach oben, alle übrigen Tickets der Spalte
+ * behalten ihre bisherige Reihenfolge dahinter.
+ */
+export function reorderTickets(projectRef: string | number, rawInput: unknown) {
+	const input = parseInput(reorderTicketsSchema, rawInput);
+	const p = getProject(projectRef);
+	const col = resolveColumn(p.id, input.column);
+	const order = db.transaction((tx) => {
+		const current = tx
+			.select({ id: ticket.id })
+			.from(ticket)
+			.where(eq(ticket.columnId, col.id))
+			.orderBy(asc(ticket.position), asc(ticket.number))
+			.all()
+			.map((r) => r.id);
+		const inColumn = new Set(current);
+		const foreign = input.tickets.find((id) => !inColumn.has(id));
+		if (foreign !== undefined) throw new ApiError(400, `Ticket ${foreign} liegt nicht in dieser Spalte.`);
+		const listed = new Set(input.tickets);
+		const next = [...input.tickets, ...current.filter((id) => !listed.has(id))];
+		next.forEach((id, i) => tx.update(ticket).set({ position: i }).where(eq(ticket.id, id)).run());
+		return next;
+	});
+	publish(p.id);
+	return { columnId: col.id, tickets: order };
 }
 
 export function closeTicket(ref: string | number) {

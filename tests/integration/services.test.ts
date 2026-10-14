@@ -9,7 +9,9 @@ import {
 	listTickets,
 	addLink,
 	closeTicket,
-	reopenTicket
+	reopenTicket,
+	reorderTickets,
+	getTicketDetail
 } from '#lib/server/services/tickets.js';
 import { createTag } from '#lib/server/services/tags.js';
 import { ticketDtoSchema } from '#lib/contracts/index.js';
@@ -74,6 +76,47 @@ describe('services with real SQLite and migrations', () => {
 		expect(listTickets(p.id).map((ticket) => ticket.id)).toEqual([second.id, t.id]);
 		expect(closeTicket(t.id).closed).toBe(true);
 		expect(reopenTicket(t.id).closed).toBe(false);
+	});
+	it('applies a manual column order atomically and keeps unlisted tickets behind it', () => {
+		const { p, t } = fixture();
+		const second = createTicket(p.key, { title: 'Second' }, null);
+		const third = createTicket(p.key, { title: 'Third' }, null);
+		expect(reorderTickets(p.key, { column: t.columnId, tickets: [third.id, t.id] })).toEqual({
+			columnId: t.columnId,
+			tickets: [third.id, t.id, second.id]
+		});
+		expect(listTickets(p.id).map((ticket) => ticket.id)).toEqual([third.id, t.id, second.id]);
+
+		// Tickets anderer Spalten und doppelte Einträge lassen die Reihenfolge unverändert
+		const elsewhere = createTicket(p.key, { title: 'Elsewhere', column: 'Review' }, null);
+		expect(() => reorderTickets(p.key, { column: t.columnId, tickets: [second.id, elsewhere.id] })).toThrow(
+			/nicht in dieser Spalte/
+		);
+		expect(() => reorderTickets(p.key, { column: t.columnId, tickets: [second.id, second.id] })).toThrow();
+		expect(() => reorderTickets(p.key, { column: 'Missing', tickets: [second.id] })).toThrow(/Spalte/);
+		const other = createProject({ name: 'Other', key: 'OTHER' }, null);
+		expect(() => reorderTickets(other.key, { column: t.columnId, tickets: [t.id] })).toThrow(/Spalte/);
+		expect(
+			listTickets(p.id)
+				.filter((ticket) => ticket.columnId === t.columnId)
+				.map((ticket) => ticket.id)
+		).toEqual([third.id, t.id, second.id]);
+		expect(getTicket(elsewhere.id).position).toBe(0);
+	});
+	it('reports open prerequisites of subtasks in the ticket detail', () => {
+		const { p, t } = fixture();
+		const blocker = createTicket(p.key, { title: 'Blocker' }, null);
+		const waiting = createTicket(p.key, { title: 'Waiting', parentId: t.id, dependsOn: [blocker.id] }, null);
+		const free = createTicket(p.key, { title: 'Free', parentId: t.id }, null);
+		const counts = () => new Map(getTicketDetail(t.id).subtasks.map((s) => [s.id, s.openBlockers]));
+		expect(counts()).toEqual(
+			new Map([
+				[waiting.id, 1],
+				[free.id, 0]
+			])
+		);
+		closeTicket(blocker.id);
+		expect(counts().get(waiting.id)).toBe(0);
 	});
 	it('updates ticket completion when a column changes and protects the last column', () => {
 		const { p, t } = fixture();

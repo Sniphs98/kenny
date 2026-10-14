@@ -55,6 +55,14 @@ const errorTranslations = [
 		translate: (_values: string[]) => m.file_is_missing_on_the_server()
 	},
 	{
+		pattern: new RegExp('^Ticket (.+?) liegt nicht in dieser Spalte\\.$'),
+		translate: (values: string[]) => m.ticket_not_in_column({ value1: values[0] })
+	},
+	{
+		pattern: new RegExp('^Jedes Ticket darf nur einmal vorkommen\\.$'),
+		translate: (_values: string[]) => m.duplicate_ticket_in_order()
+	},
+	{
 		pattern: new RegExp('^Projekt "(.+?)" nicht gefunden\\.$'),
 		translate: (values: string[]) => m.project_not_found({ value1: values[0] })
 	},

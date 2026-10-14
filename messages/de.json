@@ -540,5 +540,11 @@
 	"command_theme": "Design: {mode}",
 	"plan_from_today": "Ab heute planen",
 	"plan_from_today_overdue": "Die Fälligkeit liegt vor heute. Passe sie an oder wähle ein früheres Startdatum.",
-	"plan_after_deadline": "Das Startdatum darf nicht nach der Fälligkeit liegen."
+	"plan_after_deadline": "Das Startdatum darf nicht nach der Fälligkeit liegen.",
+	"add_description": "Beschreibung hinzufügen …",
+	"description_save_hint": "Speichert beim Verlassen · Esc verwirft",
+	"subtasks_waiting": "{count} Unteraufgabe(n) warten auf Voraussetzungen",
+	"column_order_manual": "„{column}“ nutzt jetzt deine eigene Reihenfolge",
+	"ticket_not_in_column": "Ticket {value1} liegt nicht in dieser Spalte.",
+	"duplicate_ticket_in_order": "Jedes Ticket darf nur einmal vorkommen."
 }

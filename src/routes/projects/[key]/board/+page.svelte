@@ -4,7 +4,7 @@
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
 	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import { createTicket, reorderTickets, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import BoardCard from '#lib/components/BoardCard.svelte';
 	import TagBadge from '#lib/components/TagBadge.svelte';
 	import Gantt from '#lib/components/Gantt.svelte';
@@ -315,10 +315,11 @@
 		e.dataTransfer!.setData('text/plain', String(t.id));
 	}
 
-	function onDragOver(e: DragEvent, lane: string, columnId: number, list: HTMLElement) {
+	/** Die ganze Spalte ist Ablagefläche, auch der freie Platz unter den Karten */
+	function onDragOver(e: DragEvent, lane: string, columnId: number, zone: HTMLElement) {
 		if (!drag) return;
 		e.preventDefault();
-		const cards = [...list.querySelectorAll<HTMLElement>('[data-card]')].filter(
+		const cards = [...zone.querySelectorAll<HTMLElement>('[data-card]')].filter(
 			(c) => Number(c.dataset.card) !== drag!.id
 		);
 		let index = cards.length;
@@ -357,26 +358,49 @@
 		const from = lanes.find((l) => l.key === fromLane)!;
 		const to = lanes.find((l) => l.key === toLane)!;
 		const body: UpdateTicketInput = laneChange(moved, from, to);
+		const shown = cell(toLane, columnId).filter((t) => t.id !== id);
+		const anchor = shown[index];
+		const wasClosed = moved.closed;
+		const sort = sortOf(columnId);
+		// Sortierte Spalte: Landet die Karte dort, wo die Sortierung sie ohnehin einordnet, bleibt es dabei.
+		// Sonst übernimmt die Spalte die gezeigte Reihenfolge als eigene und wechselt auf „Manuell“.
+		const natural = [...shown, moved].sort(comparators[sort]).indexOf(moved);
+		const reorder = sort !== 'manual' && natural !== index;
 
-		if (sortOf(columnId) === 'manual') {
+		if (sort === 'manual') {
 			// Position bezieht sich auf alle Tickets der Spalte, nicht nur die sichtbaren
 			const col = tickets.filter((t) => t.columnId === columnId && t.id !== id).sort(manual);
-			const anchor = cell(toLane, columnId).filter((t) => t.id !== id)[index];
 			const position = anchor ? col.indexOf(anchor) : col.length;
 			col.splice(position, 0, moved);
 			col.forEach((t, i) => (t.position = i));
 			body.columnId = columnId;
 			body.position = position;
 		} else if (columnId !== moved.columnId) {
-			// Sortierte Spalte: Reihenfolge ergibt sich aus der Sortierung, nur der Status ändert sich
 			body.columnId = columnId;
 		}
-		if (!Object.keys(body).length) return;
-		const wasClosed = moved.closed;
+
+		let order: number[] = [];
+		if (reorder) {
+			// Ganze Spalte in der bisher gezeigten Sortierung, die Karte an der Ablagestelle
+			const col = tickets.filter((t) => t.columnId === columnId && t.id !== id).sort(comparators[sort]);
+			const last = shown.at(-1);
+			const position = anchor ? col.indexOf(anchor) : last ? col.indexOf(last) + 1 : col.length;
+			col.splice(position, 0, moved);
+			col.forEach((t, i) => (t.position = i));
+			order = col.map((t) => t.id);
+			setColumnSort(columnId, 'manual');
+		}
+		if (!Object.keys(body).length && !reorder) return;
 		moved.columnId = columnId;
 
 		try {
-			playIfCompleted(wasClosed, await updateTicket(id, body));
+			const updated = Object.keys(body).length ? await updateTicket(id, body) : null;
+			if (reorder) {
+				await reorderTickets(data.project.key, { column: columnId, tickets: order });
+				const name = data.columns.find((c) => c.id === columnId)?.name ?? '';
+				toast.info(m.column_order_manual({ column: name }));
+			}
+			if (updated) playIfCompleted(wasClosed, updated);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -490,15 +514,18 @@
 
 {#snippet columnCell(lane: Lane, col: (typeof data.columns)[number], grouped: boolean)}
 	{@const list = cell(lane.key, col.id)}
-	{@const manualSort = sortOf(col.id) === 'manual'}
 	{@const target = dropTarget?.lane === lane.key && dropTarget.columnId === col.id}
 	{@const cellKey = `${lane.key}|${col.id}`}
 	<section
 		class={cn(
 			'bg-muted/60 dark:bg-card/50 flex w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5 transition-shadow',
 			!grouped && 'max-h-[calc(100vh-210px)]',
-			target && !manualSort && 'ring-primary/50 ring-2'
+			target && 'ring-primary/30 ring-2'
 		)}
+		role="group"
+		data-dropzone
+		ondragover={(e) => onDragOver(e, lane.key, col.id, e.currentTarget as HTMLElement)}
+		ondrop={onDrop}
 	>
 		{#if !grouped}{@render columnHeader(col, lane)}{/if}
 		<div
@@ -506,11 +533,9 @@
 			use:scrollActivity
 			role="region"
 			aria-label={grouped ? `${lane.label}: ${col.name}` : col.name}
-			ondragover={(e) => onDragOver(e, lane.key, col.id, e.currentTarget as HTMLElement)}
-			ondrop={onDrop}
 		>
 			{#each list as t, i (t.id)}
-				{#if target && manualSort && dropTarget!.index === i && drag?.id !== t.id}
+				{#if target && dropTarget!.index === i && drag?.id !== t.id}
 					<div class="bg-primary h-0.5 rounded-full"></div>
 				{/if}
 				<BoardCard
@@ -530,7 +555,7 @@
 					ondragend={onDragEnd}
 				/>
 			{/each}
-			{#if target && manualSort && dropTarget!.index >= list.filter((t) => t.id !== drag?.id).length}
+			{#if target && dropTarget!.index >= list.filter((t) => t.id !== drag?.id).length}
 				<div class="bg-primary h-0.5 rounded-full"></div>
 			{/if}
 		</div>
@@ -656,7 +681,7 @@
 
 {#if groupBy === 'none'}
 	<div
-		class="scrollbar-soft flex min-h-[calc(100vh-200px)] items-start gap-3.5 overflow-x-auto px-5 pb-5"
+		class="scrollbar-soft flex min-h-[calc(100vh-200px)] items-stretch gap-3.5 overflow-x-auto px-5 pb-5"
 		use:scrollActivity
 	>
 		{#each data.columns as col (col.id)}
@@ -695,7 +720,7 @@
 						<span class="text-muted-foreground text-xs font-medium">{laneCount(lane)}</span>
 					</Button>
 					{#if open}
-						<div class="flex items-start gap-3.5 border-b pb-3">
+						<div class="flex items-stretch gap-3.5 border-b pb-3">
 							{#each data.columns as col (col.id)}
 								{@render columnCell(lane, col, true)}
 							{/each}

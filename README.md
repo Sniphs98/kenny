@@ -279,6 +279,7 @@ Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
 | PATCH/DELETE     | `/projects/:project/tags/:id`                 | Update `{name?, color?}` or delete a tag                                          |
 | GET              | `/projects/:project/tickets?closed=false`     | List tickets                                                                      |
 | POST             | `/projects/:project/tickets`                  | Create a ticket                                                                   |
+| PUT              | `/projects/:project/tickets/order`            | Manual order of a column: `{column, tickets: [ids]}`; other tickets follow        |
 | GET              | `/tickets/:ticket`                            | Ticket with subtasks, parent ticket, and links                                    |
 | PATCH            | `/tickets/:ticket`                            | Update a ticket                                                                   |
 | DELETE           | `/tickets/:ticket`                            | Delete a ticket (including subtasks)                                              |

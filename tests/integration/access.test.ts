@@ -19,7 +19,14 @@ import {
 	visibleUsers
 } from '#lib/server/services/access.js';
 import { createProject, listProjects } from '#lib/server/services/projects.js';
-import { addLink, createTicket, getTicketDetail, updateTicket } from '#lib/server/services/tickets.js';
+import {
+	addLink,
+	createTicket,
+	getTicketDetail,
+	listTickets,
+	searchTickets,
+	updateTicket
+} from '#lib/server/services/tickets.js';
 import { ApiError } from '#lib/server/errors.js';
 
 beforeEach(() => {
@@ -116,6 +123,36 @@ describe('user management and project permissions', () => {
 		expect(updateUser('root', 'member', { role: 'admin' }).role).toBe('admin');
 		expect(updateUser('root', 'member', {}).role).toBe('admin');
 	});
+	it('assigns several project members in order and keeps the single-assignee API compatible', () => {
+		const { p, t } = fixture();
+		const both = createTicket(
+			p.key,
+			{ title: 'Pair work', assignees: ['owner@example.com', 'member', 'owner'] },
+			'owner'
+		);
+		expect(both).toMatchObject({ assigneeId: 'owner', assigneeIds: ['owner', 'member'] });
+		const item = listTickets(p.id).find((x) => x.id === both.id)!;
+		expect(item.assignees).toEqual([
+			{ id: 'owner', name: 'Owner' },
+			{ id: 'member', name: 'Member' }
+		]);
+		expect(item.assigneeName).toBe('Owner');
+		expect(getTicketDetail(both.id).assignees.map((u) => u.email)).toEqual(['owner@example.com', 'member@example.com']);
+
+		// Suche findet das Ticket bei jeder zuständigen Person
+		expect(searchTickets('member', { assignee: 'me' }).tickets.map((x) => x.id)).toEqual([t.id, both.id]);
+		expect(searchTickets('owner', { assignee: 'me' }).tickets.map((x) => x.id)).toEqual([both.id]);
+
+		// Eine einzelne Person ersetzt die Liste, null leert sie
+		expect(updateTicket(both.id, { assignee: 'member' }).assigneeIds).toEqual(['member']);
+		expect(updateTicket(both.id, { assigneeId: null }).assigneeIds).toEqual([]);
+		expect(searchTickets('owner', { assignee: 'none' }).tickets.map((x) => x.id)).toEqual([both.id]);
+
+		// Fremde und unbekannte Personen werden abgelehnt, ohne die Liste halb zu übernehmen
+		denied(() => updateTicket(both.id, { assignees: ['member', 'outsider'] }), 400);
+		denied(() => updateTicket(both.id, { assignees: ['nobody@example.com'] }), 400);
+		expect(getTicketDetail(both.id).ticket.assigneeIds).toEqual([]);
+	});
 	it('protects the last active admin and revokes sessions and tokens when disabling an account', () => {
 		const { p, t } = fixture();
 		denied(() => updateUser('root', 'root', { active: false }), 409);
@@ -133,6 +170,11 @@ describe('user management and project permissions', () => {
 		expect(visibleUsers('root').map((u) => u.id)).not.toContain('member');
 		expect(listMembers('owner', p.id).find((u) => u.id === 'member')?.active).toBe(false);
 		denied(() => updateTicket(t.id, { assigneeId: 'member' }), 400);
+		// In der Liste darf eine deaktivierte Person zuständig bleiben, neu hinzufügen lässt sie sich nicht
+		expect(updateTicket(t.id, { assignees: ['member', 'owner'] }).assigneeIds).toEqual(['member', 'owner']);
+		updateTicket(t.id, { assignees: ['owner'] });
+		denied(() => updateTicket(t.id, { assignees: ['owner', 'member'] }), 400);
+		expect(getTicketDetail(t.id).ticket.assigneeIds).toEqual(['owner']);
 		updateUser('root', 'member', { active: true });
 		expect(requireActiveUser('member').active).toBe(true);
 		expect(db.select().from(apiToken).all()).toEqual([]);

@@ -25,8 +25,7 @@ test('Offenes Ticket-Modal aktualisiert sich, ungespeicherte Eingaben bleiben er
 	await card(page, 'Gemeinsam bearbeiten').getByRole('link', { name: 'Gemeinsam bearbeiten' }).click();
 	const modal = page.getByRole('dialog');
 	await expect(modal).toBeVisible();
-	await modal.getByRole('button', { name: 'Bearbeiten' }).click();
-	const editor = modal.locator('textarea');
+	const editor = modal.getByRole('textbox', { name: 'Beschreibung', exact: true });
 	await editor.fill('Mein Entwurf, noch nicht gespeichert');
 
 	// Tab B: ändert dasselbe Ticket über die Oberfläche
@@ -43,11 +42,13 @@ test('Offenes Ticket-Modal aktualisiert sich, ungespeicherte Eingaben bleiben er
 	await expect(card(page, 'Von Tab B geändert')).toBeVisible();
 
 	// Speichern übernimmt den Entwurf
-	await modal.getByRole('button', { name: 'Speichern' }).click();
+	await editor.press('Control+Enter');
 	await expect
 		.poll(async () => (await getTicket(other.request, t.key)).description)
 		.toBe('Mein Entwurf, noch nicht gespeichert');
-	await expect(other.getByText('Mein Entwurf, noch nicht gespeichert')).toBeVisible();
+	await expect(other.getByRole('textbox', { name: 'Beschreibung', exact: true })).toHaveValue(
+		'Mein Entwurf, noch nicht gespeichert'
+	);
 });
 
 test('Projektübersicht zeigt neue Projekte live', async ({ page, request }) => {

@@ -38,7 +38,10 @@ test('language switch persists across reloads and translates the project and tic
 	await dialog.getByRole('button', { name: 'Create', exact: true }).click();
 	await expect(dialog).not.toBeVisible();
 	await page.getByRole('link', { name: 'User content stays unchanged', exact: true }).click();
-	await expect(page.getByText('No description.', { exact: true })).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveAttribute(
+		'placeholder',
+		'Add a description…'
+	);
 	await expect(page.getByRole('button', { name: 'Delete ticket', exact: true })).toBeVisible();
 	await page.keyboard.press('Escape');
 	await chooseLanguage(page, 'Language', 'Deutsch');

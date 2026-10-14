@@ -46,7 +46,7 @@
 		expanded: boolean;
 		dragging: boolean;
 		onToggleSubtasks: () => void;
-		onAssign: (id: string | null) => void;
+		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
@@ -54,6 +54,8 @@
 	} = $props();
 
 	const blocked = $derived(t.openBlockers > 0 && !t.closed);
+	/** Unteraufgaben, die noch auf offene Voraussetzungen warten */
+	const blockedSubtasks = $derived(subtasks.filter((s) => s.openBlockers > 0 && !s.closed).length);
 	const overdue = $derived(!t.closed && !!t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
 
 	/** Fälligkeit kurz: "12.10.", in anderen Jahren mit Jahr */
@@ -162,12 +164,12 @@
 		{/if}
 		<span class="ml-auto">
 			<AssigneePicker
-				assignedName={t.assigneeName}
+				assigned={t.assignees}
 				disabled={readOnly}
 				compact
 				{users}
 				{me}
-				value={t.assigneeId}
+				value={t.assigneeIds}
 				onchange={onAssign}
 			/>
 		</span>
@@ -202,6 +204,13 @@
 						<ChevronRight class={cn('size-3.5 transition-transform', expanded && 'rotate-90')} />
 						<ListChecks class="size-3.5" />
 						<span>{m.subtasks()}</span>
+						{#if blockedSubtasks > 0}
+							<span class="text-warning flex items-center gap-0.5" data-blocked-subtasks>
+								<Ban class="size-3" />
+								<span class="sr-only">{m.subtasks_waiting({ count: blockedSubtasks })}</span>
+								{blockedSubtasks}
+							</span>
+						{/if}
 						<span class="bg-muted ml-auto h-1 w-12 overflow-hidden rounded-full">
 							<span
 								class={cn('block h-full rounded-full', t.subtaskDone === t.subtaskCount ? 'bg-success' : 'bg-primary')}
@@ -231,6 +240,16 @@
 								{/if}
 								<span class="text-muted-foreground shrink-0 font-mono">{s.key}</span>
 								<span class={cn('truncate', s.closed && 'text-muted-foreground line-through')}>{s.title}</span>
+								{#if s.openBlockers > 0 && !s.closed}
+									<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>
+										{#snippet children(props)}
+											<span {...props} class="text-warning ml-auto flex shrink-0 items-center gap-0.5" data-blocked>
+												<Ban class="size-3" />
+												{s.openBlockers}
+											</span>
+										{/snippet}
+									</Hint>
+								{/if}
 							</a>
 						</li>
 					{/each}

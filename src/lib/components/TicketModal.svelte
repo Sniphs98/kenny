@@ -7,14 +7,12 @@
 	import { buttonVariants } from '#lib/components/ui/button/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import { LIVE_EVENT } from '#lib/live-client.js';
-	import { openTicket } from '#lib/ticket-modal.js';
+	import { closeTicketModal, openTicket } from '#lib/ticket-modal.js';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 
 	const data = $derived(page.state.ticket);
 
-	function close() {
-		history.back();
-	}
+	const close = closeTicketModal;
 
 	/** Nach Änderungen: Hintergrund und Ticket neu laden, ohne das Modal zu schließen */
 	async function refresh() {
@@ -28,7 +26,7 @@
 			goto('', {
 				shallow: true,
 				replace: true,
-				state: { ticket: result.data as App.PageState['ticket'] }
+				state: { ...page.state, ticket: result.data as App.PageState['ticket'] }
 			});
 		}
 	}
@@ -42,7 +40,7 @@
 			goto('', {
 				shallow: true,
 				replace: true,
-				state: { ticket: result.data as App.PageState['ticket'] }
+				state: { ...page.state, ticket: result.data as App.PageState['ticket'] }
 			});
 		else if (result.type === 'error' && result.status === 404) close();
 	}
@@ -70,7 +68,11 @@
 		{#if data}
 			<Dialog.Header class="flex-row items-center gap-3 pr-12">
 				<Dialog.Title class="text-muted-foreground font-mono text-sm font-normal">
-					{data.project.key} / {#if data.parent}{data.parent.key} /
+					{data.project.key} /
+					{#if data.parent}<a class="hover:text-foreground hover:underline" href="/tickets/{data.parent.key}"
+							>{data.parent.key}</a
+						>
+						/
 					{/if}{data.ticket.key}
 				</Dialog.Title>
 				<Hint text={m.open_as_separate_page()} side="bottom">

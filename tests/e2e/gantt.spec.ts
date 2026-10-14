@@ -81,9 +81,19 @@ test('Unteraufgaben im Gantt auf- und zuklappen', async ({ page, request }) => {
 		.click();
 	await expect(row(page, 'Kisten packen')).toBeVisible();
 
+	// Aufgeklappt bleibt aufgeklappt, auch nach Neuladen und auf dem Board-Zeitplan
+	await reload(page);
+	await expect(row(page, 'Kisten packen')).toBeVisible();
+	await open(page, `/projects/${p.key}/board`);
+	await expect(row(page, 'Kisten packen')).toBeVisible();
+	await open(page, `/projects/${p.key}/gantt`);
+
 	await row(page, 'Umzug')
 		.getByRole('button', { name: /Unteraufgaben zuklappen/ })
 		.click();
+	await expect(row(page, 'Kisten packen')).toHaveCount(0);
+	await reload(page);
+	await expect(row(page, 'Umzug')).toBeVisible();
 	await expect(row(page, 'Kisten packen')).toHaveCount(0);
 });
 

@@ -9,7 +9,7 @@ Self-hosted project and ticket management with Kanban boards, Gantt timelines an
 - **Projects** with their own key and color; tickets get identifiers such as `WEB-1`, `WEB-2`, …
 - **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by tag, assignee or priority, and sorting per board or per column
 - **Gantt timeline** for tickets with a start date (a due date alone remains a deadline), draggable and resizable bars, a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
-- **Tickets** with priority, assignee, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
+- **Tickets** with priority, one or more assignees, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
 - **Create more:** keep the new-ticket dialog open to enter many tickets in a row
 
 **Find and navigate**
@@ -279,6 +279,7 @@ Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
 | PATCH/DELETE     | `/projects/:project/tags/:id`                 | Update `{name?, color?}` or delete a tag                                          |
 | GET              | `/projects/:project/tickets?closed=false`     | List tickets                                                                      |
 | POST             | `/projects/:project/tickets`                  | Create a ticket                                                                   |
+| PUT              | `/projects/:project/tickets/order`            | Manual order of a column: `{column, tickets: [ids]}`; other tickets follow        |
 | GET              | `/tickets/:ticket`                            | Ticket with subtasks, parent ticket, and links                                    |
 | PATCH            | `/tickets/:ticket`                            | Update a ticket                                                                   |
 | DELETE           | `/tickets/:ticket`                            | Delete a ticket (including subtasks)                                              |
@@ -300,7 +301,7 @@ Fields for creating or updating a ticket (all optional except `title` when creat
 	"description": "Optional description",
 	"priority": "low | medium | high | urgent",
 	"column": "In Arbeit",
-	"assignee": "name@example.com",
+	"assignees": ["name@example.com", "other@example.com"],
 	"startDate": "2026-10-10",
 	"dueDate": "2026-10-17",
 	"parent": "WEB-3",
@@ -310,7 +311,7 @@ Fields for creating or updating a ticket (all optional except `title` when creat
 }
 ```
 
-Use an actual column name for `column` (the example uses the default `In Arbeit` column, meaning "In progress"), or supply `columnId` instead. `position` sets the order within a column. Errors are returned as `{"error": "..."}` with the appropriate HTTP status.
+Use an actual column name for `column` (the example uses the default `In Arbeit` column, meaning "In progress"), or supply `columnId` instead. `position` sets the order within a column. `assignees` replaces the list of assignees (user IDs or emails, `[]` removes all); the single-value `assignee`/`assigneeId` still works and replaces the list with that one person. Responses contain `assigneeIds` (all) and `assigneeId` (the first one). Errors are returned as `{"error": "..."}` with the appropriate HTTP status.
 
 ```bash
 curl -X POST http://localhost:5173/api/v1/projects/WEB/tickets \

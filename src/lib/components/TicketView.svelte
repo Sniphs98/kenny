@@ -22,8 +22,8 @@
 	import { Label } from '#lib/components/ui/label/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
 	import { Separator } from '#lib/components/ui/separator/index.js';
-	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import { cn } from '#lib/utils.js';
+	import { autosize } from '#lib/autosize.js';
 	import { Synced } from '#lib/synced.svelte.js';
 	import { untrack } from 'svelte';
 	import { playIfCompleted } from '#lib/sound.js';
@@ -35,7 +35,6 @@
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
-	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -64,6 +63,12 @@
 	$effect(() => title.update(data.ticket.title));
 	$effect(() => description.update(data.ticket.description));
 
+	/** Sofort sichtbare Auswahl, damit mehrere Klicks hintereinander aufeinander aufbauen */
+	let assigneeIds = $state(untrack(() => data.ticket.assigneeIds));
+	$effect(() => {
+		assigneeIds = data.ticket.assigneeIds;
+	});
+
 	let newSubtask = $state('');
 	let linkType = $state<'depends_on' | 'blocks' | 'relates'>('depends_on');
 	let linkTarget = $state('');
@@ -84,19 +89,37 @@
 	const patch = (body: UpdateTicketInput) => run(() => updateTicket(t.id, body));
 
 	async function saveTitle() {
-		if (title.value.trim() && title.value !== t.title) await patch({ title: title.value });
+		// Eingefügte Zeilenumbrüche gehören nicht in den Titel
+		const value = title.value.replace(/\s*\n\s*/g, ' ');
+		if (value !== title.value) title.value = value;
+		if (value.trim() && value !== t.title) await patch({ title: value });
 	}
 
 	async function saveDescription() {
-		await patch({ description: description.value });
 		editingDesc = false;
+		if (description.dirty) await patch({ description: description.value });
 	}
 
-	async function addSubtask(e: SubmitEvent) {
+	/** Unteraufgaben nacheinander anlegen, auch wenn schnell hintereinander Enter gedrückt wird */
+	let subtaskQueue = Promise.resolve();
+
+	function addSubtask(e: SubmitEvent) {
 		e.preventDefault();
-		if (!newSubtask.trim()) return;
-		await run(() => api('POST', `${base}/subtasks`, { title: newSubtask }));
+		const title = newSubtask.trim();
+		if (!title || !data.canEdit) return;
+		// Feld sofort leeren, damit die nächste Eingabe nicht vom Abschluss dieser überschrieben wird
 		newSubtask = '';
+		subtaskQueue = subtaskQueue.then(async () => {
+			try {
+				await api('POST', `${base}/subtasks`, { title });
+				await refresh();
+			} catch (err) {
+				toast.error((err as Error).message);
+				// Eingabe zurückgeben, damit nichts verloren geht
+				if (!newSubtask) newSubtask = title;
+			}
+		});
+		return subtaskQueue;
 	}
 
 	async function addLink(e: SubmitEvent) {
@@ -136,14 +159,20 @@
 
 {#if !data.canEdit}<p class="text-muted-foreground mb-4 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex min-w-0 flex-col gap-4">
-	<input
-		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-3"
+	<!-- Mehrzeilig, damit lange Titel umbrechen statt abgeschnitten zu werden; Enter speichert -->
+	<textarea
+		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight break-words outline-none focus-visible:ring-3"
+		rows="1"
 		readonly={!data.canEdit}
 		bind:value={title.value}
+		{@attach autosize(() => title.value)}
 		onblur={saveTitle}
-		onkeydown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
-		aria-label={m.title()}
-	/>
+		onkeydown={(e) => {
+			if (e.key !== 'Enter' && e.key !== 'Escape') return;
+			e.preventDefault();
+			e.currentTarget.blur();
+		}}
+		aria-label={m.title()}></textarea>
 
 	{#if t.closed}
 		<Alert.Root class="text-success border-success/30 bg-success/5">
@@ -171,28 +200,34 @@
 				<Card.Header class="flex items-center gap-2">
 					<AlignLeft class="text-muted-foreground size-4" />
 					<Card.Title class="grow">{m.description()}</Card.Title>
-					{#if !editingDesc}
-						<Button disabled={!data.canEdit} variant="ghost" size="sm" onclick={() => (editingDesc = true)}
-							><Pencil /> {m.edit()}</Button
-						>
+					{#if editingDesc && data.canEdit}
+						<span class="text-muted-foreground text-xs">{m.description_save_hint()}</span>
 					{/if}
 				</Card.Header>
 				<Card.Content>
-					{#if editingDesc}
-						<Textarea disabled={!data.canEdit} bind:value={description.value} rows={8} />
-						<div class="mt-3 flex gap-2">
-							<Button disabled={!data.canEdit} onclick={saveDescription}>{m.save()}</Button>
-							<Button
-								disabled={!data.canEdit}
-								variant="outline"
-								onclick={() => ((editingDesc = false), description.reset())}>{m.cancel()}</Button
-							>
-						</div>
-					{:else if t.description}
-						<p class="break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{t.description}</p>
-					{:else}
-						<p class="text-muted-foreground">{m.no_description()}</p>
-					{/if}
+					<!-- Direkt beschreibbar: Verlassen des Felds oder Strg+Enter speichert, Esc verwirft -->
+					<textarea
+						class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 placeholder:text-muted-foreground -mx-2 -my-1 block min-h-16 w-[calc(100%+1rem)] resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 break-words [overflow-wrap:anywhere] outline-none focus-visible:ring-3"
+						rows="2"
+						readonly={!data.canEdit}
+						placeholder={data.canEdit ? m.add_description() : m.no_description()}
+						aria-label={m.description()}
+						bind:value={description.value}
+						{@attach autosize(() => description.value)}
+						onfocus={() => (editingDesc = true)}
+						onblur={saveDescription}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+								e.preventDefault();
+								e.currentTarget.blur();
+							} else if (e.key === 'Escape' && description.dirty) {
+								// Erst den Entwurf verwerfen; ein weiteres Esc schließt dann das Modal
+								e.preventDefault();
+								e.stopPropagation();
+								description.reset();
+								e.currentTarget.blur();
+							}
+						}}></textarea>
 				</Card.Content>
 			</Card.Root>
 
@@ -227,6 +262,16 @@
 										<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
 										{s.title}
 									</a>
+									{#if s.openBlockers > 0 && !s.closed}
+										<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>
+											{#snippet children(props)}
+												<span {...props} class="text-warning flex shrink-0 items-center gap-1 text-xs" data-blocked>
+													<Ban class="size-3.5" />
+													{s.openBlockers}
+												</span>
+											{/snippet}
+										</Hint>
+									{/if}
 									<Badge variant="outline">{s.status}</Badge>
 								</li>
 							{/each}
@@ -239,12 +284,166 @@
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root class="gap-4">
-				<Card.Header class="flex items-center gap-2">
+			<Attachments readOnly={!data.canEdit} ticketId={t.id} attachments={data.attachments} {refresh} />
+		</div>
+
+		<!-- Seitenleiste: Eigenschaften und Verknüpfungen -->
+		<div class="flex min-w-0 flex-col gap-4">
+			<Card.Root class="gap-4 py-5">
+				<Card.Content class="flex flex-col gap-4 px-5">
+					{#if t.closed}
+						<Button disabled={!data.canEdit} variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
+							><RotateCcw /> {m.reopen()}</Button
+						>
+					{:else}
+						<Button
+							disabled={!data.canEdit}
+							onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
+							><Check /> {m.complete()}</Button
+						>
+					{/if}
+
+					<div class="grid gap-2">
+						<Label>{m.status()}</Label>
+						<Select.Root
+							disabled={!data.canEdit}
+							type="single"
+							value={String(t.columnId)}
+							onValueChange={(v) =>
+								run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
+						>
+							<Select.Trigger aria-label={m.status()} class="w-full">{columnName}</Select.Trigger>
+							<Select.Content>
+								{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="grid gap-2">
+						<Label>{m.priority_2()}</Label>
+						<Select.Root
+							disabled={!data.canEdit}
+							type="single"
+							value={t.priority}
+							onValueChange={(v) => {
+								const priority = PRIORITIES.find((p) => p === v);
+								if (priority) patch({ priority });
+							}}
+						>
+							<Select.Trigger class="w-full">
+								<span class="flex items-center gap-2"
+									><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span
+								>
+							</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
+									<Select.Item value={v}><span class="prio prio-{v}"></span>{l}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="grid gap-2">
+						<Label>{m.tags()}</Label>
+						<TagPicker
+							disabled={!data.canEdit}
+							tags={data.tags}
+							value={t.tags.map((g) => g.id)}
+							onchange={(tags) => patch({ tags })}
+						/>
+					</div>
+					<div class="grid gap-2">
+						<Label>{m.assignee()}</Label>
+						<AssigneePicker
+							assigned={data.assignees}
+							disabled={!data.canEdit}
+							users={data.users}
+							me={page.data.user?.id}
+							value={assigneeIds}
+							onchange={(ids) => ((assigneeIds = ids), patch({ assignees: ids }))}
+						/>
+						{#if page.data.user && data.users.some((u) => u.id === page.data.user!.id) && !t.assigneeIds.includes(page.data.user.id)}
+							<Button
+								variant="link"
+								size="xs"
+								class="-mt-1 h-auto self-start px-0"
+								onclick={() => patch({ assignees: [...t.assigneeIds, page.data.user!.id] })}
+							>
+								{m.assign_to_me()}
+							</Button>
+						{/if}
+					</div>
+					<div class="grid gap-2">
+						<Label for="start">{m.start()}</Label>
+						<DatePicker
+							disabled={!data.canEdit}
+							id="start"
+							value={t.startDate}
+							onchange={(d) => patch({ startDate: d })}
+						/>
+					</div>
+					<div class="grid gap-2">
+						<Label for="due">{m.due()}</Label>
+						<DatePicker
+							disabled={!data.canEdit}
+							id="due"
+							value={t.dueDate}
+							min={t.startDate}
+							onchange={(d) => patch({ dueDate: d })}
+						/>
+						{#if data.canEdit && !t.startDate && t.dueDate}
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={t.dueDate < today()}
+								onclick={() => patch({ startDate: today() })}
+							>
+								{m.plan_from_today()}
+							</Button>
+							{#if t.dueDate < today()}<p class="text-muted-foreground text-xs">{m.plan_from_today_overdue()}</p>{/if}
+						{/if}
+					</div>
+					<div class="grid gap-2">
+						<Label>{m.subtask_of_2()}</Label>
+						<Select.Root
+							disabled={!data.canEdit}
+							type="single"
+							value={t.parentId ? String(t.parentId) : ''}
+							onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
+						>
+							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+							<Select.Content class="max-h-72">
+								<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
+								{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item
+									>{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+
+					<Separator />
+					<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
+						{#if data.submission}
+							<span class="flex items-center gap-1.5" data-submission>
+								<Inbox class="size-3.5" />
+								{data.submission.form ? m.submitted_via({ form: data.submission.form }) : m.submitted_via_form()}
+							</span>
+							{#if data.submission.email}
+								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
+								>
+							{/if}
+						{/if}
+						<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
+						<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
+					</div>
+					<Button disabled={!data.canEdit} variant="destructive" onclick={() => (confirmDelete = true)}
+						><Trash2 /> {m.delete_ticket()}</Button
+					>
+				</Card.Content>
+			</Card.Root>
+			<Card.Root class="gap-4 py-5">
+				<Card.Header class="flex items-center gap-2 px-5">
 					<Link2 class="text-muted-foreground size-4" />
 					<Card.Title class="grow">{m.links()}</Card.Title>
 				</Card.Header>
-				<Card.Content>
+				<Card.Content class="px-5">
 					{#each groups as g (g.label)}
 						{#if g.items.length}
 							<div class="text-muted-foreground mt-1 mb-1 text-xs font-semibold tracking-wide uppercase">{g.label}</div>
@@ -276,178 +475,22 @@
 							</ul>
 						{/if}
 					{/each}
-					<form class="flex flex-wrap gap-2" onsubmit={addLink}>
+					<form class="flex flex-col gap-2" onsubmit={addLink}>
 						<Select.Root disabled={!data.canEdit} type="single" bind:value={linkType}>
-							<Select.Trigger class="w-48 max-sm:w-full">{LINK_TYPES[linkType]}</Select.Trigger>
+							<Select.Trigger class="w-full">{LINK_TYPES[linkType]}</Select.Trigger>
 							<Select.Content>
 								{#each Object.entries(LINK_TYPES) as [v, l] (v)}
 									<Select.Item value={v}>{l}</Select.Item>
 								{/each}
 							</Select.Content>
 						</Select.Root>
-						<TicketPicker
-							disabled={!data.canEdit}
-							class="min-w-0 flex-1 max-sm:basis-full"
-							tickets={linkCandidates}
-							bind:value={linkTarget}
-						/>
+						<TicketPicker disabled={!data.canEdit} class="w-full" tickets={linkCandidates} bind:value={linkTarget} />
 						<Button disabled={!data.canEdit || !linkTarget} type="submit" variant="outline"><Link2 /> {m.link()}</Button
 						>
 					</form>
 				</Card.Content>
 			</Card.Root>
-
-			<Attachments readOnly={!data.canEdit} ticketId={t.id} attachments={data.attachments} {refresh} />
 		</div>
-
-		<Card.Root class="gap-4 py-5">
-			<Card.Content class="flex flex-col gap-4 px-5">
-				{#if t.closed}
-					<Button disabled={!data.canEdit} variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
-						><RotateCcw /> {m.reopen()}</Button
-					>
-				{:else}
-					<Button
-						disabled={!data.canEdit}
-						onclick={() => run(async () => playIfCompleted(t.closed, await closeTicket(t.id)))}
-						><Check /> {m.complete()}</Button
-					>
-				{/if}
-
-				<div class="grid gap-2">
-					<Label>{m.status()}</Label>
-					<Select.Root
-						disabled={!data.canEdit}
-						type="single"
-						value={String(t.columnId)}
-						onValueChange={(v) =>
-							run(async () => playIfCompleted(t.closed, await updateTicket(t.id, { columnId: Number(v) })))}
-					>
-						<Select.Trigger aria-label={m.status()} class="w-full">{columnName}</Select.Trigger>
-						<Select.Content>
-							{#each data.columns as c (c.id)}<Select.Item value={String(c.id)}>{c.name}</Select.Item>{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="grid gap-2">
-					<Label>{m.priority_2()}</Label>
-					<Select.Root
-						disabled={!data.canEdit}
-						type="single"
-						value={t.priority}
-						onValueChange={(v) => {
-							const priority = PRIORITIES.find((p) => p === v);
-							if (priority) patch({ priority });
-						}}
-					>
-						<Select.Trigger class="w-full">
-							<span class="flex items-center gap-2"
-								><span class="prio prio-{t.priority}"></span>{PRIORITY_LABELS[t.priority]}</span
-							>
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(PRIORITY_LABELS) as [v, l] (v)}
-								<Select.Item value={v}><span class="prio prio-{v}"></span>{l}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="grid gap-2">
-					<Label>{m.tags()}</Label>
-					<TagPicker
-						disabled={!data.canEdit}
-						tags={data.tags}
-						value={t.tags.map((g) => g.id)}
-						onchange={(tags) => patch({ tags })}
-					/>
-				</div>
-				<div class="grid gap-2">
-					<Label>{m.assignee()}</Label>
-					<AssigneePicker
-						assignedName={data.assignee?.name}
-						disabled={!data.canEdit}
-						users={data.users}
-						me={page.data.user?.id}
-						value={t.assigneeId}
-						onchange={(id) => patch({ assigneeId: id })}
-					/>
-					{#if page.data.user && data.users.some((u) => u.id === page.data.user!.id) && t.assigneeId !== page.data.user.id}
-						<Button
-							variant="link"
-							size="xs"
-							class="-mt-1 h-auto self-start px-0"
-							onclick={() => patch({ assigneeId: page.data.user!.id })}
-						>
-							{m.assign_to_me()}
-						</Button>
-					{/if}
-				</div>
-				<div class="grid gap-2">
-					<Label for="start">{m.start()}</Label>
-					<DatePicker
-						disabled={!data.canEdit}
-						id="start"
-						value={t.startDate}
-						onchange={(d) => patch({ startDate: d })}
-					/>
-				</div>
-				<div class="grid gap-2">
-					<Label for="due">{m.due()}</Label>
-					<DatePicker
-						disabled={!data.canEdit}
-						id="due"
-						value={t.dueDate}
-						min={t.startDate}
-						onchange={(d) => patch({ dueDate: d })}
-					/>
-					{#if data.canEdit && !t.startDate && t.dueDate}
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={t.dueDate < today()}
-							onclick={() => patch({ startDate: today() })}
-						>
-							{m.plan_from_today()}
-						</Button>
-						{#if t.dueDate < today()}<p class="text-muted-foreground text-xs">{m.plan_from_today_overdue()}</p>{/if}
-					{/if}
-				</div>
-				<div class="grid gap-2">
-					<Label>{m.subtask_of_2()}</Label>
-					<Select.Root
-						disabled={!data.canEdit}
-						type="single"
-						value={t.parentId ? String(t.parentId) : ''}
-						onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
-					>
-						<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-						<Select.Content class="max-h-72">
-							<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-							{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item
-								>{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-
-				<Separator />
-				<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
-					{#if data.submission}
-						<span class="flex items-center gap-1.5" data-submission>
-							<Inbox class="size-3.5" />
-							{data.submission.form ? m.submitted_via({ form: data.submission.form }) : m.submitted_via_form()}
-						</span>
-						{#if data.submission.email}
-							<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a>
-						{/if}
-					{/if}
-					<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
-					<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
-				</div>
-				<Button disabled={!data.canEdit} variant="destructive" onclick={() => (confirmDelete = true)}
-					><Trash2 /> {m.delete_ticket()}</Button
-				>
-			</Card.Content>
-		</Card.Root>
 	</div>
 </div>
 

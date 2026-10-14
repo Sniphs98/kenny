@@ -91,8 +91,36 @@
 		tickets = next.map((t) => ({ ...t }));
 	});
 
-	/** Tickets mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt */
+	/** Tickets mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt, gemerkt pro Projekt im Browser */
 	const expanded = new SvelteSet<number>();
+	const expandedKey = $derived(`gantt-expanded:${projectKey}`);
+	let expandedLoaded = $state(false);
+	$effect(() => {
+		const key = expandedKey;
+		// Nur beim Projektwechsel laden, nicht bei jedem Auf- und Zuklappen
+		untrack(() => {
+			expandedLoaded = false;
+			expanded.clear();
+			try {
+				const ids: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+				for (const id of Array.isArray(ids) ? ids : []) {
+					if (Number.isSafeInteger(id) && id > 0) expanded.add(id);
+				}
+			} catch {
+				/* Storage may be unavailable in private browsing. */
+			}
+			expandedLoaded = true;
+		});
+	});
+	$effect(() => {
+		const ids = [...expanded];
+		if (!expandedLoaded) return;
+		try {
+			localStorage.setItem(expandedKey, JSON.stringify(ids));
+		} catch {
+			/* Storage may be unavailable in private browsing. */
+		}
+	});
 
 	function toggle(id: number) {
 		if (expanded.has(id)) expanded.delete(id);

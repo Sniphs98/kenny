@@ -10,6 +10,8 @@ declare global {
 		interface PageState {
 			/** Daten des im Modal geöffneten Tickets (Shallow Routing) */
 			ticket?: TicketPageData;
+			/** Anzahl der Verlaufseinträge, die das Modal belegt (Ticket → Unteraufgabe → …) */
+			modalDepth?: number;
 		}
 	}
 }

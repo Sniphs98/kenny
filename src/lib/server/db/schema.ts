@@ -123,6 +123,24 @@ export const ticketLink = sqliteTable(
 	]
 );
 
+/**
+ * Zuständige eines Tickets (mehrere möglich), in der gewählten Reihenfolge.
+ * ticket.assignee_id bleibt zur Kompatibilität mit älteren Versionen auf die erste Person gesetzt.
+ */
+export const ticketAssignee = sqliteTable(
+	'ticket_assignee',
+	{
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		position: integer('position').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.ticketId, t.userId] }), index('ticket_assignee_user_idx').on(t.userId)]
+);
+
 /** Tags pro Projekt, z.B. "Bug", "Feature", "Story" */
 export const tag = sqliteTable(
 	'tag',

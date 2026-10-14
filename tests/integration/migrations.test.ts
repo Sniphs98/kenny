@@ -92,3 +92,38 @@ it('preserves shared project access and chooses the oldest existing account duri
 		client.close();
 	}
 });
+
+it('carries existing single assignees over into the assignee list', () => {
+	const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as {
+		entries: { tag: string; when: number }[];
+	};
+	const client = new Database(':memory:');
+	try {
+		client.pragma('foreign_keys = ON');
+		client.exec(
+			'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)'
+		);
+		for (const entry of journal.entries.slice(
+			0,
+			journal.entries.findIndex((entry) => entry.tag === '0008_ticket_assignees')
+		)) {
+			client.exec(readFileSync(`drizzle/${entry.tag}.sql`, 'utf8'));
+			client.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run('fixture', entry.when);
+		}
+		client.exec("INSERT INTO user (id, name, email) VALUES ('anna', 'Anna', 'anna@example.com')");
+		client.exec("INSERT INTO project (key, name) VALUES ('KEEP', 'Existing project')");
+		client.exec("INSERT INTO board_column (project_id, name) VALUES (1, 'Open')");
+		client.exec(
+			"INSERT INTO ticket (project_id, number, title, column_id, assignee_id) VALUES (1, 1, 'Assigned', 1, 'anna'), (1, 2, 'Free', 1, NULL)"
+		);
+		const db = drizzle(client);
+		migrate(db, { migrationsFolder: 'drizzle' });
+		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT ticket_id, user_id, position FROM ticket_assignee').all()).toEqual([
+			{ ticket_id: 1, user_id: 'anna', position: 0 }
+		]);
+		expect(client.pragma('foreign_key_check')).toEqual([]);
+	} finally {
+		client.close();
+	}
+});

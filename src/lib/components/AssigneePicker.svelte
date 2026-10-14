@@ -15,7 +15,7 @@
 	let {
 		users,
 		value,
-		assignedName,
+		assigned = [],
 		onchange,
 		me,
 		compact = false,
@@ -23,12 +23,14 @@
 		class: className
 	}: {
 		users: User[];
-		value: string | null;
-		assignedName?: string | null;
-		onchange: (id: string | null) => void;
+		/** IDs der Zuständigen in ihrer Reihenfolge */
+		value: string[];
+		/** Namen der Zuständigen, auch wenn sie nicht mehr auswählbar sind (z. B. deaktiviert) */
+		assigned?: { id: string; name: string }[];
+		onchange: (ids: string[]) => void;
 		/** ID des angemeldeten Benutzers, für „Mir zuweisen“ */
 		me?: string;
-		/** Nur den Avatar als Auslöser zeigen (z.B. auf Board-Karten) */
+		/** Nur die Avatare als Auslöser zeigen (z.B. auf Board-Karten) */
 		compact?: boolean;
 		disabled?: boolean;
 		class?: string;
@@ -36,41 +38,70 @@
 
 	let open = $state(false);
 	const current = $derived(
-		users.find((u) => u.id === value) ?? (value && assignedName ? { id: value, name: assignedName } : null)
+		value.map((id) => users.find((u) => u.id === id) ?? assigned.find((a) => a.id === id)).filter((u): u is User => !!u)
 	);
+	const names = $derived(current.map((u) => u.name).join(', '));
+	const label = $derived(current.length ? m.assignee_2({ value1: names }) : m.unassigned_3());
 	// Angemeldeten Benutzer zuerst
 	const sorted = $derived(
 		[...users].sort((a, b) => Number(b.id === me) - Number(a.id === me) || a.name.localeCompare(b.name))
 	);
+	/** Im kompakten Auslöser höchstens so viele Avatare, der Rest als „+n“ */
+	const SHOWN = 3;
 
-	function pick(id: string | null) {
+	/** Auswahl umschalten; die Liste bleibt offen, damit mehrere Personen gewählt werden können */
+	function toggle(id: string) {
+		onchange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+	}
+
+	function clear() {
 		open = false;
-		if (id !== value) onchange(id);
+		if (value.length) onchange([]);
 	}
 </script>
 
 <Popover.Root bind:open>
-	<!-- Tooltip nur in der kompakten Form; sonst steht der Name schon im Button -->
-	<Hint text={compact ? (current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()) : null}>
+	<!-- Tooltip nur in der kompakten Form; sonst stehen die Namen schon im Button -->
+	<Hint text={compact ? label : null}>
 		{#snippet children(props)}
 			<Popover.Trigger
 				{disabled}
 				{...props}
 				class={cn(
 					compact
-						? 'focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3'
-						: buttonVariants({ variant: 'outline', class: 'w-full justify-between font-normal' }),
+						? 'focus-visible:ring-ring/50 flex items-center rounded-full outline-none focus-visible:ring-3'
+						: buttonVariants({ variant: 'outline', class: 'h-auto min-h-9 w-full justify-between font-normal' }),
 					className
 				)}
-				aria-label={current ? m.assignee_2({ value1: current.name }) : m.unassigned_3()}
+				aria-label={label}
 				onclick={(e) => e.stopPropagation()}
 			>
 				{#if compact}
-					<UserAvatar name={current?.name} size="sm" tooltip={false} />
+					{#if current.length}
+						<span class="flex -space-x-1.5">
+							{#each current.slice(0, SHOWN) as u (u.id)}
+								<UserAvatar name={u.name} size="sm" tooltip={false} class="ring-card ring-2" />
+							{/each}
+						</span>
+						{#if current.length > SHOWN}
+							<span class="text-muted-foreground ml-1 text-xs tabular-nums">+{current.length - SHOWN}</span>
+						{/if}
+					{:else}
+						<UserAvatar name={null} size="sm" tooltip={false} />
+					{/if}
 				{:else}
 					<span class="flex min-w-0 items-center gap-2">
-						<UserAvatar name={current?.name} size="sm" tooltip={false} />
-						<span class={cn('truncate', !current && 'text-muted-foreground')}>{current?.name ?? m.nobody()}</span>
+						{#if current.length}
+							<span class="flex shrink-0 -space-x-1.5">
+								{#each current.slice(0, SHOWN) as u (u.id)}
+									<UserAvatar name={u.name} size="sm" tooltip={false} class="ring-background ring-2" />
+								{/each}
+							</span>
+							<span class="truncate">{names}</span>
+						{:else}
+							<UserAvatar name={null} size="sm" tooltip={false} />
+							<span class="text-muted-foreground truncate">{m.nobody()}</span>
+						{/if}
 					</span>
 					<ChevronsUpDown class="text-muted-foreground" />
 				{/if}
@@ -83,18 +114,18 @@
 			<Command.List>
 				<Command.Empty>{m.no_users_found()}</Command.Empty>
 				<Command.Group>
-					<Command.Item value="__none" keywords={['niemand', 'keiner']} onSelect={() => pick(null)}>
+					<Command.Item value="__none" keywords={['niemand', 'keiner', 'nobody']} onSelect={clear}>
 						<UserRoundX class="text-muted-foreground" />
 						<span class="grow">{m.nobody()}</span>
-						{#if !value}<Check />{/if}
+						{#if !value.length}<Check />{/if}
 					</Command.Item>
 					{#each sorted as u (u.id)}
-						<Command.Item value={u.id} keywords={[u.name, u.email ?? '']} onSelect={() => pick(u.id)}>
+						<Command.Item value={u.id} keywords={[u.name, u.email ?? '']} onSelect={() => toggle(u.id)}>
 							<UserAvatar name={u.name} size="sm" />
 							<span class="grow truncate"
 								>{u.name}{#if u.id === me}<span class="text-muted-foreground"> {m.me()}</span>{/if}</span
 							>
-							{#if u.id === value}<Check />{/if}
+							{#if value.includes(u.id)}<Check />{/if}
 						</Command.Item>
 					{/each}
 				</Command.Group>

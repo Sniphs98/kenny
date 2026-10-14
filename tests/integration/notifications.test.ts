@@ -128,6 +128,14 @@ describe('notification delivery', () => {
 		await settleNotifications();
 		expect(sent.map((s) => lines(s.card)[0])).toEqual(['Neues Ticket WEB-1', 'WEB-1 zugewiesen an Max Member']);
 
+		// Eine weitere Person meldet alle Zuständigen; nur umsortieren oder entfernen meldet nichts
+		updateTicket(t.key, { assignees: ['member', 'owner'] });
+		updateTicket(t.key, { assignees: ['owner', 'member'] });
+		updateTicket(t.key, { assignees: ['member'] });
+		await settleNotifications();
+		expect(sent.map((s) => lines(s.card)[0]).slice(2)).toEqual(['WEB-1 zugewiesen an Max Member, Olga Owner']);
+		sent.splice(2);
+
 		closeTicket(t.key);
 		closeTicket(t.key);
 		reopenTicket(t.key);

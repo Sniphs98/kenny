@@ -167,7 +167,7 @@
 	"list_project_tags": "List project tags",
 	"delete_tag": "Delete tag",
 	"ticket_with_subtasks_and_links": "Ticket with subtasks and links",
-	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Update ticket (column moves it, assignee assigns it, tags replaces all tags)",
+	"update_ticket_column_moves_it_assignee_assigns_it_tags_replaces_all_ta": "Update ticket (column moves it, assignees replaces all assignees, tags replaces all tags)",
 	"complete_ticket": "Complete ticket",
 	"reopen_ticket": "Reopen ticket",
 	"create_subtask": "Create subtask",
@@ -540,5 +540,11 @@
 	"command_theme": "Theme: {mode}",
 	"plan_from_today": "Plan from today",
 	"plan_from_today_overdue": "The deadline is before today. Update it or choose an earlier start date.",
-	"plan_after_deadline": "The start date must not be after the deadline."
+	"plan_after_deadline": "The start date must not be after the deadline.",
+	"add_description": "Add a description…",
+	"description_save_hint": "Saves when you leave the field · Esc discards",
+	"subtasks_waiting": "{count} subtask(s) waiting for prerequisites",
+	"column_order_manual": "“{column}” now uses your own order",
+	"ticket_not_in_column": "Ticket {value1} is not in this column.",
+	"duplicate_ticket_in_order": "Each ticket may only appear once."
 }

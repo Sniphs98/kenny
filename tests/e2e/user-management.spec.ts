@@ -3,22 +3,105 @@ import { userSchema } from '../../src/lib/contracts';
 import { api, createProject, createTicket, open } from './helpers';
 
 let counter = 0;
+test('only administrators can create accounts after bootstrap and keep their own session', async ({
+	page,
+	request,
+	browser,
+	baseURL
+}) => {
+	const anonymous = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+	try {
+		const data = {
+			name: 'Blocked signup',
+			email: `blocked-${Date.now()}@example.com`,
+			password: 'blocked-password',
+			role: 'admin',
+			active: false
+		};
+		expect(
+			(await anonymous.request.post('/api/auth/sign-up/email', { headers: { origin: baseURL! }, data })).ok()
+		).toBe(false);
+		expect((await anonymous.request.post('/api/v1/admin/users', { data })).status()).toBe(401);
+		const before = await api<{ id: string }>(request, 'GET', '/me');
+		await page.context().addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL! }]);
+		await open(page, '/admin/users');
+		const form = page.locator('form');
+		const email = `admin-created-${Date.now()}@example.com`;
+		await form.getByLabel('Name', { exact: true }).fill('Created in UI');
+		await form.getByLabel('Email', { exact: true }).fill(email);
+		await form.getByLabel('Password', { exact: true }).fill('admin-created-password');
+		await form.getByRole('button', { name: 'Create user', exact: true }).click();
+		await expect(page.getByRole('status')).toContainText('User created.');
+		expect((await api<{ id: string }>(request, 'GET', '/me')).id).toBe(before.id);
+		expect(
+			(
+				await anonymous.request.post('/api/auth/sign-in/email', {
+					headers: { origin: baseURL! },
+					data: { email, password: 'admin-created-password' }
+				})
+			).ok()
+		).toBe(true);
+		expect(
+			(
+				await anonymous.request.post('/api/v1/admin/users', {
+					data: { name: 'Forbidden', email: data.email, password: data.password }
+				})
+			).status()
+		).toBe(403);
+		await anonymous.clearCookies();
+		const login = await anonymous.newPage();
+		await open(login, '/login');
+		await expect(login.locator('a[href="#register"]')).toHaveCount(0);
+	} finally {
+		await anonymous.close();
+	}
+});
 async function register(browser: Browser, baseURL: string, name: string) {
 	const context = await browser.newContext({ baseURL, locale: 'en-GB', storageState: { cookies: [], origins: [] } });
 	const email = `access-${Date.now()}-${counter++}@example.com`;
-	const response = await context.request.post('/api/auth/sign-up/email', {
+	const admin = await browser.newContext({ baseURL, storageState: 'playwright/.auth/user.json' });
+	const response = await admin.request.post('/api/v1/admin/users', {
 		headers: { origin: baseURL },
-		data: { name, email, password: 'permission-test-password', role: 'admin', active: false }
+		data: { name, email, password: 'permission-test-password' }
 	});
 	expect(response.ok(), await response.text()).toBeTruthy();
-	const { user } = await response.json();
-	const identity = userSchema.parse(user);
+	const identity = userSchema.parse(await response.json());
+	await admin.close();
+	const signin = await context.request.post('/api/auth/sign-in/email', {
+		headers: { origin: baseURL },
+		data: { email, password: 'permission-test-password' }
+	});
+	expect(signin.ok()).toBeTruthy();
 	await context.addCookies([{ name: 'PARAGLIDE_LOCALE', value: 'en', url: baseURL }]);
 	return { context, user: identity };
 }
 async function dispose(contexts: BrowserContext[]) {
 	await Promise.all(contexts.map((c) => c.close()));
 }
+
+test('cross-project links require edit access to both projects when deleted', async ({ request, browser, baseURL }) => {
+	const actor = await register(browser, baseURL!, 'Cross-project member');
+	try {
+		const first = await createProject(request, 'First link project');
+		const second = await createProject(request, 'Second link project');
+		const source = await createTicket(request, first.key, { title: 'Source' });
+		const target = await createTicket(request, second.key, { title: 'Target' });
+		await api(request, 'POST', `/projects/${first.key}/members`, { user: actor.user.id, role: 'member' });
+		const link = await api<{ id: number }>(request, 'POST', `/tickets/${source.key}/links`, {
+			target: target.key,
+			type: 'depends_on'
+		});
+		const path = `/api/v1/tickets/${source.key}/links/${link.id}`;
+		const options = { headers: { 'content-type': 'application/json' } };
+		expect((await actor.context.request.delete(path, options)).status()).toBe(404);
+		await api(request, 'POST', `/projects/${second.key}/members`, { user: actor.user.id, role: 'reader' });
+		expect((await actor.context.request.delete(path, options)).status()).toBe(403);
+		await api(request, 'PATCH', `/projects/${second.key}/members/${actor.user.id}`, { role: 'member' });
+		expect((await actor.context.request.delete(path, options)).status()).toBe(200);
+	} finally {
+		await actor.context.close();
+	}
+});
 
 test('project roles protect every resource and do not allow signup to elevate privileges', async ({
 	request,

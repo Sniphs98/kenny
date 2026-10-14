@@ -18,7 +18,7 @@ export const load = ({ params, locals }) => {
 			columns: getColumns(project.id),
 			tickets: listTickets(project.id),
 			tags: listTags(project.id),
-			dependencies: listDependencies(project.id),
+			dependencies: listDependencies(project.id, locals.user!.id),
 			users: projectUsers(project.id)
 		};
 	} catch (e) {

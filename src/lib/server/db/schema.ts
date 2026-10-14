@@ -194,6 +194,8 @@ export const apiToken = sqliteTable('api_token', {
 		.references(() => user.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
 	tokenHash: text('token_hash').notNull().unique(),
+	readOnly: integer('read_only', { mode: 'boolean' }).notNull().default(false),
+	expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
 	/** Erste Zeichen des Tokens zur Wiedererkennung in der Oberfläche */
 	prefix: text('prefix').notNull(),
 	lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),

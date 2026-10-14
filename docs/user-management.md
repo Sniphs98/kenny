@@ -46,14 +46,15 @@ After upgrading, review **Users** and each project's **Members**, transfer insta
 
 Personal API tokens use their owner's current permissions.
 
-| Endpoint                                         | Purpose                                           | Required access        |
-| ------------------------------------------------ | ------------------------------------------------- | ---------------------- |
-| `GET /api/v1/admin/users`                        | List accounts and sign-in providers               | Instance administrator |
-| `PATCH /api/v1/admin/users/:user`                | Change `role` (`admin`/`user`) or `active`        | Instance administrator |
-| `GET /api/v1/projects/:project/members`          | List memberships                                  | Project read access    |
-| `POST /api/v1/projects/:project/members`         | Add `{ "user": "email-or-id", "role": "member" }` | Project administrator  |
-| `PATCH /api/v1/projects/:project/members/:user`  | Change `{ "role": "reader" }`                     | Project administrator  |
-| `DELETE /api/v1/projects/:project/members/:user` | Remove membership                                 | Project administrator  |
+| Endpoint                                         | Purpose                                                                   | Required access        |
+| ------------------------------------------------ | ------------------------------------------------------------------------- | ---------------------- |
+| `GET /api/v1/admin/users`                        | List accounts and sign-in providers                                       | Instance administrator |
+| `POST /api/v1/admin/users`                       | Create `{ "name": "Name", "email": "user@example.com", "password": "…" }` | Instance administrator |
+| `PATCH /api/v1/admin/users/:user`                | Change `role` (`admin`/`user`) or `active`                                | Instance administrator |
+| `GET /api/v1/projects/:project/members`          | List memberships                                                          | Project read access    |
+| `POST /api/v1/projects/:project/members`         | Add `{ "user": "email-or-id", "role": "member" }`                         | Project administrator  |
+| `PATCH /api/v1/projects/:project/members/:user`  | Change `{ "role": "reader" }`                                             | Project administrator  |
+| `DELETE /api/v1/projects/:project/members/:user` | Remove membership                                                         | Project administrator  |
 
 `GET /api/v1/projects` returns accessible projects. `GET /api/v1/users` returns active users sharing a project with the caller, plus the caller; instance administrators see all active users. Neither endpoint returns credentials or authentication tokens.
 
@@ -61,6 +62,12 @@ Personal API tokens use their owner's current permissions.
 
 The existing provider remains available through `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, and `MICROSOFT_TENANT_ID`. Use a fixed tenant ID for a company installation and configure `<BETTER_AUTH_URL>/api/auth/callback/microsoft` as the redirect URI in Entra ID.
 
-After a Microsoft user's first sign-in creates their account, a project administrator can add it to a project. Signing in does not grant access to existing projects. Public email/password registration remains enabled in this first stage.
+After a Microsoft user's first sign-in creates their account, a project administrator can add it to a project. Signing in does not grant access to existing projects. After the first account has been created, public registration is disabled, including creation of new Microsoft accounts. Instance administrators create accounts under **Users** (name, email and password) or through `POST /api/v1/admin/users`. Existing Microsoft accounts continue to sign in. Creating an account does not replace the administrator’s session or grant project membership.
 
-Invitations, registration restrictions, explicit account linking, Entra group mapping, and automatic provisioning are follow-up work. Actual Entra sign-in requires a registered application and tenant credentials; local permission tests do not verify that external integration in a specific tenant.
+Invitations, explicit account linking, Entra group mapping, and automatic provisioning are follow-up work. Actual Entra sign-in requires a registered application and tenant credentials; local permission tests do not verify that external integration in a specific tenant.
+
+## API token lifetime and permissions
+
+New personal API tokens expire after 90 days by default; choose 30, 90, or 365 days in the API settings. The server accepts lifetimes from 1 to 365 days. Choose **Read only** to prevent REST mutations, including administrator operations. Read-only tokens can still use the read-only MCP endpoint, whose transport uses POST. An explicit Bearer token takes precedence over a browser session. Tokens always use their owner’s current project permissions.
+
+Existing tokens retain their previous permissions and do not expire automatically. Review and replace these tokens if you want an expiry date. Deactivation and manual revocation invalidate both old and new tokens. Per-project token scopes are not yet supported.

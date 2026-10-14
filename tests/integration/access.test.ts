@@ -6,6 +6,8 @@ import {
 	addMember,
 	bootstrapAdministrator,
 	changeMember,
+	createManagedUser,
+	registrationAllowed,
 	listManagedUsers,
 	listMembers,
 	updateUser
@@ -24,6 +26,8 @@ import {
 	createTicket,
 	getTicketDetail,
 	listTickets,
+	listDependencies,
+	removeLink,
 	searchTickets,
 	updateTicket
 } from '#lib/server/services/tickets.js';
@@ -59,6 +63,46 @@ function denied(fn: () => unknown, status: number) {
 }
 
 describe('user management and project permissions', () => {
+	it('creates credential accounts atomically without granting project or administrator rights', async () => {
+		expect(registrationAllowed()).toBe(false);
+		const input = { name: 'Created', email: 'CREATED@example.com', password: 'secure-test-password' };
+		await expect(createManagedUser('member', input)).rejects.toMatchObject({ status: 403 });
+		const created = await createManagedUser('root', input);
+		expect(created).toMatchObject({
+			email: 'created@example.com',
+			active: true,
+			role: 'user',
+			providers: ['credential']
+		});
+		expect(created).not.toHaveProperty('password');
+		expect(listProjects(created.id)).toEqual([]);
+		await expect(createManagedUser('root', input)).rejects.toMatchObject({ status: 409 });
+		await expect(createManagedUser('root', { ...input, role: 'admin' })).rejects.toMatchObject({ status: 400 });
+	});
+	it('does not count disabled accounts when protecting the last project administrator', () => {
+		const { p } = fixture();
+		addMember('owner', p.id, { user: 'outsider', role: 'admin' });
+		updateUser('root', 'outsider', { active: false });
+		denied(() => changeMember('owner', p.id, 'owner', null), 409);
+		denied(() => changeMember('owner', p.id, 'owner', { role: 'reader' }), 409);
+		updateUser('root', 'outsider', { active: true });
+		changeMember('owner', p.id, 'owner', { role: 'member' });
+	});
+	it('protects both projects when deleting links and hides inaccessible dependency targets', () => {
+		const { p, t } = fixture();
+		const other = createProject({ name: 'Secret', key: 'SECRET' }, 'outsider');
+		const secret = createTicket(other.key, { title: 'Secret' }, 'outsider');
+		const link = addLink(t.id, { target: secret.id, type: 'depends_on' }, 'root');
+		expect(listDependencies(p.id, 'reader')).toEqual([]);
+		expect(listDependencies(p.id, 'root')).toHaveLength(1);
+		denied(() => removeLink(t.id, link.id, 'owner'), 404);
+		addMember('outsider', other.id, { user: 'owner', role: 'reader' });
+		expect(listDependencies(p.id, 'owner')).toHaveLength(1);
+		denied(() => removeLink(t.id, link.id, 'owner'), 403);
+		changeMember('outsider', other.id, 'owner', { role: 'member' });
+		removeLink(t.id, link.id, 'owner');
+		expect(listDependencies(p.id, 'root')).toEqual([]);
+	});
 	it('bootstraps only the first registration without promoting subsequent accounts', () => {
 		updateUser('root', 'owner', { role: 'admin' });
 		updateUser('owner', 'root', { role: 'user' });

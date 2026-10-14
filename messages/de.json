@@ -546,5 +546,19 @@
 	"subtasks_waiting": "{count} Unteraufgabe(n) warten auf Voraussetzungen",
 	"column_order_manual": "„{column}“ nutzt jetzt deine eigene Reihenfolge",
 	"ticket_not_in_column": "Ticket {value1} liegt nicht in dieser Spalte.",
-	"duplicate_ticket_in_order": "Jedes Ticket darf nur einmal vorkommen."
+	"duplicate_ticket_in_order": "Jedes Ticket darf nur einmal vorkommen.",
+	"um_create_user": "Benutzer anlegen",
+	"um_create_user_hint": "Teile die Zugangsdaten sicher mit der Person. Projektzugriff wird anschließend unter Mitglieder vergeben.",
+	"um_user_created": "Benutzer wurde angelegt.",
+	"token_read_only": "Nur lesen",
+	"token_lifetime": "Gültigkeit",
+	"token_days": "Tage",
+	"token_expires": "Läuft ab",
+	"token_read_write": "Lesen und schreiben",
+	"token_no_expiry": "Kein Ablaufdatum (bestehendes Token)",
+	"token_error_expired": "API-Token abgelaufen.",
+	"token_error_read_only": "Dieses API-Token erlaubt nur Lesezugriff.",
+	"um_error_registration": "Neue Konten werden durch Administratoren angelegt.",
+	"um_error_duplicate": "Benutzer existiert bereits.",
+	"token_error_settings": "Ungültige Token-Einstellungen."
 }

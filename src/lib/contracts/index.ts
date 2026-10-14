@@ -311,6 +311,16 @@ export type IntakeSubmissionInput = z.input<typeof intakeSubmissionSchema>;
 export type IntakeFormDto = z.output<typeof intakeFormDtoSchema>;
 export type PublicIntakeForm = z.output<typeof publicIntakeFormSchema>;
 export const GLOBAL_ROLES = ['admin', 'user'] as const;
+export const createUserSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120),
+	email: z.email().trim().toLowerCase().max(254),
+	password: z.string().min(8).max(128)
+});
+export const createApiTokenSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120),
+	readOnly: z.boolean().default(false),
+	lifetimeDays: z.number().int().min(1).max(365).default(90)
+});
 export const PROJECT_ROLES = ['admin', 'member', 'reader'] as const;
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 export const updateUserSchema = z.strictObject({

@@ -1,10 +1,40 @@
 import { and, asc, eq, ne, or } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { hashPassword } from 'better-auth/crypto';
 import { db } from '../db';
 import { account, apiToken, projectMember, session, user } from '../db/schema';
 import { ApiError } from '../errors';
 import { parseInput } from '../validation';
-import { addMemberSchema, managedUserSchema, updateMemberSchema, updateUserSchema } from '#lib/contracts/index.js';
+import {
+	addMemberSchema,
+	createUserSchema,
+	managedUserSchema,
+	updateMemberSchema,
+	updateUserSchema
+} from '#lib/contracts/index.js';
 import { requireActiveUser, requireAdmin, requireProjectAccess } from './access';
+
+export function registrationAllowed() {
+	return !db.select({ id: user.id }).from(user).limit(1).get();
+}
+
+/** Create credentials without signing out or replacing the administrator's session. */
+export async function createManagedUser(actorId: string, raw: unknown) {
+	requireAdmin(actorId);
+	const input = parseInput(createUserSchema, raw);
+	const password = await hashPassword(input.password);
+	const id = randomUUID();
+	db.transaction((tx) => {
+		requireAdmin(actorId);
+		if (tx.select({ id: user.id }).from(user).where(eq(user.email, input.email)).get())
+			throw new ApiError(409, 'Benutzer existiert bereits.');
+		tx.insert(user).values({ id, name: input.name, email: input.email }).run();
+		tx.insert(account)
+			.values({ id: randomUUID(), accountId: id, providerId: 'credential', userId: id, password })
+			.run();
+	});
+	return presentUser(id);
+}
 
 export function bootstrapAdministrator() {
 	db.transaction((tx) => {
@@ -104,8 +134,14 @@ export function changeMember(actorId: string, projectId: number, userId: string,
 			const other = tx
 				.select()
 				.from(projectMember)
+				.innerJoin(user, eq(user.id, projectMember.userId))
 				.where(
-					and(eq(projectMember.projectId, projectId), eq(projectMember.role, 'admin'), ne(projectMember.userId, userId))
+					and(
+						eq(projectMember.projectId, projectId),
+						eq(projectMember.role, 'admin'),
+						ne(projectMember.userId, userId),
+						eq(user.active, true)
+					)
 				)
 				.get();
 			if (!other) throw new ApiError(409, 'Der letzte Projektadministrator kann nicht entfernt werden.');

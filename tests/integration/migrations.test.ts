@@ -67,11 +67,19 @@ it('preserves shared project access and chooses the oldest existing account duri
 			"INSERT INTO user (id, name, email, created_at) VALUES ('first', 'First', 'first@example.com', 1), ('owner', 'Owner', 'owner@example.com', 2)"
 		);
 		client.exec(
+			"INSERT INTO api_token (user_id, name, token_hash, prefix) VALUES ('first', 'Existing token', 'fixture-token-hash', 'kny_fixture')"
+		);
+		client.exec(
 			"INSERT INTO project (key, name, owner_id) VALUES ('OWNED', 'Owned', 'owner'), ('SHARED', 'Shared', NULL)"
 		);
 		const db = drizzle(client);
 		migrate(db, { migrationsFolder: 'drizzle' });
 		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT token_hash, read_only, expires_at FROM api_token').get()).toEqual({
+			token_hash: 'fixture-token-hash',
+			read_only: 0,
+			expires_at: null
+		});
 		expect(client.prepare('SELECT id, role, active FROM user ORDER BY id').all()).toEqual([
 			{ id: 'first', role: 'admin', active: 1 },
 			{ id: 'owner', role: 'user', active: 1 }

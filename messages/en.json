@@ -546,5 +546,19 @@
 	"subtasks_waiting": "{count} subtask(s) waiting for prerequisites",
 	"column_order_manual": "“{column}” now uses your own order",
 	"ticket_not_in_column": "Ticket {value1} is not in this column.",
-	"duplicate_ticket_in_order": "Each ticket may only appear once."
+	"duplicate_ticket_in_order": "Each ticket may only appear once.",
+	"um_create_user": "Create user",
+	"um_create_user_hint": "Share credentials securely with the person. Grant project access afterward under Members.",
+	"um_user_created": "User created.",
+	"token_read_only": "Read only",
+	"token_lifetime": "Validity",
+	"token_days": "days",
+	"token_expires": "Expires",
+	"token_read_write": "Read and write",
+	"token_no_expiry": "No expiry (existing token)",
+	"token_error_expired": "API token expired.",
+	"token_error_read_only": "This API token only permits read access.",
+	"um_error_registration": "New accounts are created by administrators.",
+	"um_error_duplicate": "User already exists.",
+	"token_error_settings": "Invalid token settings."
 }

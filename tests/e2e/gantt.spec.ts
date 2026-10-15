@@ -1,8 +1,50 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, createProject, createTicket, day, getTicket, open, reload } from './helpers';
+import { api, card, createProject, createTicket as createRawTicket, day, getTicket, open, reload } from './helpers';
+
+const createTicket = (request: Parameters<typeof createRawTicket>[0], projectKey: string, data: Record<string, unknown>) =>
+	createRawTicket(request, projectKey, { kind: 'main', ...data });
 
 /** Ticketzeile in der Liste links */
 const row = (page: Page, title: string) => page.locator('.labels .label').filter({ hasText: title });
+
+test('Gantt legt zuerst eine Version und darunter eine Hauptaufgabe an', async ({ page, request }) => {
+	const p = await createProject(request);
+	await open(page, `/projects/${p.key}/gantt`);
+	await page.getByRole('button', { name: 'Version', exact: true }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByLabel('Titel').fill('Version 2');
+	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+	const [version] = await api<{ id: number; key: string; kind: string; parentId: number | null }[]>(
+		request, 'GET', `/projects/${p.key}/tickets`
+	);
+	expect(version).toMatchObject({ kind: 'version', parentId: null });
+	await row(page, 'Version 2').hover();
+	await row(page, 'Version 2').getByRole('button', { name: 'Hauptaufgabe zu Version 2 hinzufügen' }).click();
+	await dialog.getByLabel('Titel').fill('Hauptaufgabe B');
+	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+	const main = (await api<{ key: string; kind: string; parentId: number | null }[]>(
+		request, 'GET', `/projects/${p.key}/tickets`
+	)).find((t) => t.kind === 'main');
+	expect(main).toMatchObject({ parentId: version.id });
+	await row(page, 'Version 2').getByRole('button', { name: /Unteraufgaben aufklappen/ }).click();
+	await expect(row(page, 'Hauptaufgabe B')).toBeVisible();
+});
+
+test('Version und Hauptaufgabe im Gantt, nur Tasks im Kanban', async ({ page, request }) => {
+	const p = await createProject(request);
+	const version = await createTicket(request, p.key, { title: 'Version 1', kind: 'version', startDate: day(0), dueDate: day(10) });
+	const main = await createTicket(request, p.key, { title: 'Hauptaufgabe A', kind: 'main', parentId: version.id, startDate: day(1), dueDate: day(5) });
+	await createTicket(request, p.key, { title: 'Task A', kind: 'task', parentId: main.id, startDate: day(2), dueDate: day(3) });
+	await open(page, `/projects/${p.key}/gantt`);
+	await expect(row(page, 'Version 1')).toBeVisible();
+	await row(page, 'Version 1').getByRole('button', { name: /Unteraufgaben aufklappen/ }).click();
+	await expect(row(page, 'Hauptaufgabe A')).toBeVisible();
+	await expect(row(page, 'Task A')).toHaveCount(0);
+	await open(page, `/projects/${p.key}/board`);
+	await expect(page.getByRole('button', { name: /Hauptaufgabe A/ })).toBeVisible();
+	await expect(card(page, 'Task A')).toBeVisible();
+	await expect(card(page, 'Hauptaufgabe A')).toHaveCount(0);
+});
 
 test('Backlog-Ticket im Gantt einplanen und wieder in den Backlog legen', async ({ page, request }) => {
 	const p = await createProject(request);
@@ -15,10 +57,10 @@ test('Backlog-Ticket im Gantt einplanen und wieder in den Backlog legen', async 
 	// Backlog ist standardmäßig ausgeblendet
 	await expect(row(page, 'Export als CSV')).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…' }).click();
 	// Bereits eingeplante Tickets stehen nicht in der Suche
 	await expect(page.getByRole('option', { name: /Schon geplant/ })).toHaveCount(0);
-	await page.getByPlaceholder('Ticket suchen oder neu anlegen…').fill('CSV');
+	await page.getByPlaceholder('Hauptaufgabe suchen oder anlegen…').fill('CSV');
 	await page.getByRole('option', { name: /Export als CSV.*Backlog/ }).click();
 
 	await expect(row(page, 'Export als CSV')).toBeVisible();
@@ -54,18 +96,18 @@ test('neues Ticket direkt aus der Einplanen-Suche anlegen', async ({ page, reque
 	const p = await createProject(request);
 	await open(page, `/projects/${p.key}/gantt`);
 
-	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
-	await page.getByPlaceholder('Ticket suchen oder neu anlegen…').fill('Messestand planen');
-	await page.getByRole('option', { name: '„Messestand planen“ als neues Ticket anlegen' }).click();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…' }).click();
+	await page.getByPlaceholder('Hauptaufgabe suchen oder anlegen…').fill('Messestand planen');
+	await page.getByRole('option', { name: '„Messestand planen“ als neue Hauptaufgabe anlegen' }).click();
 
 	await expect(row(page, 'Messestand planen')).toBeVisible();
-	const [t] = await api<{ title: string; startDate: string }[]>(request, 'GET', `/projects/${p.key}/tickets`);
-	expect(t).toMatchObject({ title: 'Messestand planen', startDate: day(0) });
+	const [t] = await api<{ title: string; kind: string; parentId: number | null; startDate: string }[]>(request, 'GET', `/projects/${p.key}/tickets`);
+	expect(t).toMatchObject({ title: 'Messestand planen', kind: 'main', parentId: null, startDate: day(0) });
 });
 
 test('Unteraufgaben im Gantt auf- und zuklappen', async ({ page, request }) => {
 	const p = await createProject(request);
-	const parent = await createTicket(request, p.key, { title: 'Umzug', startDate: day(0), dueDate: day(10) });
+	const parent = await createTicket(request, p.key, { title: 'Umzug', kind: 'version', startDate: day(0), dueDate: day(10) });
 	await createTicket(request, p.key, {
 		title: 'Kisten packen',
 		parent: parent.key,
@@ -115,7 +157,7 @@ test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vie
 	for (const title of ['Offen A', 'Offen B', 'Offen C']) await createTicket(request, p.key, { title });
 
 	await open(page, `/projects/${p.key}/board`);
-	const button = page.getByRole('button', { name: 'Ticket einplanen…' });
+	const button = page.getByRole('button', { name: 'Hauptaufgabe einplanen…' });
 	await button.scrollIntoViewIfNeeded();
 
 	for (const title of ['Offen A', 'Offen B', 'Offen C']) {
@@ -127,8 +169,8 @@ test('nach dem Einplanen bleibt „Ticket einplanen…“ sichtbar, auch bei vie
 
 	// Auch beim Anlegen eines neuen Tickets aus der Suche
 	await button.click();
-	await page.getByPlaceholder('Ticket suchen oder neu anlegen…').fill('Ganz neu');
-	await page.getByRole('option', { name: '„Ganz neu“ als neues Ticket anlegen' }).click();
+	await page.getByPlaceholder('Hauptaufgabe suchen oder anlegen…').fill('Ganz neu');
+	await page.getByRole('option', { name: '„Ganz neu“ als neue Hauptaufgabe anlegen' }).click();
 	await expect(row(page, 'Ganz neu')).toBeVisible();
 	await expect(button).toBeInViewport({ ratio: 1 });
 });
@@ -184,7 +226,7 @@ test('planning deadline-only tickets preserves the original due date', async ({ 
 	const p = await createProject(request);
 	const t = await createTicket(request, p.key, { title: 'Keep this deadline', dueDate: day(8) });
 	await open(page, `/projects/${p.key}/gantt`);
-	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…' }).click();
 	await page.getByRole('option', { name: /Keep this deadline/ }).click();
 	await expect(row(page, t.title)).toBeVisible();
 	expect(await getTicket(request, t.key)).toMatchObject({ startDate: day(0), dueDate: day(8) });
@@ -203,7 +245,7 @@ test('overdue deadlines are not silently moved when scheduling from today', asyn
 	await open(page, `/tickets/${t.key}`);
 	await expect(page.getByRole('button', { name: 'Ab heute planen', exact: true })).toBeDisabled();
 	await open(page, `/projects/${p.key}/gantt`);
-	await page.getByRole('button', { name: 'Ticket einplanen…' }).click();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…' }).click();
 	await page.getByRole('option', { name: /Past deadline/ }).click();
 	await expect(page.getByText('Das Startdatum darf nicht nach der Fälligkeit liegen.', { exact: true })).toBeVisible();
 	expect(await getTicket(request, t.key)).toMatchObject({ startDate: null, dueDate: day(-1) });

@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const LINK_TYPES = ['depends_on', 'relates'] as const;
+export const TICKET_KINDS = ['version', 'main', 'task'] as const;
+export type TicketKind = (typeof TICKET_KINDS)[number];
 export type Priority = (typeof PRIORITIES)[number];
 export type LinkType = (typeof LINK_TYPES)[number];
 
@@ -29,6 +31,7 @@ export const updateProjectSchema = createProjectSchema.omit({ key: true }).parti
 
 const ticketFields = {
 	title: z.string().trim().min(1, 'Bitte einen Titel angeben.').max(300),
+	kind: z.enum(TICKET_KINDS).optional(),
 	description: text,
 	priority: z.enum(PRIORITIES).optional(),
 	column: reference.nullable().optional(),
@@ -66,7 +69,7 @@ export const reorderTicketsSchema = z.strictObject({
 		.array(id)
 		.min(1)
 		.max(2000)
-		.refine((ids) => new Set(ids).size === ids.length, 'Jedes Ticket darf nur einmal vorkommen.')
+		.refine((ids) => new Set(ids).size === ids.length, 'Jede Aufgabe darf nur einmal vorkommen.')
 });
 export const ticketOrderSchema = z.object({ columnId: id, tickets: z.array(id) });
 
@@ -90,7 +93,7 @@ export const createLinkSchema = z
 		type: z.enum(['depends_on', 'blocks', 'relates']).optional()
 	})
 	.refine((value) => value.target !== undefined || value.targetId !== undefined, {
-		message: 'Zielticket fehlt.',
+		message: 'Zielaufgabe fehlt.',
 		path: ['target']
 	});
 
@@ -125,6 +128,7 @@ export const ticketSchema = z.object({
 	projectId: id,
 	number: id,
 	title: z.string(),
+	kind: z.enum(TICKET_KINDS),
 	description: z.string(),
 	priority: z.enum(PRIORITIES),
 	columnId: id,
@@ -144,6 +148,7 @@ export const ticketSchema = z.object({
 });
 export const ticketDtoSchema = ticketSchema.extend({ tags: z.array(tagSchema) });
 export const ticketListItemSchema = ticketDtoSchema.extend({
+	submitted: z.boolean(),
 	assigneeName: z.string().nullable(),
 	assignees: z.array(z.object({ id: z.string(), name: z.string() })),
 	subtaskCount: z.number().int(),
@@ -217,6 +222,7 @@ export const projectFormSchema = createProjectSchema.extend({
 export const ticketFormSchema = z
 	.strictObject({
 		title: ticketFields.title,
+		kind: z.enum(TICKET_KINDS).default('task'),
 		description: z.string().max(100_000).default(''),
 		priority: z.enum(PRIORITIES).default('medium'),
 		assignees: z.array(z.string().max(320)).max(50).default([]),

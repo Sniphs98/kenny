@@ -32,6 +32,8 @@
 		onToggleSubtasks,
 		onAssign,
 		columns,
+		fields,
+		showMove = true,
 		onMove,
 		ondragstart,
 		ondragend
@@ -48,6 +50,8 @@
 		onToggleSubtasks: () => void;
 		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
+		fields: ('status' | 'parent' | 'tags' | 'priority' | 'dueDate' | 'blockers' | 'attachments' | 'assignees' | 'subtasks')[];
+		showMove?: boolean;
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
 		ondragend: (e: DragEvent) => void;
@@ -68,7 +72,7 @@
 
 <!-- Tags oben rechts in der Ecke: neben der ersten Zeile (Elternticket oder Titel) -->
 {#snippet tagList()}
-	{#if t.tags.length}
+	{#if fields.includes('tags') && t.tags.length}
 		<div class="flex max-w-[50%] shrink-0 flex-wrap justify-end gap-1">
 			{#each t.tags as g (g.id)}<TagBadge name={g.name} color={g.color} />{/each}
 		</div>
@@ -92,13 +96,12 @@
 	{ondragend}
 	onclick={(e) => openTicket(t.key, e)}
 >
-	{#if parent}
+	{#if parent && fields.includes('parent')}
 		<div class="-mb-0.5 flex items-start gap-2">
-			<Hint text={m.subtask_of({ value1: parent.key, value2: parent.title })}>
+			<Hint text={m.subtask_of({ value1: parent.title, value2: '' })}>
 				{#snippet children(props)}
 					<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
 						<CornerDownRight class="size-3 shrink-0" />
-						<span class="shrink-0 font-mono">{parent.key}</span>
 						<span class="truncate">{parent.title}</span>
 					</div>
 				{/snippet}
@@ -116,18 +119,42 @@
 			onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
 			draggable="false">{t.title}</a
 		>
-		{#if !parent}{@render tagList()}{/if}
+		{#if !parent || !fields.includes('parent')}{@render tagList()}{/if}
 	</div>
+	{#if fields.some((field) => ['status', 'priority', 'dueDate', 'blockers', 'attachments', 'assignees'].includes(field))}
 	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
+		{#if fields.includes('status')}
+			{#if readOnly}
+				<span class="truncate">{columns.find((column) => column.id === t.columnId)?.name}</span>
+			{:else}
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger
+						class="hover:bg-muted text-foreground -ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium"
+						onclick={(event) => event.stopPropagation()}
+					>
+						{columns.find((column) => column.id === t.columnId)?.name}
+						<ChevronRight class="size-3 rotate-90" />
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="start">
+						{#each columns as column (column.id)}
+							<DropdownMenu.Item disabled={column.id === t.columnId} onSelect={() => onMove(column.id)}>
+								{column.name}
+							</DropdownMenu.Item>
+						{/each}
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			{/if}
+		{/if}
+		{#if fields.includes('priority')}
 		<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
 			{#snippet children(props)}
 				<span {...props} class="flex items-center gap-1.5">
 					<span class="prio prio-{t.priority}"></span>
-					<span class="font-mono">{t.key}</span>
 				</span>
 			{/snippet}
 		</Hint>
-		{#if t.dueDate}
+		{/if}
+		{#if fields.includes('dueDate') && t.dueDate}
 			<Hint
 				text={m.due_on({
 					value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
@@ -142,7 +169,7 @@
 				{/snippet}
 			</Hint>
 		{/if}
-		{#if blocked}
+		{#if fields.includes('blockers') && blocked}
 			<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
 				{#snippet children(props)}
 					<span {...props} class="text-warning flex items-center gap-1">
@@ -152,7 +179,7 @@
 				{/snippet}
 			</Hint>
 		{/if}
-		{#if t.attachmentCount > 0}
+		{#if fields.includes('attachments') && t.attachmentCount > 0}
 			<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
 				{#snippet children(props)}
 					<span {...props} class="flex items-center gap-1" data-attachments>
@@ -162,6 +189,7 @@
 				{/snippet}
 			</Hint>
 		{/if}
+		{#if fields.includes('assignees')}
 		<span class="ml-auto">
 			<AssigneePicker
 				assigned={t.assignees}
@@ -173,8 +201,10 @@
 				onchange={onAssign}
 			/>
 		</span>
+		{/if}
 	</div>
-	{#if !readOnly}
+	{/if}
+	{#if !readOnly && showMove}
 		<div class="sm:hidden">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
@@ -190,7 +220,7 @@
 			</DropdownMenu.Root>
 		</div>
 	{/if}
-	{#if t.subtaskCount > 0}
+	{#if fields.includes('subtasks') && t.subtaskCount > 0}
 		<div class="-mx-3 -mb-2.5 border-t">
 			<Hint text={expanded ? m.collapse_subtasks() : m.expand_subtasks()}>
 				{#snippet children(props)}
@@ -238,7 +268,6 @@
 								{:else}
 									<Circle class="text-muted-foreground size-3.5 shrink-0" />
 								{/if}
-								<span class="text-muted-foreground shrink-0 font-mono">{s.key}</span>
 								<span class={cn('truncate', s.closed && 'text-muted-foreground line-through')}>{s.title}</span>
 								{#if s.openBlockers > 0 && !s.closed}
 									<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>

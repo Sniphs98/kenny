@@ -132,7 +132,11 @@
 
 	async function remove() {
 		await api('DELETE', base);
-		toast.success(m.deleted_ticket({ value1: t.key }));
+		toast.success(
+			data.submission
+				? m.deleted_submitted_ticket({ value1: t.title })
+				: m.deleted_ticket({ value1: t.title })
+		);
 		if (onDeleted) onDeleted();
 		else await goto(`/projects/${data.project.key}/board`, { refreshAll: true });
 	}
@@ -148,13 +152,13 @@
 		data.projectTickets.filter((o) => o.id !== t.id && !data.links.some((l) => l.ticket.key === o.key))
 	);
 	const parentCandidates = $derived(
-		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id))
+		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id) && (t.kind === 'task' ? o.kind === 'main' || o.kind === 'task' : o.kind === 'version'))
 	);
 	const subDone = $derived(data.subtasks.filter((s) => s.closed).length);
 	const columnName = $derived(data.columns.find((c) => c.id === t.columnId)?.name ?? '');
 	const parentLabel = $derived.by(() => {
 		const p = parentCandidates.find((o) => o.id === t.parentId);
-		return p ? `${p.key} ${p.title}` : m.no_parent_ticket();
+		return p ? p.title : t.kind === 'main' ? m.no_version() : m.no_main_task();
 	});
 </script>
 
@@ -187,7 +191,7 @@
 				{openBlockers.length === 1
 					? m.waiting_for_one_ticket()
 					: m.waiting_for_many_tickets({ count: openBlockers.length })}
-				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
+				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.title}</a>{i <
 					openBlockers.length - 1
 						? ', '
 						: ''}{/each}
@@ -235,7 +239,7 @@
 			<Card.Root class="gap-4">
 				<Card.Header class="flex items-center gap-2">
 					<ListChecks class="text-muted-foreground size-4" />
-					<Card.Title class="grow">{m.subtasks()}</Card.Title>
+					<Card.Title class="grow">{t.kind === 'version' ? m.main_tasks() : t.kind === 'main' ? m.tasks() : m.subtasks()}</Card.Title>
 					{#if data.subtasks.length}
 						<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
 							>{subDone}/{data.subtasks.length}</Badge
@@ -260,7 +264,6 @@
 										href="/tickets/{s.key}"
 										class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
 									>
-										<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
 										{s.title}
 									</a>
 									{#if s.openBlockers > 0 && !s.closed}
@@ -279,7 +282,7 @@
 						</ul>
 					{/if}
 					<form class="flex gap-2" onsubmit={addSubtask}>
-						<Input disabled={!data.canEdit} placeholder={m.new_subtask()} bind:value={newSubtask} />
+						<Input disabled={!data.canEdit} placeholder={t.kind === 'version' ? m.new_main_task() : m.new_subtask()} bind:value={newSubtask} />
 						<Button disabled={!data.canEdit} type="submit" variant="outline"><Plus /> {m.add()}</Button>
 					</form>
 				</Card.Content>
@@ -292,6 +295,17 @@
 		<div class="flex min-w-0 flex-col gap-4">
 			<Card.Root class="gap-4 py-5">
 				<Card.Content class="flex flex-col gap-4 px-5">
+					<div class="grid gap-2">
+						<Label>{m.element_type()}</Label>
+						<Select.Root disabled={!data.canEdit || data.subtasks.length > 0} type="single" value={t.kind} onValueChange={(v) => patch({ kind: v as typeof t.kind, parentId: null })}>
+							<Select.Trigger class="w-full">{t.kind === 'version' ? m.version() : t.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="version">{m.version()}</Select.Item>
+								<Select.Item value="main">{m.main_task()}</Select.Item>
+								<Select.Item value="task">{m.task()}</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
 					{#if t.closed}
 						<Button disabled={!data.canEdit} variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
 							><RotateCcw /> {m.reopen()}</Button
@@ -412,8 +426,8 @@
 							{#if t.dueDate < today()}<p class="text-muted-foreground text-xs">{m.plan_from_today_overdue()}</p>{/if}
 						{/if}
 					</div>
-					<div class="grid gap-2">
-						<Label>{m.subtask_of_2()}</Label>
+					{#if t.kind !== 'version'}<div class="grid gap-2">
+						<Label>{t.kind === 'main' ? m.version() : m.main_task()}</Label>
 						<Select.Root
 							disabled={!data.canEdit}
 							type="single"
@@ -422,12 +436,12 @@
 						>
 							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 							<Select.Content class="max-h-72">
-								<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-								{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item
+								<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
+								{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.title}</Select.Item
 									>{/each}
 							</Select.Content>
 						</Select.Root>
-					</div>
+					</div>{/if}
 
 					<Separator />
 					<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
@@ -445,7 +459,7 @@
 						<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
 					</div>
 					<Button disabled={!data.canEdit} variant="destructive" onclick={() => (confirmDelete = true)}
-						><Trash2 /> {m.delete_ticket()}</Button
+						><Trash2 /> {data.submission ? m.delete_submitted_ticket() : m.delete_ticket()}</Button
 					>
 				</Card.Content>
 			</Card.Root>
@@ -465,7 +479,6 @@
 											href="/tickets/{l.ticket.key}"
 											class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
 										>
-											<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
 											{l.ticket.title}
 										</a>
 										{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
@@ -508,12 +521,20 @@
 <AlertDialog.Root bind:open={confirmDelete}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>{m.delete_ticket_2({ value1: t.key })}</AlertDialog.Title>
+			<AlertDialog.Title
+				>{data.submission
+					? m.delete_submitted_ticket_2({ value1: t.title })
+					: m.delete_ticket_2({ value1: t.title })}</AlertDialog.Title
+			>
 			<AlertDialog.Description>
 				{#if data.subtasks.length}
-					{m.the_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })}
+					{data.submission
+						? m.the_submitted_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })
+						: m.the_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })}
 				{:else}
-					{m.the_ticket_will_be_permanently_deleted()}
+					{data.submission
+						? m.the_submitted_ticket_will_be_permanently_deleted()
+						: m.the_ticket_will_be_permanently_deleted()}
 				{/if}
 			</AlertDialog.Description>
 		</AlertDialog.Header>

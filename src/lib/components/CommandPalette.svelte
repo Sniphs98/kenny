@@ -245,9 +245,6 @@
 						class="items-start"
 						onSelect={() => run(() => goto(`/tickets/${t.key}`))}
 					>
-						<span class="text-muted-foreground w-16 shrink-0 pt-px font-mono text-xs"
-							>{@render marked(highlight(t.key, tokens))}</span
-						>
 						<span class="grid min-w-0 gap-0.5">
 							<span class={cn('truncate', t.closed && 'text-muted-foreground line-through')}
 								>{@render marked(highlight(t.title, tokens))}</span

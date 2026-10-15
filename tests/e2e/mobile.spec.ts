@@ -39,6 +39,7 @@ for (const width of [320, 375, 430, 768]) {
 
 test('touch navigation, board status change and full-screen ticket editing', async ({ page, request }) => {
 	const p = await createProject(request, 'Touch workflow');
+	await createTicket(request, p.key, { title: 'Mobile plan', kind: 'main', startDate: day(0), dueDate: day(5) });
 	const t = await createTicket(request, p.key, { title: 'Edit by touch' });
 	await open(page, '/');
 	await page
@@ -80,7 +81,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 	await dialog.getByRole('button', { name: 'Schließen', exact: true }).tap();
 	await expect(dialog).toBeHidden();
 	await page.getByRole('navigation', { name: 'Projektnavigation' }).getByRole('link', { name: 'Gantt' }).tap();
-	await expect(page.locator('.labels .label').filter({ hasText: 'Saved on mobile' })).toBeVisible();
+	await expect(page.locator('.labels .label').filter({ hasText: 'Mobile plan' })).toBeVisible();
 	const chart = page.locator('.gantt');
 	const labelWidth = await page.locator('.gantt .corner').evaluate((el) => el.getBoundingClientRect().width);
 	expect(labelWidth).toBeLessThan(200);
@@ -88,7 +89,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 		el.scrollLeft += 100;
 	});
 	await fitsViewport(page);
-	await page.getByRole('button', { name: 'Ticket einplanen…', exact: true }).tap();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…', exact: true }).tap();
 	const planner = page.locator('[data-slot=popover-content]');
 	await expect(planner).toBeVisible();
 	const plannerBounds = await planner.boundingBox();

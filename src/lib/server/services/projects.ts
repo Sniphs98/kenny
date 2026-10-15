@@ -209,7 +209,7 @@ export function deleteColumn(projectId: number, columnId: number) {
 		.from(ticket)
 		.where(eq(ticket.columnId, columnId))
 		.get();
-	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Tickets. Bitte zuerst verschieben.');
+	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Aufgaben. Bitte zuerst verschieben.');
 	db.delete(boardColumn).where(eq(boardColumn.id, columnId)).run();
 	publish(projectId);
 }

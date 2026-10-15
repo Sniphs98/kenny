@@ -5,7 +5,7 @@
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { ticketFormSchema, type Priority } from '#lib/contracts/index.js';
+	import { ticketFormSchema, type Priority, type TicketKind } from '#lib/contracts/index.js';
 	import { createTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import DatePicker from '#lib/components/DatePicker.svelte';
@@ -21,7 +21,7 @@
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import { toast } from 'svelte-sonner';
 
-	type Option = { id: number | string; label: string };
+	type Option = { id: number | string; label: string; kind: TicketKind };
 	let {
 		projectKey,
 		users,
@@ -106,6 +106,7 @@
 	function blank() {
 		return {
 			title: '',
+			kind: 'task' as TicketKind,
 			description: '',
 			priority: 'medium' as Priority,
 			assignees: [] as string[],
@@ -130,7 +131,9 @@
 		if (newTicketRequest.pending && canCreate && takeNewTicketRequest()) open(preset());
 	});
 
-	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? m.no_parent_ticket());
+	const parentOptions = $derived(parents.filter((p) => p.kind === ($form.kind === 'task' ? 'main' : 'version')));
+	const emptyParentLabel = $derived($form.kind === 'main' ? m.no_version() : m.no_main_task());
+	const parentLabel = $derived(parentOptions.find((p) => String(p.id) === $form.parentId)?.label ?? emptyParentLabel);
 </script>
 
 <Dialog.Root bind:open={isOpen}>
@@ -142,6 +145,17 @@
 			<div class="grid gap-2">
 				<Label for="t-title">{m.title()}</Label>
 				<Input id="t-title" bind:value={$form.title} required maxlength={300} />
+			</div>
+			<div class="grid gap-2">
+				<Label>{m.element_type()}</Label>
+				<Select.Root type="single" value={$form.kind} onValueChange={(v) => { $form.kind = v as TicketKind; $form.parentId = ''; }}>
+					<Select.Trigger class="w-full">{$form.kind === 'version' ? m.version() : $form.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="version">{m.version()}</Select.Item>
+						<Select.Item value="main">{m.main_task()}</Select.Item>
+						<Select.Item value="task">{m.task()}</Select.Item>
+					</Select.Content>
+				</Select.Root>
 			</div>
 			<div class="grid gap-2">
 				<Label for="t-desc">{m.description()}</Label>
@@ -200,18 +214,18 @@
 				<Label>{m.tags()}</Label>
 				<TagPicker {tags} value={$form.tags} onchange={(refs) => ($form.tags = refs)} />
 			</div>
-			<div class="grid gap-2">
-				<Label>{m.subtask_of_2()}</Label>
+			{#if $form.kind !== 'version'}<div class="grid gap-2">
+				<Label>{$form.kind === 'main' ? m.version() : m.main_task()}</Label>
 				<Select.Root type="single" bind:value={$form.parentId}>
 					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 					<Select.Content class="max-h-72">
-						<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-						{#each parents as p (p.id)}
+						<Select.Item value="">{emptyParentLabel}</Select.Item>
+						{#each parentOptions as p (p.id)}
 							<Select.Item value={String(p.id)}>{p.label}</Select.Item>
 						{/each}
 					</Select.Content>
 				</Select.Root>
-			</div>
+			</div>{/if}
 			{#each Object.values($errors)
 				.flat()
 				.filter((value): value is string => typeof value === 'string') as validationError, i (i)}<p

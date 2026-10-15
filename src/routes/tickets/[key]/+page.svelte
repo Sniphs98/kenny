@@ -6,7 +6,7 @@
 	let { data } = $props();
 </script>
 
-<svelte:head><title>{data.ticket.key} {data.ticket.title} · Kenny</title></svelte:head>
+<svelte:head><title>{data.ticket.title} · Kenny</title></svelte:head>
 
 <div class="mx-auto max-w-6xl px-5 py-6">
 	<Breadcrumb.Root class="mb-4">
@@ -18,12 +18,12 @@
 			<Breadcrumb.Separator />
 			{#if data.parent}
 				<Breadcrumb.Item>
-					<Breadcrumb.Link href="/tickets/{data.parent.key}">{data.parent.key}</Breadcrumb.Link>
+					<Breadcrumb.Link href="/tickets/{data.parent.key}">{data.parent.title}</Breadcrumb.Link>
 				</Breadcrumb.Item>
 				<Breadcrumb.Separator />
 			{/if}
 			<Breadcrumb.Item>
-				<Breadcrumb.Page class="font-mono text-xs">{data.ticket.key}</Breadcrumb.Page>
+				<Breadcrumb.Page class="truncate">{data.ticket.title}</Breadcrumb.Page>
 			</Breadcrumb.Item>
 		</Breadcrumb.List>
 	</Breadcrumb.Root>

@@ -14,7 +14,7 @@ export const load = ({ params, locals }) => {
 			...detail,
 			canEdit: role !== 'reader',
 			canManage: role === 'admin',
-			projectTickets: listTickets(detail.project.id).map((t) => ({ id: t.id, key: t.key, title: t.title })),
+			projectTickets: listTickets(detail.project.id).map((t) => ({ id: t.id, key: t.key, title: t.title, kind: t.kind })),
 			users: projectUsers(detail.project.id),
 			tags: listTags(detail.project.id),
 			buckets: listBuckets(detail.project.id)

@@ -6,6 +6,8 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
+	{ pattern: /^Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks\.$/, translate: () => m.ticket_kind_parent_error() },
+	{ pattern: /^Elemente mit Unterelementen können ihren Typ nicht ändern\.$/, translate: () => m.ticket_kind_children_error() },
 	{ pattern: /^Bucket existiert bereits\.$/, translate: () => m.bucket_error_duplicate() },
 	{ pattern: /^Bucket gehört nicht zu diesem Projekt\.$/, translate: () => m.bucket_error_project() },
 	{ pattern: /^API-Token abgelaufen\.$/, translate: () => m.token_error_expired() },
@@ -47,7 +49,7 @@ const errorTranslations = [
 		pattern: new RegExp('^Startdatum liegt nach dem Fälligkeitsdatum\\.$'),
 		translate: (_values: string[]) => m.start_date_is_after_the_due_date()
 	},
-	{ pattern: new RegExp('^Zielticket fehlt\\.$'), translate: (_values: string[]) => m.target_ticket_is_missing() },
+	{ pattern: new RegExp('^Zielaufgabe fehlt\\.$'), translate: (_values: string[]) => m.target_ticket_is_missing() },
 	{
 		pattern: new RegExp('^Keine Datei übergeben \\(Feld "file", multipart/form-data\\)\\.$'),
 		translate: (_values: string[]) => m.no_file_supplied_field_file_multipart_form_data()
@@ -62,11 +64,11 @@ const errorTranslations = [
 		translate: (_values: string[]) => m.file_is_missing_on_the_server()
 	},
 	{
-		pattern: new RegExp('^Ticket (.+?) liegt nicht in dieser Spalte\\.$'),
+		pattern: new RegExp('^Aufgabe (.+?) liegt nicht in dieser Spalte\\.$'),
 		translate: (values: string[]) => m.ticket_not_in_column({ value1: values[0] })
 	},
 	{
-		pattern: new RegExp('^Jedes Ticket darf nur einmal vorkommen\\.$'),
+		pattern: new RegExp('^Jede Aufgabe darf nur einmal vorkommen\\.$'),
 		translate: (_values: string[]) => m.duplicate_ticket_in_order()
 	},
 	{
@@ -87,7 +89,7 @@ const errorTranslations = [
 		translate: (_values: string[]) => m.cannot_delete_the_last_column()
 	},
 	{
-		pattern: new RegExp('^Die Spalte enthält noch Tickets\\. Bitte zuerst verschieben\\.$'),
+		pattern: new RegExp('^Die Spalte enthält noch Aufgaben\\. Bitte zuerst verschieben\\.$'),
 		translate: (_values: string[]) => m.the_column_still_contains_tickets_move_them_first()
 	},
 	{
@@ -108,7 +110,7 @@ const errorTranslations = [
 		translate: (values: string[]) => m.tag_does_not_exist_in_this_project({ value1: values[0] })
 	},
 	{
-		pattern: new RegExp('^Ticket "(.+?)" nicht gefunden\\.$'),
+		pattern: new RegExp('^Aufgabe "(.+?)" nicht gefunden\\.$'),
 		translate: (values: string[]) => m.ticket_not_found({ value1: values[0] })
 	},
 	{
@@ -116,11 +118,11 @@ const errorTranslations = [
 		translate: (values: string[]) => m.column_does_not_exist_in_this_project({ value1: values[0] })
 	},
 	{
-		pattern: new RegExp('^Unteraufgaben müssen im selben Projekt liegen wie das übergeordnete Ticket\\.$'),
+		pattern: new RegExp('^Unteraufgaben müssen im selben Projekt liegen wie die übergeordnete Aufgabe\\.$'),
 		translate: (_values: string[]) => m.subtasks_must_belong_to_the_same_project_as_their_parent_ticket()
 	},
 	{
-		pattern: new RegExp('^Ein Ticket kann nicht Unteraufgabe von sich selbst sein\\.$'),
+		pattern: new RegExp('^Eine Aufgabe kann nicht Unteraufgabe von sich selbst sein\\.$'),
 		translate: (_values: string[]) => m.a_ticket_cannot_be_its_own_subtask()
 	},
 	{
@@ -148,7 +150,7 @@ const errorTranslations = [
 		translate: (_values: string[]) => m.the_project_has_no_open_column()
 	},
 	{
-		pattern: new RegExp('^Ein Ticket kann nicht mit sich selbst verknüpft werden\\.$'),
+		pattern: new RegExp('^Eine Aufgabe kann nicht mit sich selbst verknüpft werden\\.$'),
 		translate: (_values: string[]) => m.a_ticket_cannot_be_linked_to_itself()
 	},
 	{

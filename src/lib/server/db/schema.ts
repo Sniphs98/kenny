@@ -60,6 +60,7 @@ export const boardColumn = sqliteTable(
 export { PRIORITIES, type Priority } from '#lib/contracts/index.js';
 import {
 	PRIORITIES,
+	TICKET_KINDS,
 	LINK_TYPES,
 	INTAKE_EMAIL_MODES,
 	NOTIFICATION_LOCALES,
@@ -76,6 +77,7 @@ export const ticket = sqliteTable(
 			.references(() => project.id, { onDelete: 'cascade' }),
 		number: integer('number').notNull(),
 		title: text('title').notNull(),
+		kind: text('kind', { enum: TICKET_KINDS }).notNull().default('task'),
 		description: text('description').notNull().default(''),
 		columnId: integer('column_id')
 			.notNull()

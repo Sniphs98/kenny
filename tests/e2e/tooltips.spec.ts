@@ -25,7 +25,7 @@ test('Gantt: Tooltip am Balken, beim Ziehen ausgeblendet; Einplan-Zeile zeigt ih
 	request
 }) => {
 	const p = await createProject(request);
-	const t = await createTicket(request, p.key, { title: 'Balken mit Tooltip', startDate: day(1), dueDate: day(6) });
+	const t = await createTicket(request, p.key, { title: 'Balken mit Tooltip', kind: 'main', startDate: day(1), dueDate: day(6) });
 	await open(page, `/projects/${p.key}/gantt`);
 	const tooltip = page.locator('[data-slot="tooltip-content"]');
 

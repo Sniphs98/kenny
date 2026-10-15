@@ -1,27 +1,27 @@
-# Kenny – Boards, Timelines and Tickets for Teams
+# Kenny – Boards, Timelines and Tasks for Teams
 
-Self-hosted project and ticket management with Kanban boards, Gantt timelines and submission forms. Kenny runs as a single Docker container with SQLite, so there is no separate database server to operate.
+Self-hosted project and task management with Kanban boards, Gantt timelines and submission forms. Kenny runs as a single Docker container with SQLite, so there is no separate database server to operate. Tasks submitted through a form are called tickets.
 
 ## Features
 
 **Plan and track**
 
-- **Projects** with their own key and color; tickets get identifiers such as `WEB-1`, `WEB-2`, …
-- **Kanban boards** with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, grouping by bucket, tag, assignee or priority, and sorting per board or per column
-- **Gantt timeline** for tickets with a start date (a due date alone remains a deadline), draggable and resizable bars, a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled tickets; also available as a collapsible timeline above the board
-- **Tickets** with priority, one or more assignees, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
-- **Buckets:** project administrators manage buckets in project settings or create one directly through **+ New bucket** in the searchable ticket picker. Each ticket can belong to one bucket; group the board by bucket to get a separate Kanban area for each bucket and a “No bucket” area. Empty bucket areas remain available for drag and drop and quick creation. Deleting a bucket preserves its tickets and clears their assignment.
-- **Create more:** keep the new-ticket dialog open to enter many tickets in a row
+- **Projects** with their own key and color; tasks get identifiers such as `WEB-1`, `WEB-2`, …
+- **Kanban boards** for tasks, grouped by main task by default, with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, optional grouping by bucket, tag, assignee or priority, and sorting per board or per column
+- **Gantt timeline** with two levels, versions and main tasks; items with a start date have draggable and resizable bars (a due date alone remains a deadline), a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled main tasks; also available as a collapsible timeline above the board
+- **Tasks** with priority, one or more assignees, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
+- **Buckets:** project administrators manage buckets in project settings or create one directly through **+ New bucket** in the searchable task picker. Each task can belong to one bucket; group the board by bucket to get a separate Kanban area for each bucket and a “No bucket” area. Empty bucket areas remain available for drag and drop and quick creation. Deleting a bucket preserves its tasks and clears their assignment.
+- **Create more:** keep the new-task dialog open to enter many tasks in a row
 
 **Find and navigate**
 
-- **Command palette** (Ctrl+K / ⌘K, or the search bar in the header): search tickets across all your projects by key, title or description, with highlighted matches and excerpts; create tickets, jump to boards, settings and admin pages, and switch the theme
+- **Command palette** (Ctrl+K / ⌘K, or the search bar in the header): search tasks across all your projects by key, title or description, with highlighted matches and excerpts; create tasks, jump to boards, settings and admin pages, and switch the theme
 
 **Work together**
 
-- **Live updates:** boards, timelines and tickets refresh when someone else changes something; unsaved edits are kept
+- **Live updates:** boards, timelines and tasks refresh when someone else changes something; unsaved edits are kept
 - **Accounts and roles:** email/password or Microsoft sign-in, instance administrators, and project roles (reader, member, project administrator); deactivating an account revokes its sessions and tokens
-- **Completion sound** when ticking off tickets and subtasks (can be turned off)
+- **Completion sound** when ticking off tasks and subtasks (can be turned off)
 
 **Collect requests**
 
@@ -31,15 +31,15 @@ Self-hosted project and ticket management with Kanban boards, Gantt timelines an
 **Connect**
 
 - **REST API** with personal API tokens
-- **AI assistants (MCP):** read-only access to projects and tickets for tools such as Claude Code
+- **AI assistants (MCP):** read-only access to projects and tasks for tools such as Claude Code
 - **Microsoft Teams:** personal app, channel tabs with a project's board, and automatic sign-in (Teams SSO)
-- **Teams channel notifications** for new, completed and assigned tickets
+- **Teams channel notifications** for new, completed and assigned tasks
 
 **Everyday use**
 
 - English and German interface, following the system language by default
 - Light, dark and system theme
-- Works on phones and tablets: responsive navigation, full-screen ticket editing and touch controls
+- Works on phones and tablets: responsive navigation, full-screen task editing and touch controls
 
 ## Screenshots
 
@@ -47,21 +47,21 @@ The screenshots show the English interface with sample project data.
 
 ### Project overview
 
-Track ticket counts and progress across projects.
+Track task counts and progress across projects.
 
 ![Project overview showing three projects and their progress](docs/screenshots/projects.png)
 
 ### Kanban board
 
-Organize tickets by status, with priorities, assignees, tags, and subtasks visible on each card.
+Organize tasks by status, with priorities, assignees, tags, and subtasks visible on each card.
 
-![Kanban board with tickets organized into To do, In progress, Review, and Done columns](docs/screenshots/kanban.png)
+![Kanban board with tasks organized into To do, In progress, Review, and Done columns](docs/screenshots/kanban.png)
 
 ### Gantt timeline
 
-Plan ticket schedules and see dependencies and scheduling conflicts.
+Plan task schedules and see dependencies and scheduling conflicts.
 
-![Gantt timeline showing scheduled tickets, dependency arrows, and a scheduling conflict](docs/screenshots/gantt.png)
+![Gantt timeline showing scheduled tasks, dependency arrows, and a scheduling conflict](docs/screenshots/gantt.png)
 
 ## Installation
 
@@ -195,10 +195,10 @@ npm run dev:scenario -- demo --port 5180
 | Scenario | Contents                                                                                      |
 | -------- | --------------------------------------------------------------------------------------------- |
 | `leer`   | One user, no projects (the scenario identifier means "empty" in German)                       |
-| `demo`   | Two projects, three users, and ~30 tickets with tags, subtasks, dependencies, and attachments |
-| `gantt`  | A schedule with dependency chains, a scheduling conflict, and unscheduled tickets             |
+| `demo`   | Two projects, three users, and ~30 tasks with tags, subtasks, dependencies, and attachments |
+| `gantt`  | A schedule with dependency chains, a scheduling conflict, and unscheduled tasks             |
 
-Sign in with the scenario's first user, e.g. `anna@example.com` with the password `kenny-demo`. Dates are relative to the current day so the Gantt chart and overdue tickets remain useful.
+Sign in with the scenario's first user, e.g. `anna@example.com` with the password `kenny-demo`. Dates are relative to the current day so the Gantt chart and overdue tasks remain useful.
 
 Scenarios are small files under `scenarios/`. On first start, `scripts/scenario-seed.mjs` seeds them through the running app's REST API. This applies the same rules as the UI and keeps scenarios independent of the database implementation. To add a scenario, create another file in `scenarios/`; invalid references, columns, tags, or date ranges are reported before seeding. The command refuses to run with `NODE_ENV=production`.
 
@@ -220,7 +220,7 @@ The `drizzle/` directory must be next to the build or specified through `MIGRATI
 
 ### Languages and translations
 
-The UI is available in English and German. Without an explicit choice, it follows the system language (the browser or `Accept-Language`); unsupported languages fall back to English. Users can choose a language under **Language** in the user menu or select **System language** to follow the system setting again. The choice is stored in the `PARAGLIDE_LOCALE` cookie (see `src/lib/locale-choice.ts`) and applies to server rendering, calendars, dates, and numbers. User-created project names, board columns, tags, and ticket content are not translated. URLs and API field names stay the same.
+The UI is available in English and German. Without an explicit choice, it follows the system language (the browser or `Accept-Language`); unsupported languages fall back to English. Users can choose a language under **Language** in the user menu or select **System language** to follow the system setting again. The choice is stored in the `PARAGLIDE_LOCALE` cookie (see `src/lib/locale-choice.ts`) and applies to server rendering, calendars, dates, and numbers. User-created project names, board columns, tags, and task content are not translated. URLs and API field names stay the same.
 
 Translations live in `messages/de.json` and `messages/en.json`; inlang configuration lives in `project.inlang/settings.json`. Add new UI messages to both catalogs and use them as `m.message_name()` from `#lib/paraglide/messages.js`. `npm ci`, `npm run dev`, `npm run build`, and `npm run check` generate typed messages; run `npm run i18n:compile` to generate them manually. Generated files under `src/lib/paraglide/` are not committed. The message plugin is installed as an npm dependency, so builds do not need to download it from a CDN.
 
@@ -247,56 +247,56 @@ GitHub Actions checks pull requests and `main` automatically. Shared Zod contrac
 
 ## Submission forms
 
-Under **Forms** (`/settings/forms`) you can create links that let other people submit tickets, for example customers or colleagues without a Kenny account.
+Under **Forms** (`/settings/forms`) you can create links that let other people submit tickets, for example customers or colleagues without a Kenny account. A ticket is a task whose origin is one of these forms.
 
 - **One project or a choice:** A form with one project is a fixed link for that project. With several projects, the submitter picks the project.
 - **Sign-in:** Each form is either public or requires sign-in. Signed-in submissions are created as the signed-in user.
-- **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the ticket sidebar.
+- **E-mail (public forms):** hidden, optional or required. The address is stored on the ticket and shown as “Submitted via …” in the task sidebar.
 - **Fields:** The title is always required. Description, priority, start, due date, tags and attachments can each be hidden, optional or required. Values for hidden fields are ignored.
 - **Tags:** Submitters can only pick existing tags of the chosen project. Optionally, a form allows only selected tags; deleted tags disappear from the selection automatically.
 - **Attachments:** Up to 5 files per submission, chosen, dragged in or pasted with Ctrl+V (screenshots). Submitters see a preview and can remove files before submitting. The usual size limit (`ATTACHMENT_MAX_MB`, default 25 MB) applies.
 - **Links:** `/submit/<token>` with a random token. Generating a new link or deactivating the form makes the old link stop working. Deleting a form keeps its tickets.
 - **Embedding:** **Embed** shows an HTML snippet (iframe plus a small script that adjusts the height) for your own website. The embedded view (`/submit/<token>?embed`) has no page background and a compact header. Forms that require sign-in cannot be embedded, because sign-in does not work inside a third-party frame. Only `/submit/…` pages may be framed by other sites; every other page sends `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
-- Submitted tickets land in the first open column of the project.
+- Submitted tickets land in the first open column of the project as tasks.
 - **Spam protection:** a hidden honeypot field (bot submissions are silently dropped) and a limit of 10 anonymous submissions per IP address and 10 minutes. The limit is kept in memory of the Node process.
 
 ## REST API
 
 Base URL: `/api/v1`. JSON write endpoints validate input with Zod and reject unknown fields with HTTP 400. For `PATCH`, omitted fields remain unchanged; `null` clears values that support it. Authenticate with `Authorization: Bearer <token>`; create tokens under **API** in the app. In the browser, the API also accepts the current sign-in session.
 
-Tickets can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key.
+Tasks can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key. Existing `/tickets` API paths keep their names for compatibility.
 
 | Method           | Path                                          | Description                                                                       |
 | ---------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
 | GET              | `/events?project=:project`                    | Live updates via Server-Sent Events; omit `project` to watch accessible projects  |
 | GET              | `/me`                                         | Current user                                                                      |
 | GET              | `/users`                                      | All users                                                                         |
-| GET              | `/projects`                                   | Projects with ticket counts                                                       |
+| GET              | `/projects`                                   | Projects with task counts                                                         |
 | POST             | `/projects`                                   | Create a project: `{name, key?, description?, color?}`                            |
 | GET/PATCH/DELETE | `/projects/:project`                          | Read (including columns), update, or delete a project                             |
 | GET/POST         | `/projects/:project/columns`                  | List or create columns: `{name, isDone?, isBacklog?}`                             |
 | PATCH/DELETE     | `/projects/:project/columns/:id`              | Update `{name?, isDone?, isBacklog?, position?}` or delete a column               |
 | GET/POST         | `/projects/:project/tags`                     | List or create tags: `{name, color?}`                                             |
 | PATCH/DELETE     | `/projects/:project/tags/:id`                 | Update `{name?, color?}` or delete a tag                                          |
-| GET              | `/projects/:project/tickets?closed=false`     | List tickets                                                                      |
-| POST             | `/projects/:project/tickets`                  | Create a ticket                                                                   |
-| PUT              | `/projects/:project/tickets/order`            | Manual order of a column: `{column, tickets: [ids]}`; other tickets follow        |
-| GET              | `/tickets/:ticket`                            | Ticket with subtasks, parent ticket, and links                                    |
-| PATCH            | `/tickets/:ticket`                            | Update a ticket                                                                   |
-| DELETE           | `/tickets/:ticket`                            | Delete a ticket (including subtasks)                                              |
-| POST             | `/tickets/:ticket/close`                      | Complete a ticket (move it to the first column marked as done)                    |
-| POST             | `/tickets/:ticket/reopen`                     | Reopen a ticket                                                                   |
-| POST             | `/tickets/:ticket/subtasks`                   | Create a subtask (same body as creating a ticket)                                 |
-| POST             | `/tickets/:ticket/links`                      | Link tickets: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`    |
+| GET              | `/projects/:project/tickets?closed=false`     | List tasks                                                                        |
+| POST             | `/projects/:project/tickets`                  | Create a task                                                                     |
+| PUT              | `/projects/:project/tickets/order`            | Manual order of a column: `{column, tickets: [ids]}`; other tasks follow          |
+| GET              | `/tickets/:ticket`                            | Task with subtasks, parent task, and links                                        |
+| PATCH            | `/tickets/:ticket`                            | Update a task                                                                     |
+| DELETE           | `/tickets/:ticket`                            | Delete a task (including subtasks)                                                |
+| POST             | `/tickets/:ticket/close`                      | Complete a task (move it to the first column marked as done)                      |
+| POST             | `/tickets/:ticket/reopen`                     | Reopen a task                                                                     |
+| POST             | `/tickets/:ticket/subtasks`                   | Create a subtask (same body as creating a task)                                   |
+| POST             | `/tickets/:ticket/links`                      | Link tasks: `{target: "WEB-3", type: "depends_on" \| "blocks" \| "relates"}`      |
 | DELETE           | `/tickets/:ticket/links/:id`                  | Remove a link                                                                     |
 | GET              | `/tickets/:ticket/attachments`                | List attachments                                                                  |
 | POST             | `/tickets/:ticket/attachments?filename=x.png` | Upload an attachment as the request body (or `multipart/form-data`, field `file`) |
 | GET              | `/attachments/:id`                            | Download an attachment (`?download` forces download)                              |
 | DELETE           | `/attachments/:id`                            | Delete an attachment                                                              |
 
-`GET/POST /api/v1/projects/:project/buckets` lists or creates buckets (`{ "name": "Frontend" }`); `PATCH/DELETE /api/v1/projects/:project/buckets/:id` renames or deletes one. Reads require project access and mutations require project administrator access. Tickets accept `bucketId` from the same project. Omit it on PATCH to preserve the assignment; send `null` to clear it.
+`GET/POST /api/v1/projects/:project/buckets` lists or creates buckets (`{ "name": "Frontend" }`); `PATCH/DELETE /api/v1/projects/:project/buckets/:id` renames or deletes one. Reads require project access and mutations require project administrator access. Tasks accept `bucketId` from the same project. Omit it on PATCH to preserve the assignment; send `null` to clear it.
 
-Fields for creating or updating a ticket (all optional except `title` when creating):
+Fields for creating or updating a task (all optional except `title` when creating):
 
 ```json
 {
@@ -330,15 +330,15 @@ curl -X POST "http://localhost:5173/api/v1/tickets/WEB-12/attachments?filename=s
 
 ## AI assistants (MCP)
 
-Kenny includes a [Model Context Protocol](https://modelcontextprotocol.io) server so AI assistants can read projects and tickets. It is served by the app itself at `/api/v1/mcp` (Streamable HTTP, stateless, JSON responses) and authenticates like the REST API with `Authorization: Bearer <token>`. The assistant sees exactly what the token's owner can see: projects they are a member of (all projects for instance administrators), and ticket links into other projects are hidden. Deactivating the account or revoking the token cuts off access.
+Kenny includes a [Model Context Protocol](https://modelcontextprotocol.io) server so AI assistants can read projects and tasks. It is served by the app itself at `/api/v1/mcp` (Streamable HTTP, stateless, JSON responses) and authenticates like the REST API with `Authorization: Bearer <token>`. The assistant sees exactly what the token's owner can see: projects they are a member of (all projects for instance administrators), and task links into other projects are hidden. Deactivating the account or revoking the token cuts off access.
 
 All tools are read-only:
 
 | Tool             | Description                                                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `list_projects`  | Accessible projects with key and ticket counts                                                                            |
-| `search_tickets` | Tickets across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit` |
-| `get_ticket`     | One ticket by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                |
+| `list_projects`  | Accessible projects with key and task counts                                                                              |
+| `search_tickets` | Tasks across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit`   |
+| `get_ticket`     | One task by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                  |
 
 The **API** page in the app shows the endpoint URL and configuration examples. For example, with Claude Code:
 
@@ -353,26 +353,26 @@ Microsoft (Entra ID) sign-in is supported: setting `MICROSOFT_CLIENT_ID` and `MI
 
 **Microsoft Teams:** With `TEAMS_ENABLED=true`, Kenny runs as a Teams app with a personal tab, channel tabs that show a project's board, and automatic sign-in through Teams SSO. Administrators find the setup values and the app package under **user menu → Microsoft Teams**; see [Microsoft Teams](docs/microsoft-teams.md) for the Entra ID setup, internal servers with a company CA, security notes and troubleshooting.
 
-**Teams channel notifications:** Project administrators can post new, completed and assigned tickets to a Teams channel through a Teams workflow (**project settings → Teams notifications**); see [Channel notifications](docs/microsoft-teams.md#channel-notifications).
+**Teams channel notifications:** Project administrators can post new, completed and assigned tasks to a Teams channel through a Teams workflow (**project settings → Teams notifications**); see [Channel notifications](docs/microsoft-teams.md#channel-notifications).
 
-Ideas for future integrations include creating tickets from Teams messages and synchronizing due dates with the Outlook calendar.
+Ideas for future integrations include creating tasks from Teams messages and synchronizing due dates with the Outlook calendar.
 
 ## Project structure
 
 ```
 src/lib/server/db/          Drizzle schema (auth and application tables) and database connection
-src/lib/server/services/    Project and ticket business logic shared by the UI and API
+src/lib/server/services/    Project and task business logic shared by the UI and API
 src/lib/server/auth.ts      Better Auth configuration
 src/lib/server/api*.ts      API token validation and handler wrapper
 src/lib/server/mcp.ts       MCP tools for AI assistants
 src/routes/api/v1/          REST API and MCP endpoint
 src/routes/projects/[key]/  Board, Gantt, and settings
-src/routes/tickets/[key]/   Ticket details
+src/routes/tickets/[key]/   Task details (legacy-compatible route name)
 ```
 
 ## User management and project access
 
-Instance administrators can create and manage accounts through **Users** in the user menu. After the initial administrator registration, self-registration is disabled. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tickets and assignments.
+Instance administrators can create and manage accounts through **Users** in the user menu. After the initial administrator registration, self-registration is disabled. Project administrators can assign **Reader**, **Member**, or **Project administrator** roles in the **Members** tab. Permissions apply to the UI, REST API, and attachment downloads. Deactivating an account revokes its sessions and API tokens while preserving tasks and assignments.
 
 See [User management and project access](docs/user-management.md) for administrator bootstrap, upgrade behavior, roles, API endpoints, and Microsoft Entra ID integration.
 
@@ -380,6 +380,6 @@ Form management under **Forms** is restricted to instance administrators. Public
 
 ### Live updates
 
-Project lists, boards, Gantt charts and ticket details refresh when another user changes data. Unsaved title and description edits are preserved. The connection status shows when the app is reconnecting; manual refresh remains available.
+Project lists, boards, Gantt charts and task details refresh when another user changes data. Unsaved title and description edits are preserved. The connection status shows when the app is reconnecting; manual refresh remains available.
 
 `GET /api/v1/events` streams `change` events with `{projectId, ticket?, kind, origin?}`. Filter with `?project=KEY`. Events are restricted to accessible projects and active accounts. The stream sends a heartbeat every 25 seconds; proxies should keep connections open and disable buffering. The broadcaster operates within one Node process. Multiple instances need a shared event channel.

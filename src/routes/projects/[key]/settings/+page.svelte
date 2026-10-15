@@ -286,7 +286,9 @@
 						/>
 						<span class="w-28 shrink-0"><TagBadge name={g.name} color={g.color} /></span>
 						<span class="text-muted-foreground w-20 shrink-0 text-right text-xs">
-							{m.ticket_2({ value1: tagUsage.get(g.id) ?? 0, value2: tagUsage.get(g.id) === 1 ? '' : 's' })}
+							{tagUsage.get(g.id) === 1
+								? m.ticket_2({ value1: 1 })
+								: m.task_count_many({ value1: tagUsage.get(g.id) ?? 0 })}
 						</span>
 						<Hint text={m.delete_tag()}>
 							{#snippet children(props)}

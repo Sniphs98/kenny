@@ -6,9 +6,6 @@ import {
 	userProjectSchema,
 	assignUserProjectSchema,
 	type AssignUserProjectInput,
-	bucketSchema,
-	createBucketSchema,
-	updateBucketSchema,
 	managedUserSchema,
 	updateUserSchema,
 	memberSchema,
@@ -27,6 +24,9 @@ import {
 	projectSchema,
 	ticketDtoSchema,
 	ticketDetailSchema,
+	commentSchema,
+	createCommentSchema,
+	type CreateCommentInput,
 	ticketSearchResultSchema,
 	type CreateProjectInput,
 	type UpdateProjectInput,
@@ -75,21 +75,6 @@ export async function changeUserProject(user: string, project: number, role: Pro
 			)
 		);
 }
-export async function createBucket(project: string | number, input: z.input<typeof createBucketSchema>) {
-	return bucketSchema.parse(await api('POST', `/projects/${ref(project)}/buckets`, createBucketSchema.parse(input)));
-}
-export async function updateBucket(
-	project: string | number,
-	bucket: number,
-	input: z.input<typeof updateBucketSchema>
-) {
-	return bucketSchema.parse(
-		await api('PATCH', `/projects/${ref(project)}/buckets/${bucket}`, updateBucketSchema.parse(input))
-	);
-}
-export async function deleteBucket(project: string | number, bucket: number) {
-	await api('DELETE', `/projects/${ref(project)}/buckets/${bucket}`);
-}
 export async function createProject(input: CreateProjectInput) {
 	return projectSchema.parse(await api('POST', '/projects', createProjectSchema.parse(input)));
 }
@@ -116,6 +101,12 @@ export async function reopenTicket(ticket: string | number) {
 }
 export async function getTicket(ticket: string | number) {
 	return ticketDetailSchema.parse(await api('GET', `/tickets/${ref(ticket)}`));
+}
+export async function addComment(ticket: string | number, input: CreateCommentInput) {
+	return commentSchema.parse(await api('POST', `/tickets/${ref(ticket)}/comments`, createCommentSchema.parse(input)));
+}
+export async function deleteComment(ticket: string | number, commentId: number) {
+	return z.object({ ok: z.literal(true) }).parse(await api('DELETE', `/tickets/${ref(ticket)}/comments/${commentId}`));
 }
 
 /** Dateien als multipart/form-data hochladen (Feld "file") */

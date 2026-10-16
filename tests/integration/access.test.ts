@@ -27,14 +27,18 @@ import {
 } from '#lib/server/services/access.js';
 import { createProject, listProjects } from '#lib/server/services/projects.js';
 import {
+	addComment,
+	deleteComment,
 	addLink,
 	createTicket,
 	getTicketDetail,
+	listComments,
 	listTickets,
 	listDependencies,
 	removeLink,
 	searchTickets,
-	updateTicket
+	updateTicket,
+	viewTicket
 } from '#lib/server/services/tickets.js';
 import { ApiError } from '#lib/server/errors.js';
 
@@ -68,6 +72,32 @@ function denied(fn: () => unknown, status: number) {
 }
 
 describe('user management and project permissions', () => {
+	it('stores markdown comments on every task kind with author, date and display status', () => {
+		const { p, t } = fixture();
+		const version = createTicket(p.key, { title: 'Version', kind: 'version' }, 'owner');
+		const main = createTicket(p.key, { title: 'Main', kind: 'main', parentId: version.id }, 'owner');
+		for (const item of [version, main, t]) {
+			const created = addComment(item.id, { body: '  **Hello**  ', internal: true }, 'member');
+			expect(created).toMatchObject({ ticketId: item.id, body: '**Hello**', internal: true, authorId: 'member', authorName: 'Member' });
+			expect(created.createdAt).toBeInstanceOf(Date);
+			expect(viewTicket(item.id, 'reader').comments).toEqual([created]);
+			expect(getTicketDetail(item.id).comments).toEqual([created]);
+		}
+		const publicComment = addComment(t.id, { body: 'Public', internal: false }, 'owner');
+		expect(listComments(t.id, 'reader').map((comment) => comment.internal)).toEqual([true, false]);
+		expect(publicComment.authorName).toBe('Owner');
+		denied(() => addComment(t.id, { body: 'No', internal: false }, 'reader'), 403);
+		denied(() => listComments(t.id, 'outsider'), 404);
+		denied(() => addComment(t.id, { body: 'No', internal: false }, 'outsider'), 404);
+		denied(() => addComment(t.id, { body: '   ', internal: false }, 'member'), 400);
+		expect(listComments(t.id, 'owner')).toHaveLength(2);
+		deleteComment(t.id, publicComment.id, 'member');
+		expect(listComments(t.id, 'owner')).toHaveLength(1);
+		const remainingCommentId = listComments(t.id, 'owner')[0]!.id;
+		denied(() => deleteComment(t.id, remainingCommentId, 'reader'), 403);
+		denied(() => deleteComment(t.id, remainingCommentId, 'outsider'), 404);
+		denied(() => deleteComment(t.id, publicComment.id, 'member'), 404);
+	});
 	it('lets only instance administrators manage projects per user using the existing membership rules', () => {
 		const { p } = fixture();
 		const other = createProject({ name: 'Other', key: 'OTHER' }, 'outsider');

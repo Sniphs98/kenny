@@ -76,6 +76,7 @@
 	/** Screenshots o.ä. per Strg+V einfügen */
 	function onPaste(e: ClipboardEvent) {
 		if (readOnly) return;
+		if ((e.target as HTMLElement)?.closest('[data-markdown-editor]')) return;
 		const pasted = [...(e.clipboardData?.files ?? [])];
 		if (!pasted.length) return;
 		e.preventDefault();

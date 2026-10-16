@@ -85,6 +85,20 @@
       "when": 1792051200000,
       "tag": "0011_ticket_kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792054800000,
+      "tag": "0012_remove_buckets",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792060000000,
+      "tag": "0013_ticket_comments",
+      "breakpoints": true
     }
   ]
 }

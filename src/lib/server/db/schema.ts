@@ -28,18 +28,6 @@ export const project = sqliteTable('project', {
 });
 
 /** Spalten des Kanban-Boards eines Projekts */
-export const bucket = sqliteTable(
-	'bucket',
-	{
-		id: integer('id').primaryKey({ autoIncrement: true }),
-		projectId: integer('project_id')
-			.notNull()
-			.references(() => project.id, { onDelete: 'cascade' }),
-		name: text('name').notNull()
-	},
-	(t) => [uniqueIndex('bucket_project_name_idx').on(t.projectId, t.name)]
-);
-
 export const boardColumn = sqliteTable(
 	'board_column',
 	{
@@ -86,7 +74,6 @@ export const ticket = sqliteTable(
 		priority: text('priority', { enum: PRIORITIES }).notNull().default('medium'),
 		/** Übergeordnetes Ticket, wenn dieses Ticket eine Unteraufgabe ist */
 		parentId: integer('parent_id').references((): AnySQLiteColumn => ticket.id, { onDelete: 'cascade' }),
-		bucketId: integer('bucket_id').references(() => bucket.id, { onDelete: 'set null' }),
 		assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
 		/** Start und Ende als YYYY-MM-DD für das Gantt-Chart */
 		startDate: text('start_date'),
@@ -110,6 +97,19 @@ export const ticket = sqliteTable(
 		index('ticket_column_idx').on(t.columnId),
 		index('ticket_parent_idx').on(t.parentId)
 	]
+);
+
+export const ticketComment = sqliteTable(
+	'ticket_comment',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		ticketId: integer('ticket_id').notNull().references(() => ticket.id, { onDelete: 'cascade' }),
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		internal: integer('internal', { mode: 'boolean' }).notNull().default(false),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+	},
+	(t) => [index('ticket_comment_ticket_idx').on(t.ticketId)]
 );
 
 /**

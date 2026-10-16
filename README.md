@@ -7,10 +7,9 @@ Self-hosted project and task management with Kanban boards, Gantt timelines and 
 **Plan and track**
 
 - **Projects** with their own key and color; tasks get identifiers such as `WEB-1`, `WEB-2`, …
-- **Kanban boards** for tasks, grouped by main task by default, with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, optional grouping by bucket, tag, assignee or priority, and sorting per board or per column
+- **Kanban boards** for tasks, grouped by main task by default, with configurable columns (including done and backlog columns), drag and drop, quick add per column, filters by search, tag and assignee, optional grouping by tag, assignee or priority, and sorting per board or per column
 - **Gantt timeline** with two levels, versions and main tasks; items with a start date have draggable and resizable bars (a due date alone remains a deadline), a “Plan from today” shortcut that preserves an existing deadline, dependency arrows, highlighted scheduling conflicts and a list of unscheduled main tasks; also available as a collapsible timeline above the board
 - **Tasks** with priority, one or more assignees, dates, description, tags, **subtasks**, **links** (`depends on`, `blocks`, `related to`) with cycle prevention, and **attachments** (drag and drop, paste screenshots with Ctrl+V, image previews)
-- **Buckets:** project administrators manage buckets in project settings or create one directly through **+ New bucket** in the searchable task picker. Each task can belong to one bucket; group the board by bucket to get a separate Kanban area for each bucket and a “No bucket” area. Empty bucket areas remain available for drag and drop and quick creation. Deleting a bucket preserves its tasks and clears their assignment.
 - **Create more:** keep the new-task dialog open to enter many tasks in a row
 
 **Find and navigate**
@@ -294,7 +293,6 @@ Tasks can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key. Ex
 | GET              | `/attachments/:id`                            | Download an attachment (`?download` forces download)                              |
 | DELETE           | `/attachments/:id`                            | Delete an attachment                                                              |
 
-`GET/POST /api/v1/projects/:project/buckets` lists or creates buckets (`{ "name": "Frontend" }`); `PATCH/DELETE /api/v1/projects/:project/buckets/:id` renames or deletes one. Reads require project access and mutations require project administrator access. Tasks accept `bucketId` from the same project. Omit it on PATCH to preserve the assignment; send `null` to clear it.
 
 Fields for creating or updating a task (all optional except `title` when creating):
 

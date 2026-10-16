@@ -4,6 +4,7 @@
 	import { PRIORITY_LABELS } from '#lib/api.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import Hint from '#lib/components/Hint.svelte';
@@ -30,6 +31,7 @@
 		expanded,
 		dragging,
 		onToggleSubtasks,
+		onToggleStatus,
 		onAssign,
 		columns,
 		fields,
@@ -48,9 +50,10 @@
 		expanded: boolean;
 		dragging: boolean;
 		onToggleSubtasks: () => void;
+		onToggleStatus: () => void;
 		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
-		fields: ('status' | 'parent' | 'tags' | 'priority' | 'dueDate' | 'blockers' | 'attachments' | 'assignees' | 'subtasks')[];
+		fields: ('status' | 'statusCheckbox' | 'parent' | 'tags' | 'priority' | 'dueDate' | 'blockers' | 'attachments' | 'assignees' | 'subtasks')[];
 		showMove?: boolean;
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
@@ -110,6 +113,16 @@
 		</div>
 	{/if}
 	<div class="flex items-start gap-2">
+		{#if fields.includes('statusCheckbox')}
+			<Checkbox
+				checked={t.closed}
+				disabled={readOnly}
+				class="mt-0.5"
+				aria-label={m.status_checkbox()}
+				onclick={(event) => event.stopPropagation()}
+				onCheckedChange={onToggleStatus}
+			/>
+		{/if}
 		<a
 			href="/tickets/{t.key}"
 			class={cn(

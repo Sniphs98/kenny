@@ -1,12 +1,12 @@
 import { requireProjectAccess, visibleUsers } from './access';
-import { resolveBucket } from './buckets';
 import { projectMember } from '../db/schema';
 import {
 	createTicketSchema,
 	updateTicketSchema,
 	createLinkSchema,
 	reorderTicketsSchema,
-	ticketSearchSchema
+	ticketSearchSchema,
+	createCommentSchema
 } from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
@@ -20,6 +20,7 @@ import {
 	project,
 	ticket,
 	ticketAssignee,
+	ticketComment,
 	ticketLink,
 	user,
 	type LinkType,
@@ -103,7 +104,6 @@ function present(
 		closedAt: t.closedAt,
 		position: t.position,
 		parentId: t.parentId,
-		bucketId: t.bucketId,
 		assigneeId: assignees[0]?.id ?? null,
 		assigneeIds: assignees.map((a) => a.id),
 		startDate: t.startDate,
@@ -266,11 +266,65 @@ function searchRank(t: TicketListItem, query: string) {
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
 export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	requireProjectAccess(userId, resolveTicket(ref).projectId);
-	const { ticket, parent, subtasks, links, attachments, assignee, assignees, submission } = getTicketDetail(
+	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission } = getTicketDetail(
 		ref,
 		userId
 	);
-	return { ...ticket, parent, subtasks, links, attachments, assignee, assignees, submission };
+	return { ...ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission };
+}
+
+const commentFields = {
+	id: ticketComment.id,
+	ticketId: ticketComment.ticketId,
+	body: ticketComment.body,
+	internal: ticketComment.internal,
+	authorId: ticketComment.authorId,
+	authorName: user.name,
+	authorImage: user.image,
+	createdAt: ticketComment.createdAt
+};
+
+function commentsForTicket(ticketId: number) {
+	return db
+		.select(commentFields)
+		.from(ticketComment)
+		.leftJoin(user, eq(ticketComment.authorId, user.id))
+		.where(eq(ticketComment.ticketId, ticketId))
+		.orderBy(asc(ticketComment.createdAt), asc(ticketComment.id))
+		.all();
+}
+
+export function listComments(ref: string | number, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId);
+	return commentsForTicket(t.id);
+}
+
+export function addComment(ref: string | number, raw: unknown, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId, 'member');
+	const input = parseInput(createCommentSchema, raw);
+	const row = db.insert(ticketComment).values({ ticketId: t.id, authorId: actorId, ...input }).returning().get();
+	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
+	return db
+		.select(commentFields)
+		.from(ticketComment)
+		.leftJoin(user, eq(ticketComment.authorId, user.id))
+		.where(eq(ticketComment.id, row.id))
+		.get()!;
+}
+
+export function deleteComment(ref: string | number, commentId: number, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId, 'member');
+	const comment = db
+		.select({ id: ticketComment.id })
+		.from(ticketComment)
+		.where(and(eq(ticketComment.id, commentId), eq(ticketComment.ticketId, t.id)))
+		.get();
+	if (!comment) throw new ApiError(404, 'Kommentar nicht gefunden.');
+	db.delete(ticketComment).where(eq(ticketComment.id, comment.id)).run();
+	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
 }
 
 /** Anzahl offener Voraussetzungen (depends_on auf nicht erledigte Tickets) je Ticket */
@@ -344,8 +398,10 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	const parent = t.parentId ? db.select().from(ticket).where(eq(ticket.id, t.parentId)).get() : null;
 	const blockers = openBlockerCounts(subtaskRows.map((s) => s.id));
 	const people = assigneesByTicket([t.id, ...subtaskRows.map((s) => s.id), ...(parent ? [parent.id] : [])]);
+	const tags = tagsByTicket([t.id, ...subtaskRows.map((s) => s.id)]);
 	const subtasks = subtaskRows.map((s) => ({
 		...present(s, p.key, colMap.get(s.columnId), people.get(s.id)),
+		tags: tags.get(s.id) ?? [],
 		openBlockers: blockers.get(s.id) ?? 0
 	}));
 
@@ -354,7 +410,7 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	return {
 		ticket: {
 			...present(t, p.key, colMap.get(t.columnId), assignees),
-			tags: tagsByTicket([t.id]).get(t.id) ?? []
+			tags: tags.get(t.id) ?? []
 		},
 		project: p,
 		columns: cols,
@@ -362,6 +418,7 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 		subtasks,
 		links,
 		attachments: listAttachments(t.id),
+		comments: commentsForTicket(t.id),
 		assignee: assignees[0] ?? null,
 		assignees,
 		submission:
@@ -590,7 +647,6 @@ export function createTicket(
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId: checkParent(tx, { projectId: p.id, kind: input.kind ?? 'task' }, input.parentId ?? input.parent),
-				bucketId: resolveBucket(p.id, input.bucketId ?? null),
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -628,7 +684,6 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 	const t = resolveTicket(ref);
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
-		if (input.bucketId !== undefined) patch.bucketId = resolveBucket(t.projectId, input.bucketId);
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');

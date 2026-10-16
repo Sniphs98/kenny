@@ -36,7 +36,6 @@ const ticketFields = {
 	priority: z.enum(PRIORITIES).optional(),
 	column: reference.nullable().optional(),
 	columnId: id.optional(),
-	bucketId: id.nullable().optional(),
 	position: z.number().int().nonnegative().nullable().optional(),
 	/** Eine zuständige Person (ersetzt alle bisherigen); null entfernt alle */
 	assignee: z.string().max(320).nullable().optional(),
@@ -98,12 +97,6 @@ export const createLinkSchema = z
 	});
 
 export const tagSchema = z.object({ id, name: z.string(), color: colorSchema });
-export const bucketSchema = z.object({ id, name: z.string() });
-export const createBucketSchema = z.strictObject({
-	name: z.string().trim().min(1, 'Bitte einen Namen angeben.').max(80)
-});
-export const updateBucketSchema = createBucketSchema.partial();
-export type BucketDto = z.output<typeof bucketSchema>;
 export const columnSchema = z.object({
 	id,
 	projectId: id,
@@ -137,7 +130,6 @@ export const ticketSchema = z.object({
 	closedAt: timestamp.nullable(),
 	position: z.number().int(),
 	parentId: id.nullable(),
-	bucketId: id.nullable(),
 	/** Erste zuständige Person (kompatibel zu älteren Clients); alle stehen in assigneeIds */
 	assigneeId: z.string().nullable(),
 	assigneeIds: z.array(z.string()),
@@ -177,12 +169,26 @@ export const attachmentSchema = z.object({
 	uploadedBy: z.string().nullable(),
 	createdAt: timestamp
 });
+export const createCommentSchema = z.strictObject({
+	body: z.string().trim().min(1).max(100_000),
+	internal: z.boolean()
+});
+export const commentSchema = z.object({
+	id,
+	ticketId: id,
+	body: z.string(),
+	internal: z.boolean(),
+	authorId: z.string().nullable(),
+	authorName: z.string().nullable(),
+	authorImage: z.string().nullable(),
+	createdAt: timestamp
+});
 export const dependencySchema = z.object({ id, sourceId: id, targetId: id });
 export const userSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
 export const ticketDetailSchema = ticketDtoSchema.extend({
 	parent: ticketSchema.nullable(),
 	/** openBlockers: offene Voraussetzungen (depends_on) der Unteraufgabe */
-	subtasks: z.array(ticketSchema.extend({ openBlockers: z.number().int() })),
+	subtasks: z.array(ticketSchema.extend({ openBlockers: z.number().int(), tags: z.array(tagSchema) })),
 	links: z.array(
 		z.object({
 			id,
@@ -192,6 +198,7 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 		})
 	),
 	attachments: z.array(attachmentSchema),
+	comments: z.array(commentSchema),
 	assignee: userSchema.nullable(),
 	assignees: z.array(userSchema),
 	/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
@@ -211,6 +218,8 @@ export type TicketDetail = z.output<typeof ticketDetailSchema>;
 export type TicketSearchInput = z.input<typeof ticketSearchSchema>;
 export type TicketSearchResult = z.output<typeof ticketSearchResultSchema>;
 export type AttachmentDto = z.output<typeof attachmentSchema>;
+export type CreateCommentInput = z.input<typeof createCommentSchema>;
+export type CommentDto = z.output<typeof commentSchema>;
 export type DependencyDto = z.output<typeof dependencySchema>;
 
 // Form defaults belong to the form, not to PATCH contracts (missing means unchanged).
@@ -226,7 +235,6 @@ export const ticketFormSchema = z
 		description: z.string().max(100_000).default(''),
 		priority: z.enum(PRIORITIES).default('medium'),
 		assignees: z.array(z.string().max(320)).max(50).default([]),
-		bucketId: id.nullable().default(null),
 		tags: z.array(reference).max(100).default([]),
 		startDate: z.union([dateSchema, z.literal('')]).default(''),
 		dueDate: z.union([dateSchema, z.literal('')]).default(''),

@@ -10,7 +10,6 @@
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import TagPicker from '#lib/components/TagPicker.svelte';
-	import BucketPicker from '#lib/components/BucketPicker.svelte';
 	import { newTicketRequest, takeNewTicketRequest } from '#lib/new-ticket.svelte.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
@@ -26,20 +25,16 @@
 		projectKey,
 		users,
 		tags,
-		buckets = [],
 		parents,
 		canCreate = true,
-		canManage = false,
 		preset = () => ({})
 	}: {
 		projectKey: string;
 		users: { id: string; name: string; email?: string }[];
 		tags: { id: number; name: string; color: string }[];
-		buckets?: { id: number; name: string }[];
 		parents: Option[];
 		/** Ohne Schreibrechte öffnet die Befehlspalette den Dialog nicht */
 		canCreate?: boolean;
-		canManage?: boolean;
 		/** Vorbelegung beim Öffnen aus der Befehlspalette (z.B. Datum im Gantt) */
 		preset?: () => Partial<ReturnType<typeof blank>>;
 	} = $props();
@@ -111,7 +106,6 @@
 			priority: 'medium' as Priority,
 			assignees: [] as string[],
 			tags: [] as (number | string)[],
-			bucketId: null as number | null,
 			startDate: '',
 			dueDate: '',
 			parentId: '',
@@ -201,16 +195,6 @@
 				</div>
 			</div>
 			<div class="grid gap-2">
-				<Label>{m.bucket()}</Label>
-				<BucketPicker
-					project={projectKey}
-					{buckets}
-					value={$form.bucketId}
-					{canManage}
-					onchange={(id) => {
-						$form.bucketId = id;
-					}}
-				/>
 				<Label>{m.tags()}</Label>
 				<TagPicker {tags} value={$form.tags} onchange={(refs) => ($form.tags = refs)} />
 			</div>

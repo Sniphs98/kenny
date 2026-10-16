@@ -4,7 +4,7 @@
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
 	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTicket, reorderTickets, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import { closeTicket, createTicket, reorderTickets, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import BoardCard from '#lib/components/BoardCard.svelte';
 	import TagBadge from '#lib/components/TagBadge.svelte';
 	import Hint from '#lib/components/Hint.svelte';
@@ -46,36 +46,26 @@
 	const me = $derived(page.data.user?.id);
 
 	let search = $state('');
-	/** Filter nach Zuständigem: 'all', 'me', 'none' oder eine Benutzer-ID */
-	let assigneeFilter = $state('all');
-	/** Filter nach Tag: 'all' oder eine Tag-ID */
-	let tagFilter = $state('all');
-	let statusFilter = $state('all');
-	let priorityFilter = $state('all');
-	let bucketFilter = $state('all');
-	let mainFilter = $state('all');
-	const tagFilterLabel = $derived(data.tags.find((g) => String(g.id) === tagFilter)?.name ?? m.all_tags());
+	/** Leere Auswahl bedeutet: nicht filtern. Mehrere Werte innerhalb eines Filters werden mit O verknüpft. */
+	let assigneeFilter = $state<string[]>([]);
+	let tagFilter = $state<string[]>([]);
+	let statusFilter = $state<string[]>([]);
+	let priorityFilter = $state<string[]>([]);
+	const tagFilterLabel = $derived(
+		tagFilter.length ? data.tags.filter((g) => tagFilter.includes(String(g.id))).map((g) => g.name).join(', ') : m.all_tags()
+	);
 	const statusFilterLabel = $derived(
-		data.columns.find((column) => String(column.id) === statusFilter)?.name ?? m.all_statuses()
+		statusFilter.length ? data.columns.filter((column) => statusFilter.includes(String(column.id))).map((column) => column.name).join(', ') : m.all_statuses()
 	);
 	const priorityFilterLabel = $derived(
-		priorityFilter === 'all' ? m.all_priorities() : (PRIORITY_LABELS[priorityFilter] ?? m.all_priorities())
-	);
-	const bucketFilterLabel = $derived(
-		bucketFilter === 'none'
-			? m.no_bucket()
-			: (data.buckets.find((bucket) => String(bucket.id) === bucketFilter)?.name ?? m.all_buckets())
+		priorityFilter.length ? priorityFilter.map((priority) => PRIORITY_LABELS[priority] ?? priority).join(', ') : m.all_priorities()
 	);
 	let dialog: TicketDialog;
 
 	const filterLabel = $derived(
-		assigneeFilter === 'all'
-			? m.all_assignees()
-			: assigneeFilter === 'me'
-				? m.assigned_to_me()
-				: assigneeFilter === 'none'
-					? m.unassigned()
-					: (data.users.find((u) => u.id === assigneeFilter)?.name ?? m.all_assignees())
+		assigneeFilter.length
+			? assigneeFilter.map((id) => id === 'me' ? m.assigned_to_me() : id === 'none' ? m.unassigned() : data.users.find((u) => u.id === id)?.name ?? id).join(', ')
+			: m.all_assignees()
 	);
 
 	// --- Sortierung und Gruppierung ---
@@ -95,7 +85,6 @@
 		main: m.main_task(),
 		none: m.none(),
 		tag: m.tag(),
-		bucket: m.bucket(),
 		assignee: m.assignee(),
 		priority: m.priority_2()
 	} as const;
@@ -105,7 +94,6 @@
 		status: m.status(),
 		main: m.main_task(),
 		tag: m.tag(),
-		bucket: m.bucket(),
 		assignee: m.assignee(),
 		priority: m.priority_2()
 	};
@@ -119,10 +107,11 @@
 		'assignees',
 		'subtasks'
 	] as const;
-	type CardField = (typeof DEFAULT_CARD_FIELDS)[number] | 'status';
-	const CARD_FIELDS: CardField[] = ['status', ...DEFAULT_CARD_FIELDS];
+	type CardField = (typeof DEFAULT_CARD_FIELDS)[number] | 'status' | 'statusCheckbox';
+	const CARD_FIELDS: CardField[] = ['status', 'statusCheckbox', ...DEFAULT_CARD_FIELDS];
 	const CARD_FIELD_LABELS: Record<CardField, string> = {
 		status: m.status(),
+		statusCheckbox: m.status_checkbox(),
 		parent: m.main_task(),
 		tags: m.tags(),
 		priority: m.priority_2(),
@@ -133,12 +122,10 @@
 		subtasks: m.subtasks()
 	};
 	type BoardViewSettings = {
-		assigneeFilter: string;
-		tagFilter: string;
-		statusFilter: string;
-		priorityFilter: string;
-		bucketFilter: string;
-		mainFilter: string;
+		assigneeFilter: string[];
+		tagFilter: string[];
+		statusFilter: string[];
+		priorityFilter: string[];
 		sortBy: Sort;
 		groupBy: Group;
 		columnBy: ColumnBy;
@@ -176,47 +163,28 @@
 	let viewName = $state('');
 	let deleteViewOpen = $state(false);
 
-	function validAssigneeFilter(value: unknown) {
-		return typeof value === 'string' &&
-			(['all', 'me', 'none'].includes(value) || data.users.some((user) => user.id === value))
-			? value
-			: 'all';
+	function validAssigneeFilter(value: unknown): string[] {
+		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
+		return values.filter((item): item is string => typeof item === 'string' && (['me', 'none'].includes(item) || data.users.some((user) => user.id === item)));
 	}
 
-	function validTagFilter(value: unknown) {
-		return typeof value === 'string' &&
-			(value === 'all' || data.tags.some((tag) => String(tag.id) === value))
-			? value
-			: 'all';
+	function validTagFilter(value: unknown): string[] {
+		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
+		return values.filter((item): item is string => typeof item === 'string' && data.tags.some((tag) => String(tag.id) === item));
 	}
 
-	function validStatusFilter(value: unknown) {
-		return typeof value === 'string' && (value === 'all' || data.columns.some((column) => String(column.id) === value))
-			? value
-			: 'all';
+	function validStatusFilter(value: unknown): string[] {
+		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
+		return values.filter((item): item is string => typeof item === 'string' && data.columns.some((column) => String(column.id) === item));
 	}
 
-	function validPriorityFilter(value: unknown) {
-		return typeof value === 'string' && (value === 'all' || value in PRIORITY_LABELS) ? value : 'all';
-	}
-
-	function validBucketFilter(value: unknown) {
-		return typeof value === 'string' &&
-			(['all', 'none'].includes(value) || data.buckets.some((bucket) => String(bucket.id) === value))
-			? value
-			: 'all';
-	}
-
-	function validMainFilter(value: unknown) {
-		return typeof value === 'string' &&
-			(['all', 'general', 'tickets'].includes(value) ||
-				(/^main:\d+$/.test(value) && data.tickets.some((ticket) => ticket.kind === 'main' && `main:${ticket.id}` === value)))
-			? value
-			: 'all';
+	function validPriorityFilter(value: unknown): string[] {
+		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
+		return values.filter((item): item is string => typeof item === 'string' && item in PRIORITY_LABELS);
 	}
 
 	function validColumnBy(value: unknown): ColumnBy {
-		return value === 'status' || value === 'main' || value === 'tag' || value === 'bucket' || value === 'assignee' || value === 'priority'
+		return value === 'status' || value === 'main' || value === 'tag' || value === 'assignee' || value === 'priority'
 			? value
 			: 'status';
 	}
@@ -243,8 +211,6 @@
 			tagFilter: validTagFilter(settings.tagFilter),
 			statusFilter: validStatusFilter(settings.statusFilter),
 			priorityFilter: validPriorityFilter(settings.priorityFilter),
-			bucketFilter: validBucketFilter(settings.bucketFilter),
-			mainFilter: validMainFilter(settings.mainFilter),
 			sortBy: settings.sortBy && settings.sortBy in SORTS ? settings.sortBy : 'manual',
 			groupBy: settings.groupBy && settings.groupBy in GROUPS ? settings.groupBy : 'main',
 			columnBy: validColumnBy(settings.columnBy),
@@ -259,8 +225,6 @@
 			tagFilter,
 			statusFilter,
 			priorityFilter,
-			bucketFilter,
-			mainFilter,
 			sortBy,
 			groupBy,
 			columnBy,
@@ -274,8 +238,6 @@
 		tagFilter = validTagFilter(settings.tagFilter);
 		statusFilter = validStatusFilter(settings.statusFilter);
 		priorityFilter = validPriorityFilter(settings.priorityFilter);
-		bucketFilter = validBucketFilter(settings.bucketFilter);
-		mainFilter = validMainFilter(settings.mainFilter);
 		sortBy = settings.sortBy;
 		groupBy = settings.groupBy;
 		columnBy = settings.columnBy === settings.groupBy ? 'status' : settings.columnBy;
@@ -358,12 +320,10 @@
 			showGeneral = true;
 			showTicketSystem = true;
 			search = '';
-			assigneeFilter = 'all';
-			tagFilter = 'all';
-			statusFilter = 'all';
-			priorityFilter = 'all';
-			bucketFilter = 'all';
-			mainFilter = 'all';
+			assigneeFilter = [];
+			tagFilter = [];
+			statusFilter = [];
+			priorityFilter = [];
 			columnBy = 'status';
 			cardFields = [...DEFAULT_CARD_FIELDS];
 			try {
@@ -381,8 +341,6 @@
 				tagFilter = validTagFilter(v.tagFilter);
 				statusFilter = validStatusFilter(v.statusFilter);
 				priorityFilter = validPriorityFilter(v.priorityFilter);
-				bucketFilter = validBucketFilter(v.bucketFilter);
-				mainFilter = validMainFilter(v.mainFilter);
 				sortBy = v.sortBy in SORTS ? v.sortBy : 'manual';
 				groupBy = v.groupBy in GROUPS ? v.groupBy : 'main';
 				columnBy = validColumnBy(v.columnBy);
@@ -404,8 +362,6 @@
 			tagFilter,
 			statusFilter,
 			priorityFilter,
-			bucketFilter,
-			mainFilter,
 			sortBy,
 			groupBy,
 			columnBy,
@@ -491,16 +447,8 @@
 
 	const byId = $derived(new Map(data.tickets.map((t) => [t.id, t])));
 	const mainTasks = $derived(data.tickets.filter((t) => t.kind === 'main'));
-	const mainFilterLabel = $derived(
-		mainFilter === 'general'
-			? m.general_tickets()
-			: mainFilter === 'tickets'
-				? m.ticket_system()
-				: (mainTasks.find((task) => `main:${task.id}` === mainFilter)?.title ?? m.all_main_tasks())
-	);
 	const activeFilterCount = $derived(
-		[assigneeFilter, tagFilter, statusFilter, priorityFilter, bucketFilter, mainFilter].filter((value) => value !== 'all')
-			.length
+		[assigneeFilter, tagFilter, statusFilter, priorityFilter].filter((value) => value.length).length
 	);
 	const inProgressColumn = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]);
 	const quickMainTasks = $derived(
@@ -572,19 +520,9 @@
 	}
 
 	function matchesAssignee(t: Item) {
-		if (assigneeFilter === 'all') return true;
-		if (assigneeFilter === 'me') return !!me && t.assigneeIds.includes(me);
-		if (assigneeFilter === 'none') return !t.assigneeIds.length;
-		return t.assigneeIds.includes(assigneeFilter);
-	}
-
-	function matchesMainFilter(t: Item) {
-		if (mainFilter === 'all') return true;
-		if (mainFilter === 'tickets') return isTicketSystemTask(t);
-		if (isTicketSystemTask(t)) return false;
-		const mainId = mainParentId(t);
-		if (mainFilter === 'general') return mainId === null;
-		return mainFilter === `main:${mainId}`;
+		return !assigneeFilter.length || assigneeFilter.some((filter) =>
+			filter === 'me' ? !!me && t.assigneeIds.includes(me) : filter === 'none' ? !t.assigneeIds.length : t.assigneeIds.includes(filter)
+		);
 	}
 
 	const visible = $derived(
@@ -593,11 +531,9 @@
 				t.kind === 'task' &&
 				matchesCategory(t) &&
 				matchesAssignee(t) &&
-				(tagFilter === 'all' || t.tags.some((g) => String(g.id) === tagFilter)) &&
-				(statusFilter === 'all' || String(t.columnId) === statusFilter) &&
-				(priorityFilter === 'all' || t.priority === priorityFilter) &&
-				(bucketFilter === 'all' || (bucketFilter === 'none' ? t.bucketId === null : String(t.bucketId) === bucketFilter)) &&
-				matchesMainFilter(t) &&
+				(!tagFilter.length || t.tags.some((g) => tagFilter.includes(String(g.id)))) &&
+				(!statusFilter.length || statusFilter.includes(String(t.columnId))) &&
+				(!priorityFilter.length || priorityFilter.includes(t.priority)) &&
 				(!search ||
 					t.title.toLowerCase().includes(search.toLowerCase()) ||
 					t.key.toLowerCase().includes(search.toLowerCase()))
@@ -639,23 +575,6 @@
 				...(showGeneral
 					? [{ key: 'main:none', label: m.general_tickets(), kind: 'main' as const, accept: (t: Item) => !isTicketSystemTask(t), match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === null, preset: { parentId: null } }]
 					: [])
-			];
-		if (kind === 'bucket')
-			return [
-				...data.buckets.map((b) => ({
-					key: `bucket:${b.id}`,
-					label: b.name,
-					kind: 'bucket' as const,
-					match: (t: Item) => t.bucketId === b.id,
-					preset: { bucketId: b.id }
-				})),
-				{
-					key: 'bucket:none',
-					label: m.no_bucket(),
-					kind: 'bucket',
-					match: (t: Item) => t.bucketId === null,
-					preset: { bucketId: null }
-				}
 			];
 		if (kind === 'tag') {
 			return [
@@ -736,7 +655,7 @@
 	const columnCount = (column: AxisItem) => visible.filter(column.match).length;
 	// Leere Bahnen ausblenden, außer es gibt gar keine Tickets
 	const shownLanes = $derived(
-		groupBy === 'none' || groupBy === 'bucket' || groupBy === 'main' ? lanes : lanes.filter((l) => laneCount(l) > 0)
+		groupBy === 'none' || groupBy === 'main' ? lanes : lanes.filter((l) => laneCount(l) > 0)
 	);
 
 	// --- Drag & Drop ---
@@ -871,6 +790,15 @@
 	async function moveTicket(t: Item, columnId: number) {
 		try {
 			playIfCompleted(t.closed, await updateTicket(t.id, { columnId }));
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await refreshAll();
+	}
+
+	async function toggleTicketStatus(t: Item) {
+		try {
+			playIfCompleted(t.closed, await (t.closed ? reopenTicket(t.id) : closeTicket(t.id)));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -1018,6 +946,7 @@
 					expanded={expanded.has(t.id)}
 					dragging={drag?.id === t.id}
 					onToggleSubtasks={() => toggleSubtasks(t.id)}
+					onToggleStatus={() => toggleTicketStatus(t)}
 					onAssign={(id) => assign(t, id)}
 					columns={data.columns}
 					fields={cardFields}
@@ -1116,15 +1045,16 @@
 					</DropdownMenu.Root>
 				{/if}
 			</div>
-			<div class="grid gap-4 p-4 sm:grid-cols-2">
+			<div class="p-4">
+				<h2 class="mb-3 text-sm font-semibold">{m.filters()}</h2>
+				<div class="grid gap-4 sm:grid-cols-2">
 				<div class="space-y-2">
 					<label class="text-sm font-medium" for="board-view-assignee">{m.assignee()}</label>
-					<Select.Root type="single" bind:value={assigneeFilter}>
+					<Select.Root type="multiple" bind:value={assigneeFilter}>
 						<Select.Trigger id="board-view-assignee" class="w-full">
 							<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value="all">{m.all_assignees()}</Select.Item>
 							<Select.Item value="me">{m.assigned_to_me()}</Select.Item>
 							<Select.Item value="none">{m.unassigned()}</Select.Item>
 							<Select.Separator />
@@ -1136,12 +1066,11 @@
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium" for="board-view-status-filter">{m.status()}</label>
-					<Select.Root type="single" bind:value={statusFilter}>
+					<Select.Root type="multiple" bind:value={statusFilter}>
 						<Select.Trigger id="board-view-status-filter" class="w-full">
 							<span class="truncate">{statusFilterLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value="all">{m.all_statuses()}</Select.Item>
 							{#each data.columns as column (column.id)}
 								<Select.Item value={String(column.id)}>{column.name}</Select.Item>
 							{/each}
@@ -1150,12 +1079,11 @@
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium" for="board-view-priority-filter">{m.priority_2()}</label>
-					<Select.Root type="single" bind:value={priorityFilter}>
+					<Select.Root type="multiple" bind:value={priorityFilter}>
 						<Select.Trigger id="board-view-priority-filter" class="w-full">
 							<span class="truncate">{priorityFilterLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value="all">{m.all_priorities()}</Select.Item>
 							{#each Object.entries(PRIORITY_LABELS) as [priority, label] (priority)}
 								<Select.Item value={priority}>{label}</Select.Item>
 							{/each}
@@ -1163,51 +1091,23 @@
 					</Select.Root>
 				</div>
 				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-bucket-filter">{m.bucket()}</label>
-					<Select.Root type="single" bind:value={bucketFilter}>
-						<Select.Trigger id="board-view-bucket-filter" class="w-full">
-							<span class="truncate">{bucketFilterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="all">{m.all_buckets()}</Select.Item>
-							<Select.Item value="none">{m.no_bucket()}</Select.Item>
-							{#each data.buckets as bucket (bucket.id)}
-								<Select.Item value={String(bucket.id)}>{bucket.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-main-filter">{m.main_task()}</label>
-					<Select.Root type="single" bind:value={mainFilter}>
-						<Select.Trigger id="board-view-main-filter" class="w-full">
-							<span class="truncate">{mainFilterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="all">{m.all_main_tasks()}</Select.Item>
-							<Select.Item value="general">{m.general_tickets()}</Select.Item>
-							<Select.Item value="tickets">{m.ticket_system()}</Select.Item>
-							{#each mainTasks as task (task.id)}
-								<Select.Item value={`main:${task.id}`}>{task.title}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
 					<label class="text-sm font-medium" for="board-view-tag">{m.tags()}</label>
-					<Select.Root type="single" bind:value={tagFilter}>
+					<Select.Root type="multiple" bind:value={tagFilter}>
 						<Select.Trigger id="board-view-tag" class="w-full">
 							<span class="flex items-center gap-2 truncate"><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value="all">{m.all_tags()}</Select.Item>
-							{#if data.tags.length}<Select.Separator />{/if}
 							{#each data.tags as g (g.id)}
 								<Select.Item value={String(g.id)}><TagBadge name={g.name} color={g.color} /></Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
 				</div>
+				</div>
+			</div>
+			<div class="border-t p-4">
+				<h2 class="mb-3 text-sm font-semibold">{m.appearance()}</h2>
+				<div class="grid gap-4 sm:grid-cols-2">
 				<div class="space-y-2">
 					<label class="text-sm font-medium" for="board-view-group">{m.group()}</label>
 					<Select.Root type="single" value={groupBy} onValueChange={(v) => setGroupBy(v as Group)}>
@@ -1263,6 +1163,7 @@
 							{/each}
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
+				</div>
 				</div>
 			</div>
 		</Popover.Content>
@@ -1433,8 +1334,6 @@
 	projectKey={data.project.key}
 	users={data.users}
 	tags={data.tags}
-	buckets={data.buckets}
 	parents={data.tickets.filter((t) => t.kind !== 'task').map((t) => ({ id: t.id, label: t.title, kind: t.kind }))}
 	canCreate={data.canEdit}
-	canManage={data.canManage}
 />

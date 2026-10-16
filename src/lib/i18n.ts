@@ -8,8 +8,6 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 const errorTranslations = [
 	{ pattern: /^Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks\.$/, translate: () => m.ticket_kind_parent_error() },
 	{ pattern: /^Elemente mit Unterelementen können ihren Typ nicht ändern\.$/, translate: () => m.ticket_kind_children_error() },
-	{ pattern: /^Bucket existiert bereits\.$/, translate: () => m.bucket_error_duplicate() },
-	{ pattern: /^Bucket gehört nicht zu diesem Projekt\.$/, translate: () => m.bucket_error_project() },
 	{ pattern: /^API-Token abgelaufen\.$/, translate: () => m.token_error_expired() },
 	{ pattern: /^Dieses API-Token erlaubt nur Lesezugriff\.$/, translate: () => m.token_error_read_only() },
 	{ pattern: /^Neue Konten werden durch Administratoren angelegt\.$/, translate: () => m.um_error_registration() },

@@ -8,10 +8,13 @@
 	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import Attachments from '#lib/components/Attachments.svelte';
+	import TicketComments from '#lib/components/TicketComments.svelte';
+	import MarkdownEditor from '#lib/components/MarkdownEditor.svelte';
+	import MarkdownViewer from '#lib/components/MarkdownViewer.svelte';
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import TicketPicker from '#lib/components/TicketPicker.svelte';
+	import TagBadge from '#lib/components/TagBadge.svelte';
 	import TagPicker from '#lib/components/TagPicker.svelte';
-	import BucketPicker from '#lib/components/BucketPicker.svelte';
 	import * as Alert from '#lib/components/ui/alert/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -35,9 +38,11 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import Link2 from '@lucide/svelte/icons/link-2';
+	import List from '@lucide/svelte/icons/list';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Plus from '@lucide/svelte/icons/plus';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
 
@@ -60,7 +65,7 @@
 	// Lokale Kopien; Live-Updates überschreiben keine ungespeicherten Eingaben
 	const title = new Synced(untrack(() => data.ticket.title));
 	const description = new Synced(untrack(() => data.ticket.description));
-	let editingDesc = $state(false);
+	let descriptionUploads = $state(0);
 	$effect(() => title.update(data.ticket.title));
 	$effect(() => description.update(data.ticket.description));
 
@@ -74,6 +79,7 @@
 	let linkType = $state<'depends_on' | 'blocks' | 'relates'>('depends_on');
 	let linkTarget = $state('');
 	let confirmDelete = $state(false);
+	let taskView = $state<'list' | 'board'>('list');
 
 	const LINK_TYPES = { depends_on: m.depends_on(), blocks: m.blocks(), relates: m.related_to() };
 
@@ -96,9 +102,11 @@
 		if (value.trim() && value !== t.title) await patch({ title: value });
 	}
 
-	async function saveDescription() {
-		editingDesc = false;
-		if (description.dirty) await patch({ description: description.value });
+	let descriptionSave = Promise.resolve();
+	function saveDescription() {
+		if (!description.dirty) return;
+		const value = description.value;
+		descriptionSave = descriptionSave.then(() => run(() => updateTicket(t.id, { description: value })));
 	}
 
 	/** Unteraufgaben nacheinander anlegen, auch wenn schnell hintereinander Enter gedrückt wird */
@@ -201,38 +209,20 @@
 
 	<div class="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
 		<div class="flex min-w-0 flex-col gap-4">
-			<Card.Root class="gap-4">
-				<Card.Header class="flex items-center gap-2">
+			<Card.Root class="relative z-10 gap-0 overflow-visible py-0">
+				<Card.Header class="flex items-center gap-2 rounded-t-xl border-b pt-4 pb-1.5!">
 					<AlignLeft class="text-muted-foreground size-4" />
 					<Card.Title class="grow">{m.description()}</Card.Title>
-					{#if editingDesc && data.canEdit}
-						<span class="text-muted-foreground text-xs">{m.description_save_hint()}</span>
-					{/if}
+					{#if descriptionUploads}<span class="text-muted-foreground text-xs">{m.uploading()}</span>{/if}
 				</Card.Header>
-				<Card.Content>
-					<!-- Direkt beschreibbar: Verlassen des Felds oder Strg+Enter speichert, Esc verwirft -->
-					<textarea
-						class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 placeholder:text-muted-foreground -mx-2 -my-1 block min-h-16 w-[calc(100%+1rem)] resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 break-words [overflow-wrap:anywhere] outline-none focus-visible:ring-3"
-						rows="2"
-						readonly={!data.canEdit}
-						placeholder={data.canEdit ? m.add_description() : m.no_description()}
-						aria-label={m.description()}
-						bind:value={description.value}
-						{@attach autosize(() => description.value)}
-						onfocus={() => (editingDesc = true)}
-						onblur={saveDescription}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-								e.preventDefault();
-								e.currentTarget.blur();
-							} else if (e.key === 'Escape' && description.dirty) {
-								// Erst den Entwurf verwerfen; ein weiteres Esc schließt dann das Modal
-								e.preventDefault();
-								e.stopPropagation();
-								description.reset();
-								e.currentTarget.blur();
-							}
-						}}></textarea>
+				<Card.Content class={data.canEdit ? 'px-0' : 'py-4'}>
+					{#if data.canEdit}
+						<MarkdownEditor bind:value={description.value} bind:uploadCount={descriptionUploads} ticketId={t.id} {refresh} onSave={saveDescription} />
+					{:else if description.value}
+						<MarkdownViewer value={description.value} />
+					{:else}
+						<p class="text-muted-foreground">{m.no_description()}</p>
+					{/if}
 				</Card.Content>
 			</Card.Root>
 
@@ -245,9 +235,59 @@
 							>{subDone}/{data.subtasks.length}</Badge
 						>
 					{/if}
+					{#if t.kind === 'main'}
+						<div class="flex rounded-md border p-0.5" aria-label={m.appearance()}>
+							<Button
+								variant={taskView === 'list' ? 'secondary' : 'ghost'}
+								size="icon-xs"
+								aria-label={m.list()}
+								aria-pressed={taskView === 'list'}
+								onclick={() => (taskView = 'list')}><List /></Button
+							>
+							<Button
+								variant={taskView === 'board' ? 'secondary' : 'ghost'}
+								size="icon-xs"
+								aria-label={m.board()}
+								aria-pressed={taskView === 'board'}
+								onclick={() => (taskView = 'board')}><SquareKanban /></Button
+							>
+						</div>
+					{/if}
 				</Card.Header>
 				<Card.Content>
-					{#if data.subtasks.length}
+					{#if taskView === 'board' && t.kind === 'main'}
+						<div class="-mx-2 mb-3 flex gap-3 overflow-x-auto px-2 pb-1">
+							{#each data.columns as column (column.id)}
+								{@const tasks = data.subtasks.filter((s) => s.columnId === column.id)}
+								<div class="bg-muted/40 flex w-60 shrink-0 flex-col rounded-md p-2">
+									<div class="mb-2 flex items-center justify-between gap-2 px-1 text-sm font-medium">
+										<span class="truncate">{column.name}</span>
+										<Badge variant="secondary">{tasks.length}</Badge>
+									</div>
+									<div class="flex flex-col gap-2">
+										{#each tasks as s (s.id)}
+											<div class="bg-card flex items-start gap-2 rounded-md border p-2 shadow-xs">
+												<Checkbox
+													disabled={!data.canEdit}
+													checked={s.closed}
+													onCheckedChange={() =>
+														run(async () =>
+															playIfCompleted(s.closed, await (s.closed ? reopenTicket(s.id) : closeTicket(s.id)))
+														)}
+													aria-label={m.done()}
+												/>
+												<a
+													href="/tickets/{s.key}"
+													class={cn('min-w-0 grow break-words text-sm hover:underline', s.closed && 'text-muted-foreground line-through')}
+												>{s.title}</a
+												>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else if data.subtasks.length}
 						<ul class="-mx-2 mb-3 flex flex-col">
 							{#each data.subtasks as s (s.id)}
 								<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
@@ -266,6 +306,11 @@
 									>
 										{s.title}
 									</a>
+									{#if s.tags.length}
+										<div class="flex shrink-0 flex-wrap justify-end gap-1">
+											{#each s.tags as tag (tag.id)}<TagBadge name={tag.name} color={tag.color} />{/each}
+										</div>
+									{/if}
 									{#if s.openBlockers > 0 && !s.closed}
 										<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>
 											{#snippet children(props)}
@@ -289,6 +334,7 @@
 			</Card.Root>
 
 			<Attachments readOnly={!data.canEdit} ticketId={t.id} attachments={data.attachments} {refresh} />
+			<TicketComments ticketId={t.id} comments={data.comments} canEdit={data.canEdit} {refresh} />
 		</div>
 
 		<!-- Seitenleiste: Eigenschaften und Verknüpfungen -->
@@ -357,16 +403,6 @@
 						</Select.Root>
 					</div>
 					<div class="grid gap-2">
-						<Label>{m.bucket()}</Label>
-						<BucketPicker
-							project={data.project.key}
-							buckets={data.buckets}
-							value={t.bucketId}
-							canManage={data.canManage}
-							disabled={!data.canEdit}
-							{refresh}
-							onchange={(id) => patch({ bucketId: id })}
-						/>
 						<Label>{m.tags()}</Label>
 						<TagPicker
 							disabled={!data.canEdit}

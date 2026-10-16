@@ -44,9 +44,7 @@
 	projectKey={data.project.key}
 	users={data.users}
 	tags={data.tags}
-	buckets={data.buckets}
 	parents={data.tickets.filter((t) => t.kind !== 'task').map((t) => ({ id: t.id, label: t.title, kind: t.kind }))}
 	canCreate={data.canEdit}
-	canManage={data.canManage}
 	{preset}
 />

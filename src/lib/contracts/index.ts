@@ -25,7 +25,8 @@ export const createProjectSchema = z.strictObject({
 		.regex(/^([A-Z][A-Z0-9]{1,9})?$/, 'Kürzel: 2–10 Buchstaben/Ziffern, beginnt mit Buchstabe.')
 		.optional(),
 	description: text,
-	color: colorSchema.optional()
+	color: colorSchema.optional(),
+	systems: z.array(z.string().trim().min(1).max(120)).max(100).optional()
 });
 export const updateProjectSchema = createProjectSchema.omit({ key: true }).partial();
 
@@ -111,6 +112,7 @@ export const projectSchema = z.object({
 	name: z.string(),
 	description: z.string(),
 	color: colorSchema,
+	systems: z.array(z.string()),
 	createdAt: timestamp
 });
 export const projectListItemSchema = projectSchema.extend({ total: z.number().int(), open: z.number().int() });
@@ -202,7 +204,7 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 	assignee: userSchema.nullable(),
 	assignees: z.array(userSchema),
 	/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
-	submission: z.object({ form: z.string().nullable(), email: z.string().nullable() }).nullable()
+	submission: z.object({ form: z.string().nullable(), email: z.string().nullable(), system: z.string().nullable() }).nullable()
 });
 
 export type CreateProjectInput = z.input<typeof createProjectSchema>;
@@ -251,12 +253,15 @@ export type IntakeFieldMode = (typeof INTAKE_FIELD_MODES)[number];
 /** E-Mail-Feld bei Formularen ohne Anmeldung */
 export const INTAKE_EMAIL_MODES = INTAKE_FIELD_MODES;
 export type IntakeEmailMode = IntakeFieldMode;
+export const INTAKE_DESIGNS = ['default', 'enable'] as const;
+export type IntakeDesign = (typeof INTAKE_DESIGNS)[number];
 
 /** Ticketfelder, die ein Formular anbieten kann; der Titel ist immer Pflicht */
-export const INTAKE_FIELDS = ['description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments'] as const;
+export const INTAKE_FIELDS = ['system', 'description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments'] as const;
 export type IntakeField = (typeof INTAKE_FIELDS)[number];
 const fieldMode = z.enum(INTAKE_FIELD_MODES);
 export const intakeFieldsSchema = z.strictObject({
+	system: fieldMode.default('optional'),
 	description: fieldMode.default('optional'),
 	priority: fieldMode.default('hidden'),
 	startDate: fieldMode.default('hidden'),
@@ -265,6 +270,13 @@ export const intakeFieldsSchema = z.strictObject({
 	attachments: fieldMode.default('hidden')
 });
 export type IntakeFields = z.output<typeof intakeFieldsSchema>;
+export const INTAKE_FIELD_ORDER = ['project', 'title', 'system', 'description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments', 'email'] as const;
+export type IntakeFieldOrder = (typeof INTAKE_FIELD_ORDER)[number];
+export const intakeFieldOrderSchema = z
+	.array(z.enum(INTAKE_FIELD_ORDER))
+	.length(INTAKE_FIELD_ORDER.length)
+	.refine((items) => new Set(items).size === INTAKE_FIELD_ORDER.length, 'Jedes Feld darf nur einmal vorkommen.')
+	.default([...INTAKE_FIELD_ORDER]);
 /** Höchstzahl an Dateien pro Einreichung */
 export const INTAKE_MAX_FILES = 5;
 
@@ -274,7 +286,9 @@ export const intakeFormSchema = z.strictObject({
 	projectIds: z.array(id).min(1, 'Bitte mindestens ein Projekt auswählen.').max(100),
 	requireLogin: z.boolean().default(false),
 	emailMode: z.enum(INTAKE_EMAIL_MODES).default('optional'),
+	design: z.enum(INTAKE_DESIGNS).default('default'),
 	fields: intakeFieldsSchema.prefault({}),
+	fieldOrder: intakeFieldOrderSchema,
 	/** Nur die ausgewählten Tags anbieten statt aller Tags der Projekte */
 	restrictTags: z.boolean().default(false),
 	tagIds: z.array(id).max(500).default([]),
@@ -291,6 +305,7 @@ export const intakeSubmissionSchema = z
 		startDate: z.union([dateSchema, z.literal('')]).default(''),
 		dueDate: z.union([dateSchema, z.literal('')]).default(''),
 		tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+	system: z.string().trim().max(120).default(''),
 		email: z
 			.union([z.literal(''), z.email({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' }).max(320)])
 			.default(''),
@@ -304,7 +319,9 @@ export const intakeFormDtoSchema = z.object({
 	token: z.string(),
 	requireLogin: z.boolean(),
 	emailMode: z.enum(INTAKE_EMAIL_MODES),
+	design: z.enum(INTAKE_DESIGNS),
 	fields: intakeFieldsSchema,
+	fieldOrder: intakeFieldOrderSchema,
 	restrictTags: z.boolean(),
 	tagIds: z.array(id),
 	active: z.boolean(),
@@ -317,7 +334,10 @@ export const publicIntakeFormSchema = z.object({
 	name: z.string(),
 	requireLogin: z.boolean(),
 	emailMode: z.enum(INTAKE_EMAIL_MODES),
+	design: z.enum(INTAKE_DESIGNS),
 	fields: intakeFieldsSchema,
+	fieldOrder: intakeFieldOrderSchema,
+	systems: z.array(z.object({ key: z.string(), systems: z.array(z.string()) })),
 	projects: z.array(
 		z.object({
 			key: z.string(),

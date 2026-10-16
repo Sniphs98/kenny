@@ -186,6 +186,15 @@
 			e.currentTarget.blur();
 		}}
 		aria-label={m.title()}></textarea>
+	{#if data.submission}
+		<div class="text-muted-foreground -mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs" data-submission-header>
+			{#if data.submission.email}
+				<span>{m.submitted_by()} <a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a></span>
+			{/if}
+			{#if data.submission.system}<span>{m.system()}: {data.submission.system}</span>{/if}
+			<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
+		</div>
+	{/if}
 
 	{#if t.closed}
 		<Alert.Root class="text-success border-success/30 bg-success/5">
@@ -487,8 +496,8 @@
 								{data.submission.form ? m.submitted_via({ form: data.submission.form }) : m.submitted_via_form()}
 							</span>
 							{#if data.submission.email}
-								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
-								>
+								<span>{m.submitted_by()}</span>
+								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a>
 							{/if}
 						{/if}
 						<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>

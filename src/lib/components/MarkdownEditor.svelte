@@ -10,14 +10,16 @@
 	import { toast } from 'svelte-sonner';
 	import { z } from 'zod';
 
-	let { value = $bindable(), uploadCount = $bindable(0), ticketId, refresh, onSave, autoSave = true, placeholder }: {
+	let { value = $bindable(), uploadCount = $bindable(0), ticketId, refresh, onSave, autoSave = true, placeholder, onImageBlob, ariaLabel }: {
 		value: string;
 		uploadCount: number;
-		ticketId: number;
-		refresh: () => Promise<void>;
+		ticketId?: number;
+		refresh?: () => Promise<void>;
 		onSave: () => void;
 		autoSave?: boolean;
 		placeholder?: string;
+		onImageBlob?: (blob: Blob) => { url: string; name: string } | null;
+		ariaLabel?: string;
 	} = $props();
 	let container: HTMLDivElement;
 	let editor: Editor | undefined;
@@ -40,6 +42,8 @@
 				import('@toast-ui/editor/dist/i18n/de-de')
 			]);
 			if (!active) return;
+			const uploadTicketId = ticketId;
+			const uploadRefresh = refresh;
 			editor = new ToastEditor({
 				el: container,
 				initialValue: value,
@@ -54,7 +58,7 @@
 				toolbarItems: [
 					['heading', 'bold', 'italic', 'strike'],
 					['ul', 'ol', 'task'],
-					['table', 'image', 'link'],
+					['table', ...(ticketId || onImageBlob ? ['image'] : []), 'link'],
 					['code', 'codeblock']
 				],
 				events: {
@@ -70,6 +74,12 @@
 				},
 				hooks: {
 					addImageBlobHook: (blob, callback) => {
+						if (onImageBlob) {
+							const image = onImageBlob(blob);
+							if (image) callback(image.url, image.name);
+							return false;
+						}
+						if (!uploadTicketId || !uploadRefresh) return false;
 						const file = blob instanceof File ? blob : new File([blob], 'image.png', { type: blob.type });
 						if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(file.type)) {
 							toast.error(m.unsupported_image_format());
@@ -78,10 +88,10 @@
 						uploadCount++;
 						void (async () => {
 							try {
-								const images = z.array(attachmentSchema).parse(await upload(`/tickets/${ticketId}/attachments`, [file]));
+								const images = z.array(attachmentSchema).parse(await upload(`/tickets/${uploadTicketId}/attachments`, [file]));
 								const image = images.find((item) => item.isImage);
 								if (image) callback(image.url, image.filename);
-								await refresh();
+								await uploadRefresh();
 							} catch (error) {
 								toast.error((error as Error).message);
 							} finally {
@@ -93,6 +103,7 @@
 					}
 				}
 			});
+			if (ariaLabel) container.querySelector('[contenteditable="true"]')?.setAttribute('aria-label', ariaLabel);
 			const updateTheme = () => container.querySelector('.toastui-editor-defaultUI')?.classList.toggle('toastui-editor-dark', document.documentElement.classList.contains('dark'));
 			observer = new MutationObserver(updateTheme);
 			observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });

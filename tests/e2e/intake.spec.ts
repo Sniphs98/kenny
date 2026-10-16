@@ -6,6 +6,7 @@ type FormOptions = {
 	projects: string[];
 	requireLogin?: boolean;
 	email?: Mode;
+	design?: 'Standard' | 'Enable';
 	/** Feldbezeichnung → Modus, z.B. { Priorität: 'Pflichtfeld' } */
 	fields?: Record<string, Mode>;
 	/** Nur diese Tags erlauben */
@@ -25,6 +26,7 @@ async function createIntakeForm(page: Page, name: string, options: FormOptions) 
 		await page.getByRole('option', { name: mode, exact: true }).click();
 	};
 	if (options.email) await choose('E-Mail-Feld', options.email);
+	if (options.design) await choose('Design', options.design);
 	for (const [field, mode] of Object.entries(options.fields ?? {})) await choose(field, mode);
 	if (options.allowedTags) {
 		await dialog.getByRole('checkbox', { name: 'Nur ausgewählte Tags erlauben' }).click();
@@ -80,7 +82,9 @@ test('Öffentliches Formular: Ticket ohne Anmeldung einreichen, E-Mail ist Pflic
 	// Herkunft im Ticket sichtbar
 	await open(page, `/tickets/${p.key}-1`);
 	await expect(page.locator('[data-submission]')).toContainText(`Eingereicht über „Kundenanfragen ${p.key}“`);
-	await expect(page.getByRole('link', { name: 'kunde@example.com' })).toBeVisible();
+	await expect(page.locator('[data-submission-header]')).toContainText('Ersteller: kunde@example.com');
+	await expect(page.locator('[data-submission-header]')).toContainText('Erstellt');
+	await expect(page.locator('[data-submission-header]').getByRole('link', { name: 'kunde@example.com' })).toBeVisible();
 });
 
 test('Formular mit mehreren Projekten: Projekt beim Einreichen wählen', async ({ page, browser, baseURL, request }) => {
@@ -105,6 +109,22 @@ test('Formular mit mehreren Projekten: Projekt beim Einreichen wählen', async (
 	expect((await getTicket(request, `${b.key}-1`)).title).toBe('Absturz in der App');
 });
 
+test('Enable-Design zeigt Logo und Formular und erstellt Tickets', async ({ page, browser, baseURL, request }) => {
+	const p = await createProject(request, 'Enable');
+	const link = await createIntakeForm(page, `Fehler ${p.key}`, {
+		projects: [`Enable ${p.key}`],
+		design: 'Enable'
+	});
+	const guest = await anonymous(browser, baseURL);
+	await guest.goto(link);
+	await expect(guest.locator('[data-design="enable"] img[src="/brands/ecomplete_software_icon.png"]').first()).toBeVisible();
+	await expect(guest.getByRole('heading', { name: `Fehler ${p.key}` })).toBeVisible();
+	await guest.getByLabel('Titel').fill('Fehler beim Laden');
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
+	expect((await getTicket(request, `${p.key}-1`)).title).toBe('Fehler beim Laden');
+});
+
 test('Formular mit Anmeldung: Gäste müssen sich anmelden, Angemeldete reichen ohne E-Mail ein', async ({
 	page,
 	browser,
@@ -126,7 +146,10 @@ test('Formular mit Anmeldung: Gäste müssen sich anmelden, Angemeldete reichen 
 	await page.getByLabel('Titel').fill('Neuer Laptop');
 	await page.getByRole('button', { name: 'Einreichen' }).click();
 	await expect(page.getByRole('status')).toContainText(`${p.key}-1`);
-	expect((await getTicket(request, `${p.key}-1`)).submission).toEqual({ form: `Intern ${p.key}`, email: null });
+	expect((await getTicket(request, `${p.key}-1`)).submission).toEqual({
+		form: `Intern ${p.key}`,
+		email: 'erika@example.com'
+	});
 });
 
 test('Neu erzeugter Link und deaktiviertes Formular sperren alte Aufrufe', async ({

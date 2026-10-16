@@ -21,6 +21,7 @@ export const project = sqliteTable('project', {
 	name: text('name').notNull(),
 	description: text('description').notNull().default(''),
 	color: text('color').notNull().default('#6366f1'),
+	systems: text('systems', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
 	/** Zähler für fortlaufende Ticketnummern pro Projekt */
 	ticketCounter: integer('ticket_counter').notNull().default(0),
 	ownerId: text('owner_id').references(() => user.id, { onDelete: 'set null' }),
@@ -53,6 +54,8 @@ import {
 	INTAKE_EMAIL_MODES,
 	NOTIFICATION_LOCALES,
 	type IntakeFields,
+	type IntakeFieldOrder,
+	type IntakeDesign,
 	type NotificationEvent
 } from '#lib/contracts/index.js';
 
@@ -84,8 +87,9 @@ export const ticket = sqliteTable(
 		intakeFormId: integer('intake_form_id').references((): AnySQLiteColumn => intakeForm.id, {
 			onDelete: 'set null'
 		}),
-		/** E-Mail der einreichenden Person bei Formularen ohne Anmeldung */
+		/** E-Mail der einreichenden Person zum Zeitpunkt der Formulareinreichung */
 		reporterEmail: text('reporter_email'),
+		systemName: text('system_name'),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull(),
 		updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
 			.default(now)
@@ -225,9 +229,9 @@ export const intakeForm = sqliteTable('intake_form', {
 	token: text('token').notNull().unique(),
 	requireLogin: integer('require_login', { mode: 'boolean' }).notNull().default(false),
 	emailMode: text('email_mode', { enum: INTAKE_EMAIL_MODES }).notNull().default('optional'),
-	/** Welche Ticketfelder angeboten werden (ausgeblendet/optional/Pflicht); fehlende Felder nutzen die Standardwerte */
+	/** Feldeinstellungen und Formular-Design; fehlende Werte nutzen die Standardwerte */
 	fields: text('fields', { mode: 'json' })
-		.$type<Partial<IntakeFields>>()
+		.$type<Partial<IntakeFields> & { design?: IntakeDesign; fieldOrder?: IntakeFieldOrder[] }>()
 		.notNull()
 		.default(sql`'{}'`),
 	/** Nur die Tags aus intake_form_tag anbieten statt aller Tags der Projekte */

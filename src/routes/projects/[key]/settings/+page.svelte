@@ -36,6 +36,8 @@
 	let newColumn = $state('');
 	let newTag = $state('');
 	let confirmDelete = $state(false);
+	let systems = $state<string[]>([...data.project.systems]);
+	let newSystem = $state('');
 
 	const base = $derived(`/projects/${data.project.key}`);
 
@@ -52,7 +54,7 @@
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		await run(
-			() => updateProject(data.project.key, { name: name.value, description: description.value, color: color.value }),
+			() => updateProject(data.project.key, { name: name.value, description: description.value, color: color.value, systems }),
 			m.project_saved()
 		);
 	}
@@ -160,6 +162,7 @@
 					<Textarea id="desc" bind:value={description.value} rows={3} />
 				</div>
 				<div><Button type="submit">{m.save()}</Button></div>
+				<div class="grid gap-2"><Label>{m.system()}</Label><div class="flex gap-2"><Input bind:value={newSystem} maxlength={120} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (newSystem.trim() && !systems.includes(newSystem.trim())) systems = [...systems, newSystem.trim()]; newSystem = ''; } }} placeholder={m.system()} /><Button type="button" variant="outline" onclick={() => { if (newSystem.trim() && !systems.includes(newSystem.trim())) systems = [...systems, newSystem.trim()]; newSystem = ''; }}>{m.add()}</Button></div><div class="flex flex-wrap gap-2">{#each systems as system (system)}<Button type="button" variant="secondary" size="sm" onclick={() => systems = systems.filter((value) => value !== system)}>{system} ×</Button>{/each}</div></div>
 			</form>
 		</Card.Content>
 	</Card.Root>

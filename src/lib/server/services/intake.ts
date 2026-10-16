@@ -20,13 +20,19 @@ import { ApiError } from '../errors';
 import { parseInput } from '../validation';
 import { requireActiveUser } from './access';
 import { addAttachments, checkFileSizes } from './attachments';
-import { createTicket } from './tickets';
+import { createTicket, updateTicket } from './tickets';
 
 /** Unratbarer Teil des öffentlichen Links */
 const newToken = () => randomBytes(18).toString('base64url');
 
 /** Gespeicherte Feldeinstellungen mit Standardwerten für fehlende Felder */
-const fieldsOf = (form: typeof intakeForm.$inferSelect): IntakeFields => intakeFieldsSchema.parse(form.fields ?? {});
+const fieldsOf = (form: typeof intakeForm.$inferSelect): IntakeFields => {
+	const { design: _, fieldOrder: __, ...fields } = form.fields ?? {};
+	return intakeFieldsSchema.parse(fields);
+};
+const designOf = (form: typeof intakeForm.$inferSelect) => form.fields?.design === 'enable' ? 'enable' : 'default';
+const fieldOrderOf = (form: typeof intakeForm.$inferSelect) =>
+	intakeFormSchema.shape.fieldOrder.parse(form.fields?.fieldOrder);
 
 function projectsOf(formIds: number[]) {
 	const rows = formIds.length
@@ -36,7 +42,8 @@ function projectsOf(formIds: number[]) {
 					id: project.id,
 					key: project.key,
 					name: project.name,
-					color: project.color
+					color: project.color,
+					systems: project.systems
 				})
 				.from(intakeFormProject)
 				.innerJoin(project, eq(project.id, intakeFormProject.projectId))
@@ -59,7 +66,9 @@ function present(
 		token: form.token,
 		requireLogin: form.requireLogin,
 		emailMode: form.emailMode,
+		design: designOf(form),
 		fields: fieldsOf(form),
+		fieldOrder: fieldOrderOf(form),
 		restrictTags: form.restrictTags,
 		tagIds: [...allowedTagIds(form.id)].sort((a, b) => a - b),
 		active: form.active,
@@ -156,7 +165,7 @@ export function createForm(rawInput: unknown, userId: string): IntakeFormDto {
 				token: newToken(),
 				requireLogin: input.requireLogin,
 				emailMode: input.emailMode,
-				fields: input.fields,
+				fields: { ...input.fields, design: input.design, fieldOrder: input.fieldOrder },
 				restrictTags: input.restrictTags,
 				active: input.active,
 				createdById: userId
@@ -181,7 +190,7 @@ export function updateForm(id: number, rawInput: unknown, userId: string): Intak
 				name: input.name,
 				requireLogin: input.requireLogin,
 				emailMode: input.emailMode,
-				fields: input.fields,
+				fields: { ...input.fields, design: input.design, fieldOrder: input.fieldOrder },
 				restrictTags: input.restrictTags,
 				active: input.active
 			})
@@ -264,7 +273,10 @@ export function getPublicForm(token: string): PublicIntakeForm {
 		name: form.name,
 		requireLogin: form.requireLogin,
 		emailMode: form.emailMode,
+		design: designOf(form),
 		fields,
+		fieldOrder: fieldOrderOf(form),
+		systems: fields.system === 'hidden' ? [] : projects.map((p) => ({ key: p.key, systems: p.systems ?? [] })),
 		projects: projects.map(({ id, key, name, color }) => ({
 			key,
 			name,
@@ -295,6 +307,7 @@ export function resetRateLimit() {
 
 /** Meldungen für fehlende Pflichtfelder */
 const MISSING: Record<keyof IntakeFields, string> = {
+	system: 'Bitte ein System wählen.',
 	description: 'Bitte eine Beschreibung angeben.',
 	priority: 'Bitte eine Priorität wählen.',
 	startDate: 'Bitte ein Startdatum angeben.',
@@ -311,7 +324,7 @@ const MISSING: Record<keyof IntakeFields, string> = {
 export async function submitForm(
 	token: string,
 	rawInput: unknown,
-	context: { user: { id: string } | null; ip: string; files?: File[] }
+	context: { user: { id: string } | null; ip: string; files?: File[]; inlineImages?: File[]; inlineImageUrls?: string[] }
 ): Promise<{ key: string | null }> {
 	const { form, fields, projects } = activeFormByToken(token);
 	if (form.requireLogin && !context.user) throw new ApiError(401, 'Für dieses Formular ist eine Anmeldung nötig.');
@@ -334,7 +347,20 @@ export async function submitForm(
 	const startDate = value('startDate', input.startDate, input.startDate !== '');
 	const dueDate = value('dueDate', input.dueDate, input.dueDate !== '');
 	const tagNames = value('tags', input.tags, input.tags.length > 0) ?? [];
+	const systemName = value('system', input.system, input.system !== '');
+	if (systemName && !(target.systems ?? []).includes(systemName)) throw new ApiError(400, 'Das ausgewählte System gibt es nicht.');
 	const files = value('attachments', context.files ?? [], (context.files ?? []).length > 0) ?? [];
+	const inlineImages = context.inlineImages ?? [];
+	const inlineImageUrls = context.inlineImageUrls ?? [];
+	if (inlineImages.length !== inlineImageUrls.length || inlineImages.length > INTAKE_MAX_FILES)
+		throw new ApiError(400, `Höchstens ${INTAKE_MAX_FILES} Bilder in der Beschreibung.`);
+	const usedInlineImages = inlineImages
+		.map((file, index) => ({ file, url: inlineImageUrls[index] }))
+		.filter((image) => description?.includes(image.url));
+	for (const image of usedInlineImages) {
+		if (!/^blob:\S{1,500}$/.test(image.url) || !['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(image.file.type))
+			throw new ApiError(400, 'Ungültiges Bild in der Beschreibung.');
+	}
 
 	// Nur vorhandene Tags des Projekts; über ein Formular entstehen keine neuen Tags
 	const projectTags = tagsOf([target.id]).get(target.id) ?? [];
@@ -348,8 +374,9 @@ export async function submitForm(
 	});
 	if (files.length > INTAKE_MAX_FILES) throw new ApiError(400, `Höchstens ${INTAKE_MAX_FILES} Dateien.`);
 	checkFileSizes(files);
+	checkFileSizes(usedInlineImages.map((image) => image.file));
 
-	let reporterEmail: string | null = null;
+	let reporterEmail: string | null = context.user ? requireActiveUser(context.user.id).email : null;
 	if (!context.user && form.emailMode !== 'hidden') {
 		reporterEmail = input.email || null;
 		if (form.emailMode === 'required' && !reporterEmail) throw new ApiError(400, 'Bitte eine E-Mail-Adresse angeben.');
@@ -359,8 +386,14 @@ export async function submitForm(
 		target.id,
 		{ title: input.title, description, priority: priority || undefined, startDate, dueDate, tags: tagIds },
 		context.user?.id ?? null,
-		{ intakeFormId: form.id, reporterEmail }
+		{ intakeFormId: form.id, reporterEmail, systemName: systemName ?? null }
 	);
 	if (files.length) await addAttachments(ticket.key, files, context.user?.id ?? null);
+	if (usedInlineImages.length) {
+		const uploaded = await addAttachments(ticket.key, usedInlineImages.map((image) => image.file), context.user?.id ?? null);
+		let markdown = description ?? '';
+		for (const [index, image] of usedInlineImages.entries()) markdown = markdown.replaceAll(image.url, uploaded[index].url);
+		updateTicket(ticket.key, { description: markdown });
+	}
 	return { key: ticket.key };
 }

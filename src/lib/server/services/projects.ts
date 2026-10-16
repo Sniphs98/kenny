@@ -134,6 +134,7 @@ export function updateProject(id: number, rawInput: unknown) {
 	if (input.name !== undefined) patch.name = str(input.name, 'name', { max: 120 });
 	if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 	if (input.color !== undefined) patch.color = str(input.color, 'color');
+	if (input.systems !== undefined) patch.systems = [...new Set(input.systems.map((name) => name.trim()).filter(Boolean))];
 	if (Object.keys(patch).length) db.update(project).set(patch).where(eq(project.id, id)).run();
 	publish(id);
 	return getProject(id);

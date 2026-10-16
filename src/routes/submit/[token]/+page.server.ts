@@ -30,14 +30,20 @@ export const actions = {
 		// Dateien kommen neben den Feldern im selben multipart-Formular
 		const data = await request.formData();
 		const files = data.getAll('attachments').filter((f): f is File => f instanceof File && f.size > 0);
+		const inlineImages = data.getAll('inlineImages').filter((f): f is File => f instanceof File && f.size > 0);
+		const inlineImageUrls = data.getAll('inlineImageUrls').map(String);
 		data.delete('attachments');
+		data.delete('inlineImages');
+		data.delete('inlineImageUrls');
 		const form = await superValidate(data, zod4(intakeSubmissionSchema));
 		if (!form.valid) return fail(400, { form });
 		try {
 			const { key } = await submitForm(params.token, form.data, {
 				user: locals.user ?? null,
 				ip: getClientAddress(),
-				files
+				files,
+				inlineImages,
+				inlineImageUrls
 			});
 			// Bei Bot-Einreichungen (Fallen-Feld) gibt es keinen Schlüssel; die Seite zeigt trotzdem „Danke“
 			return { form, submitted: key ?? '' };

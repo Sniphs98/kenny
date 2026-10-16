@@ -428,7 +428,8 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 							? (db.select({ name: intakeForm.name }).from(intakeForm).where(eq(intakeForm.id, t.intakeFormId)).get()
 									?.name ?? null)
 							: null,
-						email: t.reporterEmail
+						email: t.reporterEmail,
+						system: t.systemName
 					}
 				: null
 	};
@@ -603,7 +604,7 @@ function setAssignees(tx: Tx, ticketId: number, projectId: number, refs: string[
 }
 
 /** Herkunft eines Tickets aus einem Formular (nur intern, nicht über die API setzbar) */
-export type TicketOrigin = { intakeFormId: number; reporterEmail: string | null };
+export type TicketOrigin = { intakeFormId: number; reporterEmail: string | null; systemName?: string | null };
 
 export function createTicket(
 	projectRef: string | number,
@@ -652,7 +653,8 @@ export function createTicket(
 				closedAt: col.isDone ? new Date() : null,
 				createdById: userId,
 				intakeFormId: origin?.intakeFormId ?? null,
-				reporterEmail: origin?.reporterEmail ?? null
+				reporterEmail: origin?.reporterEmail ?? null,
+				systemName: origin?.systemName ?? null
 			})
 			.returning()
 			.get();

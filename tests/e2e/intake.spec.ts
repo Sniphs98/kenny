@@ -85,6 +85,27 @@ test('Öffentliches Formular: Ticket ohne Anmeldung einreichen, E-Mail ist Pflic
 	await expect(page.locator('[data-submission-header]')).toContainText('Ersteller: kunde@example.com');
 	await expect(page.locator('[data-submission-header]')).toContainText('Erstellt');
 	await expect(page.locator('[data-submission-header]').getByRole('link', { name: 'kunde@example.com' })).toBeVisible();
+
+	const main = await api<{ id: number }>(request, 'POST', `/projects/${p.key}/tickets`, {
+		title: 'Support bearbeiten',
+		kind: 'main'
+	});
+	await open(page, `/projects/${p.key}/board`);
+	const submittedTicket = page.locator('[data-card]').filter({ hasText: 'Rechnung fehlt' });
+	await expect(submittedTicket.getByText('Ticketsystem')).toBeVisible();
+	await expect(submittedTicket.locator('[data-new-submission]')).toHaveText('neu');
+	await submittedTicket.dragTo(page.getByRole('region', { name: 'Support bearbeiten: Offen' }));
+	await expect.poll(async () => (await getTicket(request, `${p.key}-1`)).parentId).toBe(main.id);
+	await expect(page.getByRole('region', { name: 'Support bearbeiten: Offen' }).getByText('Rechnung fehlt')).toBeVisible();
+	await expect(submittedTicket.getByText('Support bearbeiten')).toBeVisible();
+	await expect(submittedTicket.getByText('Ticketsystem')).toHaveCount(0);
+
+	await submittedTicket.dragTo(page.getByRole('region', { name: 'Support bearbeiten: In Arbeit' }));
+	await expect.poll(async () => (await getTicket(request, `${p.key}-1`)).status).toBe('In Arbeit');
+	await submittedTicket.getByRole('link', { name: 'Rechnung fehlt' }).click();
+	await expect(page.getByRole('dialog')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(submittedTicket.locator('[data-new-submission]')).toHaveCount(0);
 });
 
 test('Formular mit mehreren Projekten: Projekt beim Einreichen wählen', async ({ page, browser, baseURL, request }) => {

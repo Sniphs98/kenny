@@ -56,6 +56,7 @@
 		}
 	}
 	let createdAnother = false;
+	let assigneesTouched = false;
 
 	let isOpen = $state(false);
 	const { form, errors, enhance, reset, submitting } = superForm(blank(), {
@@ -70,12 +71,14 @@
 			if (!validated.valid) return;
 			error = '';
 			try {
-				const created = await createTicket(projectKey, {
+				const input: Parameters<typeof createTicket>[1] = {
 					...validated.data,
 					startDate: validated.data.startDate || null,
 					dueDate: validated.data.dueDate || null,
 					parentId: validated.data.parentId ? Number(validated.data.parentId) : null
-				});
+				};
+				if (!assigneesTouched) delete input.assignees;
+				const created = await createTicket(projectKey, input);
 				if (createMore) {
 					// Titel und Beschreibung leeren, Priorität, Zuständigkeit, Tags, Spalte usw. behalten
 					validated.data.title = '';
@@ -116,6 +119,7 @@
 	/** Dialog öffnen, optional mit Vorbelegung (z.B. Spalte oder Datum) */
 	export function open(preset: Partial<ReturnType<typeof blank>> = {}) {
 		reset({ data: { ...blank(), ...preset } });
+		assigneesTouched = preset.assignees !== undefined;
 		error = '';
 		isOpen = true;
 	}
@@ -177,7 +181,10 @@
 						{users}
 						me={page.data.user?.id}
 						value={$form.assignees}
-						onchange={(ids) => ($form.assignees = ids)}
+						onchange={(ids) => {
+							assigneesTouched = true;
+							$form.assignees = ids;
+						}}
 					/>
 				</div>
 				<div class="grid gap-2">

@@ -273,6 +273,22 @@ describe('user management and project permissions', () => {
 		denied(() => updateTicket(both.id, { assignees: ['nobody@example.com'] }), 400);
 		expect(getTicketDetail(both.id).ticket.assigneeIds).toEqual([]);
 	});
+	it('inherits main-task assignees unless the task provides its own selection', () => {
+		const { p } = fixture();
+		const main = createTicket(p.key, { title: 'Main', kind: 'main', assignees: ['owner', 'member'] }, 'owner');
+
+		const inherited = createTicket(p.key, { title: 'Inherited', parentId: main.id }, 'owner');
+		expect(inherited.assigneeIds).toEqual(['owner', 'member']);
+
+		const manual = createTicket(p.key, { title: 'Manual', parentId: main.id, assignees: [] }, 'owner');
+		expect(manual.assigneeIds).toEqual([]);
+
+		const existing = createTicket(p.key, { title: 'Existing', assignee: 'member' }, 'owner');
+		expect(updateTicket(existing.id, { parentId: main.id }).assigneeIds).toEqual(['owner', 'member']);
+
+		const overridden = createTicket(p.key, { title: 'Overridden' }, 'owner');
+		expect(updateTicket(overridden.id, { parentId: main.id, assignee: 'member' }).assigneeIds).toEqual(['member']);
+	});
 	it('protects the last active admin and revokes sessions and tokens when disabling an account', () => {
 		const { p, t } = fixture();
 		denied(() => updateUser('root', 'root', { active: false }), 409);

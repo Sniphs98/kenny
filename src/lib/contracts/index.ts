@@ -60,7 +60,7 @@ export const createTicketSchema = z
 		relatesTo: z.array(reference).max(100).optional()
 	})
 	.refine(validDateRange, rangeError);
-export const updateTicketSchema = z.strictObject(ticketFields).partial().refine(validDateRange, rangeError);
+export const updateTicketSchema = z.strictObject({ ...ticketFields, boardGroup: z.enum(['general', 'tickets']).nullable().optional() }).partial().refine(validDateRange, rangeError);
 
 /** Manuelle Reihenfolge einer Spalte: die genannten Tickets zuerst, übrige Tickets der Spalte danach */
 export const reorderTicketsSchema = z.strictObject({
@@ -143,6 +143,7 @@ export const ticketSchema = z.object({
 export const ticketDtoSchema = ticketSchema.extend({ tags: z.array(tagSchema) });
 export const ticketListItemSchema = ticketDtoSchema.extend({
 	submitted: z.boolean(),
+	boardGroup: z.enum(['general', 'tickets']).nullable(),
 	assigneeName: z.string().nullable(),
 	assignees: z.array(z.object({ id: z.string(), name: z.string() })),
 	subtaskCount: z.number().int(),

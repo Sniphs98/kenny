@@ -30,6 +30,60 @@ test('Karte lässt sich auf den freien Platz unter einer Spalte ziehen', async (
 	await expect(page.getByRole('region', { name: 'Review', exact: true }).getByText('Nach unten ziehen')).toBeVisible();
 });
 
+test('Neue Aufgabe landet im Backlog und lässt sich hinein und heraus ziehen', async ({ page, request }) => {
+	const p = await createProject(request);
+
+	await open(page, `/projects/${p.key}/board`);
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByLabel('Titel').fill('Idee prüfen');
+	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+	await expect(dialog).toBeHidden();
+
+	const backlog = page.getByRole('group', { name: 'Backlog' });
+	await expect(backlog.getByText('Idee prüfen')).toBeVisible();
+	const task = card(page, 'Idee prüfen');
+	const key = `${p.key}-1`;
+	expect(await getTicket(request, key)).toMatchObject({ status: 'Backlog', parentId: null });
+	await expect(page.getByRole('region', { name: 'Allgemein: Offen' }).getByText('Idee prüfen')).toHaveCount(0);
+
+	await task.dragTo(page.getByRole('region', { name: 'Allgemein: Offen' }));
+	await expect.poll(async () => (await getTicket(request, key)).status).toBe('Offen');
+	await card(page, 'Idee prüfen').dragTo(backlog);
+	await expect.poll(async () => (await getTicket(request, key)).status).toBe('Backlog');
+	await expect(backlog.getByText('Idee prüfen')).toBeVisible();
+});
+
+test('Eine Aufgabe lässt sich in einen noch nicht angelegten Backlog ziehen', async ({ page, request }) => {
+	const p = await createProject(request);
+	const task = await createTicket(request, p.key, { title: 'Später prüfen' });
+
+	await open(page, `/projects/${p.key}/board`);
+	const backlog = page.getByRole('group', { name: 'Backlog' });
+	await card(page, 'Später prüfen').dragTo(backlog);
+	await expect.poll(async () => (await getTicket(request, task.key)).status).toBe('Backlog');
+	await expect(backlog.getByText('Später prüfen')).toBeVisible();
+});
+
+test('Backlog-Aufgabe lässt sich in eine Tag-Spalte einfügen', async ({ page, request }) => {
+	const p = await createProject(request);
+	await createTicket(request, p.key, { title: 'Vorhanden', tags: ['Feature'] });
+	await api(request, 'POST', `/projects/${p.key}/columns`, { name: 'Backlog', isBacklog: true });
+	const task = await createTicket(request, p.key, { title: 'Idee', column: 'Backlog' });
+
+	await open(page, `/projects/${p.key}/board`);
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+	await page.locator('#board-view-columns').click();
+	await page.getByRole('option', { name: 'Tag', exact: true }).click();
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+
+	await card(page, 'Idee').dragTo(page.getByRole('region', { name: 'Allgemein: Feature' }));
+	await expect.poll(async () => {
+		const moved = await getTicket(request, task.key);
+		return { status: moved.status, tags: moved.tags.map((tag) => tag.name) };
+	}).toEqual({ status: 'Offen', tags: ['Feature'] });
+});
+
 test('eigene Reihenfolge auch in einer sortierten Spalte', async ({ page, request }) => {
 	const p = await createProject(request);
 	await createTicket(request, p.key, { title: 'Bär' });

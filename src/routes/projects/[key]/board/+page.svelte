@@ -4,7 +4,7 @@
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
 	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { closeTicket, createTicket, reorderTickets, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import { closeTicket, createColumn, createTicket, reorderTickets, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import BoardCard from '#lib/components/BoardCard.svelte';
 	import TagBadge from '#lib/components/TagBadge.svelte';
 	import Hint from '#lib/components/Hint.svelte';
@@ -144,8 +144,23 @@
 	let groupBy = $state<Group>('main');
 	let columnBy = $state<ColumnBy>('status');
 	let cardFields = $state<CardField[]>([...DEFAULT_CARD_FIELDS]);
+	let backlogOpen = $state(true);
 	const collapsedLanes = new SvelteSet<string>();
-	const hiddenMainIds = new SvelteSet<number>();
+	const initiallyVisibleMainIds = new Set(
+		data.tickets
+			.filter(
+				(ticket) =>
+					ticket.kind === 'main' &&
+					(ticket.parentId === null ||
+						(!!me &&
+							ticket.columnId === data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]?.id &&
+							ticket.assigneeIds.includes(me)))
+			)
+			.map((ticket) => ticket.id)
+	);
+	const hiddenMainIds = new SvelteSet<number>(
+		data.tickets.filter((ticket) => ticket.kind === 'main' && !initiallyVisibleMainIds.has(ticket.id)).map((ticket) => ticket.id)
+	);
 	let showGeneral = $state(true);
 	let showTicketSystem = $state(true);
 	/** Expanded subtask lists are part of the saved project view. */
@@ -458,10 +473,20 @@
 				(!!me && task.columnId === inProgressColumn?.id && task.assigneeIds.includes(me))
 		)
 	);
+	const quickMainIds = $derived(new Set(quickMainTasks.map((task) => task.id)));
+	const selectedMoreMainTasks = $derived(
+		mainTasks.filter((task) => !quickMainIds.has(task.id) && !hiddenMainIds.has(task.id))
+	);
 	const moreMainTaskGroups = $derived.by(() => {
-		const quickIds = new Set(quickMainTasks.map((task) => task.id));
-		const remaining = mainTasks.filter((task) => !quickIds.has(task.id));
-		const versions = data.tickets.filter((ticket) => ticket.kind === 'version');
+		const remaining = mainTasks.filter((task) => !quickMainIds.has(task.id) && hiddenMainIds.has(task.id));
+		const versions = data.tickets
+			.filter((ticket) => ticket.kind === 'version')
+			.sort(
+				(a, b) =>
+					(a.startDate ?? a.dueDate ?? '9999-12-31').localeCompare(b.startDate ?? b.dueDate ?? '9999-12-31') ||
+					(a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
+					manual(a, b)
+			);
 		const groups = versions
 			.map((version) => ({
 				key: String(version.id),
@@ -473,6 +498,33 @@
 		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), tasks: withoutVersion });
 		return groups;
 	});
+	function newTaskParentPreset(): { parentId?: string; columnId?: number } {
+		const selected = [
+			...(showTicketSystem ? ['tickets'] : []),
+			...(showGeneral ? ['general'] : []),
+			...mainTasks.filter((task) => !hiddenMainIds.has(task.id)).map((task) => task.id)
+		];
+		if (selected.length === 1 && typeof selected[0] === 'number') return { parentId: String(selected[0]) };
+		const backlogColumn = data.columns.find((column) => column.isBacklog);
+		return backlogColumn ? { columnId: backlogColumn.id } : {};
+	}
+	async function ensureBacklogColumn() {
+		return data.columns.find((column) => column.isBacklog) ?? await createColumn(data.project.key, { name: 'Backlog', isBacklog: true });
+	}
+	async function openNewTask() {
+		try {
+			const preset = newTaskParentPreset();
+			if (!preset.parentId) {
+				const missingBacklog = !data.columns.some((column) => column.isBacklog);
+				preset.columnId = (await ensureBacklogColumn()).id;
+				if (missingBacklog) await refreshAll();
+			}
+			backlogOpen = true;
+			dialog.open(preset);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+	}
 	function showMainTask(id: number, show: boolean) {
 		if (show) hiddenMainIds.delete(id);
 		else hiddenMainIds.add(id);
@@ -488,13 +540,18 @@
 		}
 		return null;
 	}
-	function isTicketSystemTask(t: Item) {
+	function belongsToTicketSystem(t: Item) {
 		const seen = new Set<number>();
+		let submitted = false;
 		for (let current: Item | undefined = t; current && !seen.has(current.id); current = current.parentId === null ? undefined : byId.get(current.parentId)) {
 			seen.add(current.id);
-			if (current.submitted) return true;
+			if (current.boardGroup !== null) return current.boardGroup === 'tickets';
+			if (current.submitted) submitted = true;
 		}
-		return false;
+		return submitted;
+	}
+	function isTicketSystemTask(t: Item) {
+		return mainParentId(t) === null && belongsToTicketSystem(t);
 	}
 	function matchesCategory(t: Item) {
 		if (isTicketSystemTask(t)) return showTicketSystem;
@@ -525,7 +582,7 @@
 		);
 	}
 
-	const visible = $derived(
+	const matchingTickets = $derived(
 		tickets.filter(
 			(t) =>
 				t.kind === 'task' &&
@@ -538,6 +595,11 @@
 					t.title.toLowerCase().includes(search.toLowerCase()) ||
 					t.key.toLowerCase().includes(search.toLowerCase()))
 		)
+	);
+	const backlogColumnIds = $derived(new Set(data.columns.filter((column) => column.isBacklog).map((column) => column.id)));
+	const visible = $derived(matchingTickets.filter((ticket) => !backlogColumnIds.has(ticket.columnId)));
+	const backlogTickets = $derived(
+		tickets.filter((ticket) => ticket.kind === 'task' && backlogColumnIds.has(ticket.columnId)).sort(comparators[sortBy])
 	);
 
 	/**
@@ -565,15 +627,14 @@
 					key: `main:${parent.id}`,
 					label: parent.title,
 					kind: 'main' as const,
-					accept: (t: Item) => !isTicketSystemTask(t),
-					match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === parent.id,
+					match: (t: Item) => mainParentId(t) === parent.id,
 					preset: { parentId: parent.id }
 				})),
 				...(showTicketSystem
-					? [{ key: 'main:tickets', label: m.ticket_system(), kind: 'main' as const, canCreate: false, accept: (t: Item) => isTicketSystemTask(t), match: (t: Item) => isTicketSystemTask(t), preset: {} }]
+					? [{ key: 'main:tickets', label: m.ticket_system(), kind: 'main' as const, canCreate: false, match: (t: Item) => isTicketSystemTask(t), preset: { parentId: null } }]
 					: []),
 				...(showGeneral
-					? [{ key: 'main:none', label: m.general_tickets(), kind: 'main' as const, accept: (t: Item) => !isTicketSystemTask(t), match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === null, preset: { parentId: null } }]
+					? [{ key: 'main:none', label: m.general_tickets(), kind: 'main' as const, match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === null, preset: { parentId: null } }]
 					: [])
 			];
 		if (kind === 'tag') {
@@ -628,7 +689,7 @@
 	const lanes = $derived.by(() => dimensionItems(groupBy));
 	const boardColumns = $derived.by((): AxisItem[] =>
 		columnBy === 'status'
-			? data.columns.map((column) => ({
+			? data.columns.filter((column) => !column.isBacklog).map((column) => ({
 					key: `status:${column.id}`,
 					label: column.name,
 					kind: 'status',
@@ -638,6 +699,26 @@
 				}))
 			: dimensionItems(columnBy)
 	);
+	const statusColumns = $derived(
+		data.columns.map((column) => ({
+			key: `status:${column.id}`,
+			label: column.name,
+			kind: 'status' as const,
+			status: column,
+			match: (ticket: Item) => ticket.columnId === column.id,
+			preset: { columnId: column.id }
+		}))
+	);
+	const backlogStatus = $derived(statusColumns.find((column) => column.status.isBacklog));
+	const ungroupedBacklogLane: AxisItem = {
+		key: 'backlog', label: '', kind: 'none', match: () => true, preset: {}
+	};
+	function backlogLane(t: Item) {
+		return lanes.find((lane) => lane.match(t)) ?? ungroupedBacklogLane;
+	}
+	function backlogDropLane() {
+		return lanes.find((lane) => lane.key === drag?.lane) ?? ungroupedBacklogLane;
+	}
 
 	/** Tickets je Bahn und Spalte, bereits sortiert */
 	const cells = $derived.by(() => {
@@ -672,8 +753,8 @@
 	/** Die ganze Spalte ist Ablagefläche, auch der freie Platz unter den Karten */
 	function onDragOver(e: DragEvent, lane: string, column: string, zone: HTMLElement) {
 		if (!drag) return;
-		const targetLane = lanes.find((item) => item.key === lane);
-		const targetColumn = boardColumns.find((item) => item.key === column);
+		const targetLane = lanes.find((item) => item.key === lane) ?? (lane === ungroupedBacklogLane.key ? ungroupedBacklogLane : undefined);
+		const targetColumn = boardColumns.find((item) => item.key === column) ?? statusColumns.find((item) => item.key === column);
 		const dragged = tickets.find((ticket) => ticket.id === drag!.id);
 		if (
 			!targetLane ||
@@ -703,17 +784,19 @@
 	/** Felder, die sich beim Wechsel der Bahn ändern */
 	function axisChange(t: Item, from: AxisItem, to: AxisItem): UpdateTicketInput {
 		if (from.key === to.key) return {};
+		if (to.key === 'main:none') return { ...to.preset, boardGroup: 'general' };
+		if (to.key === 'main:tickets') return { ...to.preset, boardGroup: 'tickets' };
 		if (to.kind === 'tag') {
 			// Tag der alten Bahn durch den der neuen ersetzen, andere Tags bleiben
 			if (!(to.preset.tags as number[]).length) return { tags: [] };
-			const fromTag = (from.preset.tags as number[])[0];
+			const fromTag = (from.preset.tags as number[] | undefined)?.[0];
 			const ids = t.tags.map((g) => g.id).filter((id) => id !== fromTag);
 			return { tags: [...new Set([...ids, ...(to.preset.tags as number[])])] };
 		}
 		if (to.kind === 'assignee') {
 			// Wie bei Tags: Person der alten Bahn durch die der neuen ersetzen, weitere Zuständige bleiben
 			if (!(to.preset.assignees as string[]).length) return { assignees: [] };
-			const fromUser = (from.preset.assignees as string[])[0];
+			const fromUser = (from.preset.assignees as string[] | undefined)?.[0];
 			const ids = t.assigneeIds.filter((id) => id !== fromUser);
 			return { assignees: [...new Set([...ids, ...(to.preset.assignees as string[])])] };
 		}
@@ -729,11 +812,15 @@
 		dropTarget = null;
 
 		const moved = tickets.find((t) => t.id === id)!;
-		const from = lanes.find((l) => l.key === fromLane)!;
-		const to = lanes.find((l) => l.key === toLane)!;
-		const fromCol = boardColumns.find((column) => column.key === fromColumn)!;
-		const toCol = boardColumns.find((column) => column.key === toColumn)!;
+		const from = lanes.find((l) => l.key === fromLane) ?? ungroupedBacklogLane;
+		const to = lanes.find((l) => l.key === toLane) ?? ungroupedBacklogLane;
+		const fromCol = statusColumns.find((column) => column.key === fromColumn) ?? boardColumns.find((column) => column.key === fromColumn)!;
+		const toCol = boardColumns.find((column) => column.key === toColumn) ?? statusColumns.find((column) => column.key === toColumn)!;
 		const body: UpdateTicketInput = { ...axisChange(moved, from, to), ...axisChange(moved, fromCol, toCol) };
+		if (!toCol.status && backlogColumnIds.has(moved.columnId)) {
+			const defaultColumn = data.columns.find((column) => !column.isBacklog && !column.isDone);
+			if (defaultColumn) body.columnId = defaultColumn.id;
+		}
 		const shown = cell(toLane, toColumn).filter((t) => t.id !== id);
 		const anchor = shown[index];
 		const wasClosed = moved.closed;
@@ -787,6 +874,32 @@
 		dropTarget = null;
 	}
 
+	function onBacklogDragOver(e: DragEvent, zone: HTMLElement) {
+		if (drag && !backlogStatus) {
+			e.preventDefault();
+			dropTarget = { lane: backlogDropLane().key, column: 'backlog', index: 0 };
+			return;
+		}
+		const lane = backlogDropLane();
+		if (backlogStatus && lane) onDragOver(e, lane.key, backlogStatus.key, zone);
+	}
+
+	async function onBacklogDrop(e: DragEvent) {
+		if (backlogStatus) return onDrop(e);
+		e.preventDefault();
+		const id = drag?.id;
+		drag = null;
+		dropTarget = null;
+		if (!id) return;
+		try {
+			const column = await ensureBacklogColumn();
+			await updateTicket(id, { columnId: column.id });
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await refreshAll();
+	}
+
 	async function moveTicket(t: Item, columnId: number) {
 		try {
 			playIfCompleted(t.closed, await updateTicket(t.id, { columnId }));
@@ -835,7 +948,9 @@
 		try {
 			const defaultColumn = data.columns.find((item) => !item.isBacklog && !item.isDone) ?? data.columns[0];
 			if (!defaultColumn) return;
+			const parentPreset = newTaskParentPreset();
 			await createTicket(data.project.key, {
+				...(parentPreset.parentId ? { parentId: Number(parentPreset.parentId) } : {}),
 				...lane.preset,
 				...column.preset,
 				title: quickTitle,
@@ -927,7 +1042,7 @@
 	>
 		{#if !grouped}{@render columnHeader(col, lane)}{/if}
 		<div
-			class={cn('flex min-h-10 flex-col gap-1.5', !grouped && 'scrollbar-soft overflow-y-auto')}
+			class={cn('flex flex-col gap-1.5', list.length && 'min-h-10', !grouped && 'scrollbar-soft overflow-y-auto')}
 			use:scrollActivity
 			role="region"
 			aria-label={grouped ? `${lane.label}: ${col.label}` : col.label}
@@ -939,6 +1054,7 @@
 				<BoardCard
 					readOnly={!data.canEdit}
 					{t}
+					inTicketSystem={isTicketSystemTask(t)}
 					parent={t.parentId ? byId.get(t.parentId) : undefined}
 					subtasks={childrenOf.get(t.id) ?? []}
 					users={data.users}
@@ -987,6 +1103,54 @@
 			</Button>
 		{/if}
 	</section>
+{/snippet}
+
+{#snippet backlogColumn()}
+	{#if backlogOpen}
+		<section
+			class={cn(
+				'bg-muted/60 dark:bg-card/50 flex w-72 shrink-0 flex-col gap-1.5 rounded-xl p-1.5 transition-shadow',
+				dropTarget?.column === (backlogStatus?.key ?? 'backlog') && 'ring-primary/30 ring-2'
+			)}
+			role="group"
+			data-dropzone
+			aria-label={m.backlog()}
+			ondragover={(event) => onBacklogDragOver(event, event.currentTarget as HTMLElement)}
+			ondrop={onBacklogDrop}
+		>
+			<header class="flex items-center gap-1.5 px-2 py-1 text-sm">
+				<strong class="font-semibold">{m.backlog()}</strong>
+				<span class="text-muted-foreground text-xs font-medium">{backlogTickets.length}</span>
+			</header>
+			<div class="scrollbar-soft flex max-h-[calc(100vh-250px)] flex-col gap-1.5 overflow-y-auto">
+				{#each backlogTickets as t (t.id)}
+					{@const lane = backlogLane(t)}
+					<BoardCard
+						readOnly={!data.canEdit}
+						{t}
+						inTicketSystem={isTicketSystemTask(t)}
+						parent={t.parentId ? byId.get(t.parentId) : undefined}
+						subtasks={childrenOf.get(t.id) ?? []}
+						users={data.users}
+						{me}
+						expanded={expanded.has(t.id)}
+						dragging={drag?.id === t.id}
+						onToggleSubtasks={() => toggleSubtasks(t.id)}
+						onToggleStatus={() => toggleTicketStatus(t)}
+						onAssign={(id) => assign(t, id)}
+						columns={data.columns}
+						fields={cardFields}
+						showMove={true}
+						onMove={(id) => moveTicket(t, id)}
+						ondragstart={(event) => onDragStart(event, t, lane.key, `status:${t.columnId}`)}
+						ondragend={onDragEnd}
+					/>
+				{:else}
+					<p class="text-muted-foreground px-2 py-3 text-sm">{m.no_tickets_match_these_filters()}</p>
+				{/each}
+			</div>
+		</section>
+	{/if}
 {/snippet}
 
 {#if !data.canEdit}<p class="text-muted-foreground px-5 pt-3 text-sm">{m.um_read_only()}</p>{/if}
@@ -1168,10 +1332,21 @@
 			</div>
 		</Popover.Content>
 	</Popover.Root>
-	<Button disabled={!data.canEdit} onclick={() => dialog.open()}><Plus /> {m.ticket()}</Button>
+	<Button disabled={!data.canEdit} onclick={openNewTask}><Plus /> {m.ticket()}</Button>
 </div>
 
 <div class="flex max-w-full flex-wrap items-center gap-1.5 px-5 pb-3">
+	<div class="mr-2 border-r border-border pr-3">
+		<button
+			type="button"
+			aria-expanded={backlogOpen}
+			class="border-border hover:bg-accent focus-visible:ring-ring/50 inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium outline-none focus-visible:ring-3"
+			onclick={() => (backlogOpen = !backlogOpen)}
+		>
+			<ChevronRight class={cn('size-3 transition-transform', backlogOpen && 'rotate-90')} />
+			{m.backlog()} <span class="text-muted-foreground">({backlogTickets.length})</span>
+		</button>
+	</div>
 	<div class="flex max-w-full flex-wrap items-center gap-1.5" role="group" aria-label={m.board_categories()}>
 		<span class="text-muted-foreground mr-1 text-xs font-medium">{m.visible_main_groups()}</span>
 		<button
@@ -1207,6 +1382,16 @@
 						: 'border-border hover:bg-accent'
 				)}
 				onclick={() => showMainTask(task.id, hiddenMainIds.has(task.id))}
+			>
+				<span class="truncate">{task.title}</span>
+			</button>
+		{/each}
+		{#each selectedMoreMainTasks as task (task.id)}
+			<button
+				type="button"
+				aria-pressed="true"
+				class="border-primary bg-primary text-primary-foreground focus-visible:ring-ring/50 inline-flex h-7 max-w-48 items-center rounded-full border px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-3"
+				onclick={() => showMainTask(task.id, false)}
 			>
 				<span class="truncate">{task.title}</span>
 			</button>
@@ -1247,13 +1432,16 @@
 		class="scrollbar-soft flex min-h-[calc(100vh-200px)] items-stretch gap-3.5 overflow-x-auto px-5 pb-5"
 		use:scrollActivity
 	>
+		{@render backlogColumn()}
 		{#each boardColumns as col (col.key)}
 			{@render columnCell(lanes[0], col, false)}
 		{/each}
 	</div>
 {:else}
-	<div class="scrollbar-soft overflow-x-auto px-5 pb-5" use:scrollActivity>
-		<div class="flex w-max min-w-full flex-col gap-2">
+	<div class="flex items-start gap-3.5 px-5 pb-5">
+		{@render backlogColumn()}
+		<div class="scrollbar-soft min-w-0 grow overflow-x-auto" use:scrollActivity>
+			<div class="flex w-max min-w-full flex-col gap-2">
 			<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
 			<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">
 				{#each boardColumns as col (col.key)}
@@ -1293,6 +1481,7 @@
 			{:else}
 				<p class="text-muted-foreground px-2 py-6 text-sm">{m.no_tickets_match_these_filters()}</p>
 			{/each}
+			</div>
 		</div>
 	</div>
 {/if}
@@ -1336,4 +1525,5 @@
 	tags={data.tags}
 	parents={data.tickets.filter((t) => t.kind !== 'task').map((t) => ({ id: t.id, label: t.title, kind: t.kind }))}
 	canCreate={data.canEdit}
+	preset={newTaskParentPreset}
 />

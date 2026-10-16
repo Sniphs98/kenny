@@ -16,12 +16,14 @@ import {
 	type ProjectRole,
 	createProjectSchema,
 	updateProjectSchema,
+	createColumnSchema,
 	createTicketSchema,
 	updateTicketSchema,
 	reorderTicketsSchema,
 	ticketOrderSchema,
 	type ReorderTicketsInput,
 	projectSchema,
+	columnSchema,
 	ticketDtoSchema,
 	ticketDetailSchema,
 	commentSchema,
@@ -80,6 +82,9 @@ export async function createProject(input: CreateProjectInput) {
 }
 export async function updateProject(project: string | number, input: UpdateProjectInput) {
 	return projectSchema.parse(await api('PATCH', `/projects/${ref(project)}`, updateProjectSchema.parse(input)));
+}
+export async function createColumn(project: string | number, input: { name: string; isBacklog?: boolean }) {
+	return columnSchema.parse(await api('POST', `/projects/${ref(project)}/columns`, createColumnSchema.parse(input)));
 }
 export async function createTicket(project: string | number, input: CreateTicketInput) {
 	return ticketDtoSchema.parse(await api('POST', `/projects/${ref(project)}/tickets`, createTicketSchema.parse(input)));

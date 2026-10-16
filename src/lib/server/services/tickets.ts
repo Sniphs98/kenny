@@ -195,6 +195,7 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 			...present(t, p.key, cols.get(t.columnId), assignees.get(t.id)),
 			tags: tags.get(t.id) ?? [],
 			submitted: t.intakeFormId !== null || t.reporterEmail !== null,
+			boardGroup: t.boardGroup,
 			assigneeName: assignees.get(t.id)?.[0]?.name ?? null,
 			assignees: (assignees.get(t.id) ?? []).map(({ id, name }) => ({ id, name })),
 			subtaskCount: s?.total ?? 0,
@@ -564,6 +565,14 @@ function assigneeInput(input: {
 	return one ? [one] : [];
 }
 
+/** Tasks ohne eigene Auswahl übernehmen die Zuständigen ihrer neu gesetzten Hauptaufgabe. */
+function inheritedAssignees(tx: Tx, kind: Ticket['kind'], parentId: number | null) {
+	if (kind !== 'task' || parentId === null) return undefined;
+	const parent = tx.select({ kind: ticket.kind }).from(ticket).where(eq(ticket.id, parentId)).get();
+	if (parent?.kind !== 'main') return undefined;
+	return (assigneesByTicket([parentId], tx).get(parentId) ?? []).map((person) => person.id);
+}
+
 /**
  * Zuständige eines Tickets ersetzen. Neu hinzukommende Personen müssen aktive Projektmitglieder sein.
  * Mit `keepExisting` (Liste `assignees`) dürfen bereits Zuständige bleiben, auch wenn ihr Konto inzwischen
@@ -615,12 +624,15 @@ export function createTicket(
 	const input = parseInput(createTicketSchema, rawInput);
 	const p = getProject(projectRef);
 	const cols = getColumns(p.id);
+	const hasParent = [input.parentId, input.parent].some((parent) => parent !== undefined && parent !== null && parent !== '');
 	const col =
 		input.column !== undefined && input.column !== null
 			? resolveColumn(p.id, input.column)
 			: input.columnId !== undefined
 				? resolveColumn(p.id, input.columnId)
-				: (cols.find((c) => !c.isDone) ?? cols[0]);
+				: (input.kind ?? 'task') === 'task' && !hasParent
+					? (cols.find((c) => c.isBacklog) ?? cols.find((c) => !c.isDone) ?? cols[0])
+					: (cols.find((c) => !c.isBacklog && !c.isDone) ?? cols.find((c) => !c.isDone) ?? cols[0]);
 	if (!col) throw new ApiError(409, 'Projekt hat keine Spalten.');
 
 	const title = str(input.title, 'title', { max: 300 });
@@ -629,6 +641,8 @@ export function createTicket(
 	checkDates(startDate, dueDate);
 
 	const created = db.transaction((tx) => {
+		const kind = input.kind ?? 'task';
+		const parentId = checkParent(tx, { projectId: p.id, kind }, input.parentId ?? input.parent);
 		const { ticketCounter } = tx
 			.update(project)
 			.set({ ticketCounter: sql`${project.ticketCounter} + 1` })
@@ -642,12 +656,12 @@ export function createTicket(
 				projectId: p.id,
 				number: ticketCounter,
 				title,
-				kind: input.kind ?? 'task',
+				kind,
 				description: optStr(input.description, 'description') ?? '',
 				priority: input.priority !== undefined ? oneOf(input.priority, PRIORITIES, 'priority') : 'medium',
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
-				parentId: checkParent(tx, { projectId: p.id, kind: input.kind ?? 'task' }, input.parentId ?? input.parent),
+				parentId,
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
@@ -670,7 +684,13 @@ export function createTicket(
 		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates', userId);
 
 		if (input.tags !== undefined) setTicketTags(tx, t.id, p.id, input.tags);
-		const added = setAssignees(tx, t.id, p.id, assigneeInput(input) ?? [], false);
+		const added = setAssignees(
+			tx,
+			t.id,
+			p.id,
+			assigneeInput(input) ?? inheritedAssignees(tx, t.kind, t.parentId) ?? [],
+			false
+		);
 
 		return { ...t, added };
 	});
@@ -689,6 +709,10 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');
+		if (input.boardGroup !== undefined) {
+			if ((input.kind ?? t.kind) !== 'task') throw new ApiError(400, 'Board-Gruppen gelten nur für Aufgaben.');
+			patch.boardGroup = input.boardGroup;
+		}
 		if (input.kind !== undefined) {
 			const children = tx.select({ id: ticket.id }).from(ticket).where(eq(ticket.parentId, t.id)).get();
 			if (children && input.kind !== t.kind) throw new ApiError(400, 'Elemente mit Unterelementen können ihren Typ nicht ändern.');
@@ -721,7 +745,11 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 			setTicketTags(tx, t.id, t.projectId, input.tags);
 			if (!Object.keys(patch).length) tx.update(ticket).set({ updatedAt: new Date() }).where(eq(ticket.id, t.id)).run();
 		}
-		const people = assigneeInput(input);
+		const people =
+			assigneeInput(input) ??
+			(input.parentId !== undefined || input.parent !== undefined
+				? inheritedAssignees(tx, updated.kind, updated.parentId)
+				: undefined);
 		const added =
 			people !== undefined ? setAssignees(tx, t.id, t.projectId, people, input.assignees !== undefined) : [];
 

@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { PRIORITY_LABELS } from '#lib/api.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { buttonVariants } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
@@ -24,6 +26,7 @@
 	let {
 		readOnly = false,
 		t,
+		inTicketSystem = false,
 		parent,
 		subtasks,
 		users,
@@ -42,6 +45,7 @@
 	}: {
 		readOnly?: boolean;
 		t: TicketListItem;
+		inTicketSystem?: boolean;
 		parent?: TicketListItem;
 		/** Unteraufgaben für die aufklappbare Liste */
 		subtasks: TicketListItem[];
@@ -61,9 +65,22 @@
 	} = $props();
 
 	const blocked = $derived(t.openBlockers > 0 && !t.closed);
+	let isNew = $state(false);
 	/** Unteraufgaben, die noch auf offene Voraussetzungen warten */
 	const blockedSubtasks = $derived(subtasks.filter((s) => s.openBlockers > 0 && !s.closed).length);
 	const overdue = $derived(!t.closed && !!t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
+
+	onMount(() => {
+		isNew = t.submitted && localStorage.getItem(`kenny:seen-ticket:${t.key}`) === null;
+	});
+
+	function viewTicket(e: MouseEvent) {
+		if (t.submitted) {
+			localStorage.setItem(`kenny:seen-ticket:${t.key}`, '1');
+			isNew = false;
+		}
+		openTicket(t.key, e);
+	}
 
 	/** Fälligkeit kurz: "12.10.", in anderen Jahren mit Jahr */
 	function shortDate(d: string) {
@@ -97,18 +114,26 @@
 	role="listitem"
 	{ondragstart}
 	{ondragend}
-	onclick={(e) => openTicket(t.key, e)}
+	onclick={viewTicket}
 >
-	{#if parent && fields.includes('parent')}
+	{#if (parent && fields.includes('parent')) || inTicketSystem || isNew}
 		<div class="-mb-0.5 flex items-start gap-2">
-			<Hint text={m.subtask_of({ value1: parent.title, value2: '' })}>
-				{#snippet children(props)}
-					<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
-						<CornerDownRight class="size-3 shrink-0" />
-						<span class="truncate">{parent.title}</span>
-					</div>
-				{/snippet}
-			</Hint>
+			{#if parent && fields.includes('parent')}
+				<Hint text={m.subtask_of({ value1: parent.title, value2: '' })}>
+					{#snippet children(props)}
+						<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
+							<CornerDownRight class="size-3 shrink-0" />
+							<span class="truncate">{parent.title}</span>
+						</div>
+					{/snippet}
+				</Hint>
+			{:else if inTicketSystem && !parent}
+				<div class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
+					<CornerDownRight class="size-3 shrink-0" />
+					<span class="truncate">{m.ticket_system()}</span>
+				</div>
+			{:else}<span class="grow"></span>{/if}
+			{#if isNew}<Badge data-new-submission>{m.new()}</Badge>{/if}
 			{@render tagList()}
 		</div>
 	{/if}
@@ -129,10 +154,10 @@
 				'line-clamp-3 min-w-0 grow font-medium break-words hover:underline',
 				t.closed && 'text-muted-foreground line-through'
 			)}
-			onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
+			onclick={(e) => (e.stopPropagation(), viewTicket(e))}
 			draggable="false">{t.title}</a
 		>
-		{#if !parent || !fields.includes('parent')}{@render tagList()}{/if}
+		{#if !(parent && fields.includes('parent')) && !inTicketSystem}{@render tagList()}{/if}
 	</div>
 	{#if fields.some((field) => ['status', 'priority', 'dueDate', 'blockers', 'attachments', 'assignees'].includes(field))}
 	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">

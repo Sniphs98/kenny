@@ -77,6 +77,8 @@ export const ticket = sqliteTable(
 		priority: text('priority', { enum: PRIORITIES }).notNull().default('medium'),
 		/** Übergeordnetes Ticket, wenn dieses Ticket eine Unteraufgabe ist */
 		parentId: integer('parent_id').references((): AnySQLiteColumn => ticket.id, { onDelete: 'cascade' }),
+		/** Explizite Board-Gruppe; null übernimmt die bisherige Zuordnung aus der Herkunft */
+		boardGroup: text('board_group', { enum: ['general', 'tickets'] }),
 		assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
 		/** Start und Ende als YYYY-MM-DD für das Gantt-Chart */
 		startDate: text('start_date'),

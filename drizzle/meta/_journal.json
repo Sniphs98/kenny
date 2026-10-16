@@ -113,6 +113,13 @@
       "when": 1792140060000,
       "tag": "0015_add_project_systems",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792140120000,
+      "tag": "0016_ticket_board_group",
+      "breakpoints": true
     }
   ]
 }

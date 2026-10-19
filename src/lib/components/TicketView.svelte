@@ -160,8 +160,27 @@
 		data.projectTickets.filter((o) => o.id !== t.id && !data.links.some((l) => l.ticket.key === o.key))
 	);
 	const parentCandidates = $derived(
-		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id) && (t.kind === 'task' ? o.kind === 'main' || o.kind === 'task' : o.kind === 'version'))
+		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id) && o.kind === (t.kind === 'task' ? 'main' : 'version'))
 	);
+	const activeColumnId = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]?.id);
+	const parentState = (o: (typeof data.projectTickets)[number]) => o.closed ? 'done' : o.columnId === activeColumnId ? 'active' : 'open';
+	const parentGroups = $derived.by(() => {
+		if (t.kind !== 'task') return [];
+		const versions = data.projectTickets
+			.filter((o) => o.kind === 'version')
+			.sort((a, b) =>
+				(a.startDate ?? a.dueDate ?? '9999-12-31').localeCompare(b.startDate ?? b.dueDate ?? '9999-12-31') ||
+				(a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
+				a.position - b.position || a.number - b.number
+			);
+		const mainTasks = parentCandidates.filter((o) => o.kind === 'main');
+		const groups = versions
+			.map((version) => ({ key: String(version.id), label: version.title, state: parentState(version), tasks: mainTasks.filter((o) => o.parentId === version.id) }))
+			.filter((group) => group.tasks.length);
+		const withoutVersion = mainTasks.filter((o) => !versions.some((version) => version.id === o.parentId));
+		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
+		return groups;
+	});
 	const subDone = $derived(data.subtasks.filter((s) => s.closed).length);
 	const columnName = $derived(data.columns.find((c) => c.id === t.columnId)?.name ?? '');
 	const parentLabel = $derived.by(() => {
@@ -482,8 +501,24 @@
 							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 							<Select.Content class="max-h-72">
 								<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
-								{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.title}</Select.Item
-									>{/each}
+								{#if t.kind === 'task'}
+									{#each parentGroups as group (group.key)}
+										<Select.Group>
+											<Select.GroupHeading class={cn(group.state === 'active' && 'text-primary font-semibold', group.state === 'done' && 'line-through')}>{group.label}</Select.GroupHeading>
+											{#each group.tasks as o (o.id)}
+												<Select.Item value={String(o.id)}>
+													<span class={cn(parentState(o) === 'active' && 'text-primary font-semibold', parentState(o) === 'done' && 'text-muted-foreground line-through')}>{o.title}</span>
+												</Select.Item>
+											{/each}
+										</Select.Group>
+									{/each}
+								{:else}
+									{#each parentCandidates as o (o.id)}
+										<Select.Item value={String(o.id)}>
+											<span class={cn(parentState(o) === 'active' && 'text-primary font-semibold', parentState(o) === 'done' && 'text-muted-foreground line-through')}>{o.title}</span>
+										</Select.Item>
+									{/each}
+								{/if}
 							</Select.Content>
 						</Select.Root>
 					</div>{/if}

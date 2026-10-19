@@ -7,6 +7,7 @@
 	import { createTicket, updateTicket } from '#lib/api.js';
 	import { openTicket } from '#lib/ticket-modal.js';
 	import Hint, { chain, cursorAnchor } from '#lib/components/Hint.svelte';
+	import UserAvatar from '#lib/components/UserAvatar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import { Label } from '#lib/components/ui/label/index.js';
@@ -18,6 +19,9 @@
 	import type { BoardColumnDto, DependencyDto, TicketListItem } from '#lib/contracts/index.js';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Circle from '@lucide/svelte/icons/circle';
+	import CircleDot from '@lucide/svelte/icons/circle-dot';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Info from '@lucide/svelte/icons/info';
@@ -66,7 +70,7 @@
 
 	const DAY = 86_400_000;
 	let width = $state(1000);
-	const labelWidth = $derived(width < 600 ? 176 : 280);
+	const labelWidth = $derived(width < 600 ? 190 : 280);
 	const ROW = $derived(width < 600 ? 44 : 34);
 	const ZOOMS = { day: 36, week: 16, month: 6 } as const;
 
@@ -220,6 +224,27 @@
 	});
 
 	const x = (day: number) => (day - range.start) * px;
+	const groupBands = $derived.by(() => {
+		const bands: { id: number; left: number; top: number; width: number; height: number }[] = [];
+		for (let i = 0; i < rows.length; i++) {
+			const { t, depth } = rows[i];
+			if (t.kind !== 'version') continue;
+			let end = i + 1;
+			let first = Infinity;
+			let last = -Infinity;
+			while (end < rows.length && rows[end].depth > depth) end++;
+			if (end === i + 1) continue;
+			for (let j = i; j < end; j++) {
+				const dates = span(rows[j].t);
+				if (!dates) continue;
+				first = Math.min(first, dates.start);
+				last = Math.max(last, dates.end);
+			}
+			if (first === Infinity) continue;
+			bands.push({ id: t.id, left: x(first) - 3, top: i * ROW + 4, width: x(last + 1) - x(first) + 6, height: (end - i) * ROW - 8 });
+		}
+		return bands;
+	});
 
 	const months = $derived.by(() => {
 		const out: { label: string; left: number; width: number }[] = [];
@@ -599,6 +624,7 @@
 		<!-- Ticketliste links -->
 		<div class="labels">
 			{#each rows as { t, depth, childCount } (t.id)}
+				{@const assigneeLabel = t.assignees.length ? m.assignee_2({ value1: t.assignees.map((a) => a.name).join(', ') }) : m.unassigned_3()}
 				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
 						<Hint text="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})">
@@ -619,44 +645,56 @@
 					{:else}
 						<span class="toggle"></span>
 					{/if}
-					<Hint text={t.title} side="right">
-						{#snippet children(props)}
-							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
-								<span class="prio prio-{t.priority}"></span>
-								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
-							</a>
-						{/snippet}
-					</Hint>
 					<DropdownMenu.Root>
-						<DropdownMenu.Trigger
-							disabled={readOnly}
-							class={['status', t.closed && 'done']}
-							aria-label="{m.status()}: {t.status}"
-						>
-							{t.status}
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Content align="end">
+						<Hint text="{m.status()}: {t.status}">
+							{#snippet children(props)}
+								<DropdownMenu.Trigger
+									{...props}
+									disabled={readOnly}
+									class={['status', t.closed && 'done', !t.closed && t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone && 'active']}
+									aria-label="{m.status()}: {t.status}"
+								>
+									{#if t.closed}<CircleCheck class="size-4" />{:else if t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone}<CircleDot class="size-4" />{:else}<Circle class="size-4" />{/if}
+								</DropdownMenu.Trigger>
+							{/snippet}
+						</Hint>
+						<DropdownMenu.Content align="start">
 							{#each statusColumns as column (column.id)}
 								<DropdownMenu.Item onSelect={() => setStatus(t, column.id)}>{column.name}</DropdownMenu.Item>
 							{/each}
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
-						{#if t.kind === 'version' && onAddMain}
-							<Hint text={m.add_main_task()}>
-								{#snippet children(props)}
-									<button
-										{...props}
-										type="button"
-										class="rowaction addmain"
-										disabled={readOnly}
-										aria-label={m.add_main_task_to({ value1: t.title })}
-										onclick={() => onAddMain(t)}
-									>
-										<Plus class="size-3.5" />
-									</button>
-								{/snippet}
-							</Hint>
-						{/if}
+					<Hint text={t.title} side="right">
+						{#snippet children(props)}
+							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
+								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
+							</a>
+						{/snippet}
+					</Hint>
+					<Hint text={assigneeLabel}>
+						{#snippet children(props)}
+							<span {...props} class="assignees" aria-label={assigneeLabel}>
+								<UserAvatar name={t.assignees[0]?.name} size="sm" tooltip={false} />
+								{#if t.assignees.length > 1}<span class="assignee-count">+{t.assignees.length - 1}</span>{/if}
+							</span>
+						{/snippet}
+					</Hint>
+					{#if t.kind === 'version' && onAddMain}
+						<Hint text={m.add_main_task()}>
+							{#snippet children(props)}
+								<button
+									{...props}
+									type="button"
+									class="rowaction addmain"
+									disabled={readOnly}
+									aria-label={m.add_main_task_to({ value1: t.title })}
+									onclick={() => onAddMain(t)}
+								>
+									<Plus class="size-3.5" />
+								</button>
+							{/snippet}
+						</Hint>
+					{/if}
 					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
 						<DropdownMenu.Root>
 							<Hint text={m.unschedule()}>
@@ -715,7 +753,6 @@
 							<Command.Group>
 								{#each planCandidates as { t, backlog, dated } (t.id)}
 									<Command.Item value={String(t.id)} keywords={[t.key, t.title]} onSelect={() => plan(t)}>
-										<span class="prio prio-{t.priority}"></span>
 										<span class="min-w-0 grow truncate">{t.title}</span>
 										{#if backlog}
 											<span class="bg-muted text-muted-foreground shrink-0 rounded px-1.5 text-[11px]"
@@ -747,6 +784,9 @@
 					<div class="bgday" class:weekend={isWeekend(d)}></div>
 				{/each}
 			</div>
+			{#each groupBands as band (band.id)}
+				<div class="group-band" style="left: {band.left}px; top: {band.top}px; width: {band.width}px; height: {band.height}px"></div>
+			{/each}
 			<div class="todayline" style="left: {x(today) + px / 2}px"></div>
 
 			{#each rows as { t }, i (t.id)}
@@ -781,6 +821,7 @@
 											class:closed={t.closed}
 											class:blocked={t.openBlockers > 0 && !t.closed}
 											class:parent={t.subtaskCount > 0}
+											class:version={t.kind === 'version'}
 											style="left: {x(s.start)}px; width: {(s.end - s.start + 1) * px}px"
 											onpointerdown={chain<PointerEvent>(props.onpointerdown, (e) => pointerDown(e, t, 'move'))}
 											role="button"
@@ -1038,25 +1079,6 @@
 	.toggle.open :global(svg) {
 		transform: rotate(90deg);
 	}
-	.compact .link {
-		position: relative;
-		flex-direction: column;
-		align-items: stretch;
-		justify-content: center;
-		gap: 1px;
-		padding-left: 10px;
-	}
-	.compact .link .prio {
-		position: absolute;
-		left: 0;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	.compact .ticket-key {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-size: 10px;
-	}
 	.compact .ttl {
 		font-size: 12px;
 	}
@@ -1065,26 +1087,35 @@
 		text-overflow: ellipsis;
 	}
 	.status {
-		max-width: 86px;
-		flex: 0 1 auto;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		border-radius: 999px;
-		background: var(--muted);
+		flex: 0 0 22px;
+		height: 22px;
+		display: grid;
+		place-items: center;
+		border-radius: 50%;
 		color: var(--muted-foreground);
-		padding: 2px 7px;
-		font-size: 0.68rem;
+	}
+	.status:hover,
+	.status:focus-visible {
+		background: var(--muted);
+	}
+	.status.active {
+		color: var(--primary);
 	}
 	.status.done {
 		color: var(--success);
 	}
+	.assignees {
+		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+	}
+	.assignee-count {
+		color: var(--muted-foreground);
+		font-size: 0.65rem;
+		margin-left: 2px;
+	}
 	.status:disabled {
 		opacity: 1;
-	}
-	.compact .status {
-		max-width: 56px;
-		padding-inline: 5px;
-		font-size: 0.62rem;
 	}
 	.body {
 		position: relative;
@@ -1100,6 +1131,13 @@
 	.bgday.weekend {
 		background: var(--muted);
 		opacity: 0.6;
+	}
+	.group-band {
+		position: absolute;
+		border: 1px solid color-mix(in srgb, var(--c) 28%, var(--border));
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--c) 5%, transparent);
+		pointer-events: none;
 	}
 	.todayline {
 		position: absolute;
@@ -1150,6 +1188,14 @@
 	.bar.parent {
 		background: color-mix(in srgb, var(--c) 26%, var(--card));
 		border-color: color-mix(in srgb, var(--c) 55%, var(--card));
+	}
+	.bar.version {
+		top: 6px;
+		height: calc(var(--row) - 12px);
+		background: color-mix(in srgb, var(--c) 38%, var(--card));
+		border: 2px solid color-mix(in srgb, var(--c) 70%, var(--card));
+		border-radius: 6px;
+		font-weight: 600;
 	}
 	.bar.closed {
 		background: var(--muted);

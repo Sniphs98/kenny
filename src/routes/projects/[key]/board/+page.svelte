@@ -466,6 +466,7 @@
 		[assigneeFilter, tagFilter, statusFilter, priorityFilter].filter((value) => value.length).length
 	);
 	const inProgressColumn = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]);
+	const mainTaskState = (task: Item) => task.closed ? 'done' : task.columnId === inProgressColumn?.id ? 'active' : 'open';
 	const quickMainTasks = $derived(
 		mainTasks.filter(
 			(task) =>
@@ -491,11 +492,12 @@
 			.map((version) => ({
 				key: String(version.id),
 				label: version.title,
+				state: mainTaskState(version),
 				tasks: remaining.filter((task) => task.parentId === version.id)
 			}))
 			.filter((group) => group.tasks.length);
 		const withoutVersion = remaining.filter((task) => !versions.some((version) => version.id === task.parentId));
-		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), tasks: withoutVersion });
+		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
 		return groups;
 	});
 	function newTaskParentPreset(): { parentId?: string; columnId?: number } {
@@ -1383,7 +1385,7 @@
 				)}
 				onclick={() => showMainTask(task.id, hiddenMainIds.has(task.id))}
 			>
-				<span class="truncate">{task.title}</span>
+				<span class={cn('truncate', mainTaskState(task) === 'active' && 'font-bold', mainTaskState(task) === 'done' && 'line-through opacity-70')}>{task.title}</span>
 			</button>
 		{/each}
 		{#each selectedMoreMainTasks as task (task.id)}
@@ -1393,7 +1395,7 @@
 				class="border-primary bg-primary text-primary-foreground focus-visible:ring-ring/50 inline-flex h-7 max-w-48 items-center rounded-full border px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-3"
 				onclick={() => showMainTask(task.id, false)}
 			>
-				<span class="truncate">{task.title}</span>
+				<span class={cn('truncate', mainTaskState(task) === 'active' && 'font-bold', mainTaskState(task) === 'done' && 'line-through opacity-70')}>{task.title}</span>
 			</button>
 		{/each}
 		{#if moreMainTaskGroups.length}
@@ -1406,13 +1408,13 @@
 				<DropdownMenu.Content align="start" class="max-h-80 w-72 overflow-y-auto">
 					{#each moreMainTaskGroups as group, index (group.key)}
 						{#if index}<DropdownMenu.Separator />{/if}
-						<DropdownMenu.Label class="truncate">{group.label}</DropdownMenu.Label>
+						<DropdownMenu.Label class={cn('truncate', group.state === 'active' && 'text-primary font-semibold', group.state === 'done' && 'text-muted-foreground line-through')}>{group.label}</DropdownMenu.Label>
 						{#each group.tasks as task (task.id)}
 							<DropdownMenu.CheckboxItem
 								checked={!hiddenMainIds.has(task.id)}
 								onCheckedChange={(show) => showMainTask(task.id, show)}
 							>
-								<span class="truncate">{task.title}</span>
+								<span class={cn('truncate', mainTaskState(task) === 'active' && 'text-primary font-semibold', mainTaskState(task) === 'done' && 'text-muted-foreground line-through')}>{task.title}</span>
 							</DropdownMenu.CheckboxItem>
 						{/each}
 					{/each}

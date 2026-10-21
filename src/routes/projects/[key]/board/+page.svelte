@@ -4,7 +4,15 @@
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
 	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { closeTicket, createColumn, createTicket, reorderTickets, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import {
+		closeTicket,
+		createColumn,
+		createTicket,
+		reorderTickets,
+		reopenTicket,
+		updateTicket,
+		PRIORITY_LABELS
+	} from '#lib/api.js';
 	import BoardCard from '#lib/components/BoardCard.svelte';
 	import TagBadge from '#lib/components/TagBadge.svelte';
 	import Hint from '#lib/components/Hint.svelte';
@@ -52,19 +60,39 @@
 	let statusFilter = $state<string[]>([]);
 	let priorityFilter = $state<string[]>([]);
 	const tagFilterLabel = $derived(
-		tagFilter.length ? data.tags.filter((g) => tagFilter.includes(String(g.id))).map((g) => g.name).join(', ') : m.all_tags()
+		tagFilter.length
+			? data.tags
+					.filter((g) => tagFilter.includes(String(g.id)))
+					.map((g) => g.name)
+					.join(', ')
+			: m.all_tags()
 	);
 	const statusFilterLabel = $derived(
-		statusFilter.length ? data.columns.filter((column) => statusFilter.includes(String(column.id))).map((column) => column.name).join(', ') : m.all_statuses()
+		statusFilter.length
+			? data.columns
+					.filter((column) => statusFilter.includes(String(column.id)))
+					.map((column) => column.name)
+					.join(', ')
+			: m.all_statuses()
 	);
 	const priorityFilterLabel = $derived(
-		priorityFilter.length ? priorityFilter.map((priority) => PRIORITY_LABELS[priority] ?? priority).join(', ') : m.all_priorities()
+		priorityFilter.length
+			? priorityFilter.map((priority) => PRIORITY_LABELS[priority] ?? priority).join(', ')
+			: m.all_priorities()
 	);
 	let dialog: TicketDialog;
 
 	const filterLabel = $derived(
 		assigneeFilter.length
-			? assigneeFilter.map((id) => id === 'me' ? m.assigned_to_me() : id === 'none' ? m.unassigned() : data.users.find((u) => u.id === id)?.name ?? id).join(', ')
+			? assigneeFilter
+					.map((id) =>
+						id === 'me'
+							? m.assigned_to_me()
+							: id === 'none'
+								? m.unassigned()
+								: (data.users.find((u) => u.id === id)?.name ?? id)
+					)
+					.join(', ')
 			: m.all_assignees()
 	);
 
@@ -159,7 +187,9 @@
 			.map((ticket) => ticket.id)
 	);
 	const hiddenMainIds = new SvelteSet<number>(
-		data.tickets.filter((ticket) => ticket.kind === 'main' && !initiallyVisibleMainIds.has(ticket.id)).map((ticket) => ticket.id)
+		data.tickets
+			.filter((ticket) => ticket.kind === 'main' && !initiallyVisibleMainIds.has(ticket.id))
+			.map((ticket) => ticket.id)
 	);
 	let showGeneral = $state(true);
 	let showTicketSystem = $state(true);
@@ -180,17 +210,24 @@
 
 	function validAssigneeFilter(value: unknown): string[] {
 		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
-		return values.filter((item): item is string => typeof item === 'string' && (['me', 'none'].includes(item) || data.users.some((user) => user.id === item)));
+		return values.filter(
+			(item): item is string =>
+				typeof item === 'string' && (['me', 'none'].includes(item) || data.users.some((user) => user.id === item))
+		);
 	}
 
 	function validTagFilter(value: unknown): string[] {
 		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
-		return values.filter((item): item is string => typeof item === 'string' && data.tags.some((tag) => String(tag.id) === item));
+		return values.filter(
+			(item): item is string => typeof item === 'string' && data.tags.some((tag) => String(tag.id) === item)
+		);
 	}
 
 	function validStatusFilter(value: unknown): string[] {
 		const values = Array.isArray(value) ? value : typeof value === 'string' && value !== 'all' ? [value] : [];
-		return values.filter((item): item is string => typeof item === 'string' && data.columns.some((column) => String(column.id) === item));
+		return values.filter(
+			(item): item is string => typeof item === 'string' && data.columns.some((column) => String(column.id) === item)
+		);
 	}
 
 	function validPriorityFilter(value: unknown): string[] {
@@ -207,14 +244,15 @@
 	function validColumnSort(value: unknown): Record<string, Sort> {
 		if (!value || typeof value !== 'object') return {};
 		return Object.fromEntries(
-			Object.entries(value)
-				.filter(([, sort]) => typeof sort === 'string' && sort in SORTS)
+			Object.entries(value).filter(([, sort]) => typeof sort === 'string' && sort in SORTS)
 		) as Record<string, Sort>;
 	}
 
 	function validCardFields(value: unknown): CardField[] {
 		return Array.isArray(value)
-			? value.filter((field): field is CardField => typeof field === 'string' && CARD_FIELDS.includes(field as CardField))
+			? value.filter(
+					(field): field is CardField => typeof field === 'string' && CARD_FIELDS.includes(field as CardField)
+				)
 			: [...DEFAULT_CARD_FIELDS];
 	}
 
@@ -466,12 +504,12 @@
 		[assigneeFilter, tagFilter, statusFilter, priorityFilter].filter((value) => value.length).length
 	);
 	const inProgressColumn = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]);
-	const mainTaskState = (task: Item) => task.closed ? 'done' : task.columnId === inProgressColumn?.id ? 'active' : 'open';
+	const mainTaskState = (task: Item) =>
+		task.closed ? 'done' : task.columnId === inProgressColumn?.id ? 'active' : 'open';
 	const quickMainTasks = $derived(
 		mainTasks.filter(
 			(task) =>
-				task.parentId === null ||
-				(!!me && task.columnId === inProgressColumn?.id && task.assigneeIds.includes(me))
+				task.parentId === null || (!!me && task.columnId === inProgressColumn?.id && task.assigneeIds.includes(me))
 		)
 	);
 	const quickMainIds = $derived(new Set(quickMainTasks.map((task) => task.id)));
@@ -497,7 +535,8 @@
 			}))
 			.filter((group) => group.tasks.length);
 		const withoutVersion = remaining.filter((task) => !versions.some((version) => version.id === task.parentId));
-		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
+		if (withoutVersion.length)
+			groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
 		return groups;
 	});
 	function newTaskParentPreset(): { parentId?: string; columnId?: number } {
@@ -511,7 +550,10 @@
 		return backlogColumn ? { columnId: backlogColumn.id } : {};
 	}
 	async function ensureBacklogColumn() {
-		return data.columns.find((column) => column.isBacklog) ?? await createColumn(data.project.key, { name: 'Backlog', isBacklog: true });
+		return (
+			data.columns.find((column) => column.isBacklog) ??
+			(await createColumn(data.project.key, { name: 'Backlog', isBacklog: true }))
+		);
 	}
 	async function openNewTask() {
 		try {
@@ -545,7 +587,11 @@
 	function belongsToTicketSystem(t: Item) {
 		const seen = new Set<number>();
 		let submitted = false;
-		for (let current: Item | undefined = t; current && !seen.has(current.id); current = current.parentId === null ? undefined : byId.get(current.parentId)) {
+		for (
+			let current: Item | undefined = t;
+			current && !seen.has(current.id);
+			current = current.parentId === null ? undefined : byId.get(current.parentId)
+		) {
 			seen.add(current.id);
 			if (current.boardGroup !== null) return current.boardGroup === 'tickets';
 			if (current.submitted) submitted = true;
@@ -579,8 +625,15 @@
 	}
 
 	function matchesAssignee(t: Item) {
-		return !assigneeFilter.length || assigneeFilter.some((filter) =>
-			filter === 'me' ? !!me && t.assigneeIds.includes(me) : filter === 'none' ? !t.assigneeIds.length : t.assigneeIds.includes(filter)
+		return (
+			!assigneeFilter.length ||
+			assigneeFilter.some((filter) =>
+				filter === 'me'
+					? !!me && t.assigneeIds.includes(me)
+					: filter === 'none'
+						? !t.assigneeIds.length
+						: t.assigneeIds.includes(filter)
+			)
 		);
 	}
 
@@ -598,10 +651,14 @@
 					t.key.toLowerCase().includes(search.toLowerCase()))
 		)
 	);
-	const backlogColumnIds = $derived(new Set(data.columns.filter((column) => column.isBacklog).map((column) => column.id)));
+	const backlogColumnIds = $derived(
+		new Set(data.columns.filter((column) => column.isBacklog).map((column) => column.id))
+	);
 	const visible = $derived(matchingTickets.filter((ticket) => !backlogColumnIds.has(ticket.columnId)));
 	const backlogTickets = $derived(
-		tickets.filter((ticket) => ticket.kind === 'task' && backlogColumnIds.has(ticket.columnId)).sort(comparators[sortBy])
+		tickets
+			.filter((ticket) => ticket.kind === 'task' && backlogColumnIds.has(ticket.columnId))
+			.sort(comparators[sortBy])
 	);
 
 	/**
@@ -625,18 +682,37 @@
 	function dimensionItems(kind: Group): AxisItem[] {
 		if (kind === 'main')
 			return [
-				...mainTasks.filter((t) => !hiddenMainIds.has(t.id)).map((parent) => ({
-					key: `main:${parent.id}`,
-					label: parent.title,
-					kind: 'main' as const,
-					match: (t: Item) => mainParentId(t) === parent.id,
-					preset: { parentId: parent.id }
-				})),
+				...mainTasks
+					.filter((t) => !hiddenMainIds.has(t.id))
+					.map((parent) => ({
+						key: `main:${parent.id}`,
+						label: parent.title,
+						kind: 'main' as const,
+						match: (t: Item) => mainParentId(t) === parent.id,
+						preset: { parentId: parent.id }
+					})),
 				...(showTicketSystem
-					? [{ key: 'main:tickets', label: m.ticket_system(), kind: 'main' as const, canCreate: false, match: (t: Item) => isTicketSystemTask(t), preset: { parentId: null } }]
+					? [
+							{
+								key: 'main:tickets',
+								label: m.ticket_system(),
+								kind: 'main' as const,
+								canCreate: false,
+								match: (t: Item) => isTicketSystemTask(t),
+								preset: { parentId: null }
+							}
+						]
 					: []),
 				...(showGeneral
-					? [{ key: 'main:none', label: m.general_tickets(), kind: 'main' as const, match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === null, preset: { parentId: null } }]
+					? [
+							{
+								key: 'main:none',
+								label: m.general_tickets(),
+								kind: 'main' as const,
+								match: (t: Item) => !isTicketSystemTask(t) && mainParentId(t) === null,
+								preset: { parentId: null }
+							}
+						]
 					: [])
 			];
 		if (kind === 'tag') {
@@ -691,14 +767,16 @@
 	const lanes = $derived.by(() => dimensionItems(groupBy));
 	const boardColumns = $derived.by((): AxisItem[] =>
 		columnBy === 'status'
-			? data.columns.filter((column) => !column.isBacklog).map((column) => ({
-					key: `status:${column.id}`,
-					label: column.name,
-					kind: 'status',
-					status: column,
-					match: (ticket: Item) => ticket.columnId === column.id,
-					preset: { columnId: column.id }
-				}))
+			? data.columns
+					.filter((column) => !column.isBacklog)
+					.map((column) => ({
+						key: `status:${column.id}`,
+						label: column.name,
+						kind: 'status',
+						status: column,
+						match: (ticket: Item) => ticket.columnId === column.id,
+						preset: { columnId: column.id }
+					}))
 			: dimensionItems(columnBy)
 	);
 	const statusColumns = $derived(
@@ -713,7 +791,11 @@
 	);
 	const backlogStatus = $derived(statusColumns.find((column) => column.status.isBacklog));
 	const ungroupedBacklogLane: AxisItem = {
-		key: 'backlog', label: '', kind: 'none', match: () => true, preset: {}
+		key: 'backlog',
+		label: '',
+		kind: 'none',
+		match: () => true,
+		preset: {}
 	};
 	function backlogLane(t: Item) {
 		return lanes.find((lane) => lane.match(t)) ?? ungroupedBacklogLane;
@@ -737,9 +819,7 @@
 	const laneCount = (lane: AxisItem) => visible.filter(lane.match).length;
 	const columnCount = (column: AxisItem) => visible.filter(column.match).length;
 	// Leere Bahnen ausblenden, außer es gibt gar keine Tickets
-	const shownLanes = $derived(
-		groupBy === 'none' || groupBy === 'main' ? lanes : lanes.filter((l) => laneCount(l) > 0)
-	);
+	const shownLanes = $derived(groupBy === 'none' || groupBy === 'main' ? lanes : lanes.filter((l) => laneCount(l) > 0));
 
 	// --- Drag & Drop ---
 	let drag = $state<{ id: number; lane: string; column: string } | null>(null);
@@ -755,8 +835,10 @@
 	/** Die ganze Spalte ist Ablagefläche, auch der freie Platz unter den Karten */
 	function onDragOver(e: DragEvent, lane: string, column: string, zone: HTMLElement) {
 		if (!drag) return;
-		const targetLane = lanes.find((item) => item.key === lane) ?? (lane === ungroupedBacklogLane.key ? ungroupedBacklogLane : undefined);
-		const targetColumn = boardColumns.find((item) => item.key === column) ?? statusColumns.find((item) => item.key === column);
+		const targetLane =
+			lanes.find((item) => item.key === lane) ?? (lane === ungroupedBacklogLane.key ? ungroupedBacklogLane : undefined);
+		const targetColumn =
+			boardColumns.find((item) => item.key === column) ?? statusColumns.find((item) => item.key === column);
 		const dragged = tickets.find((ticket) => ticket.id === drag!.id);
 		if (
 			!targetLane ||
@@ -816,8 +898,12 @@
 		const moved = tickets.find((t) => t.id === id)!;
 		const from = lanes.find((l) => l.key === fromLane) ?? ungroupedBacklogLane;
 		const to = lanes.find((l) => l.key === toLane) ?? ungroupedBacklogLane;
-		const fromCol = statusColumns.find((column) => column.key === fromColumn) ?? boardColumns.find((column) => column.key === fromColumn)!;
-		const toCol = boardColumns.find((column) => column.key === toColumn) ?? statusColumns.find((column) => column.key === toColumn)!;
+		const fromCol =
+			statusColumns.find((column) => column.key === fromColumn) ??
+			boardColumns.find((column) => column.key === fromColumn)!;
+		const toCol =
+			boardColumns.find((column) => column.key === toColumn) ??
+			statusColumns.find((column) => column.key === toColumn)!;
 		const body: UpdateTicketInput = { ...axisChange(moved, from, to), ...axisChange(moved, fromCol, toCol) };
 		if (!toCol.status && backlogColumnIds.has(moved.columnId)) {
 			const defaultColumn = data.columns.find((column) => !column.isBacklog && !column.isDone);
@@ -1164,7 +1250,8 @@
 			<Eye class="text-muted-foreground size-4 shrink-0" />
 			<span class="min-w-0 flex-1">
 				<span class="block truncate text-sm font-semibold">
-					{activeView?.name ?? m.current_board_settings()}{#if viewChanged} · {m.changed()}{/if}
+					{activeView?.name ?? m.current_board_settings()}{#if viewChanged}
+						· {m.changed()}{/if}
 				</span>
 				<span class="text-muted-foreground block truncate text-xs">
 					{m.filters_active({ count: activeFilterCount })} · {GROUPS[groupBy]} / {COLUMNS[columnBy]} · {SORTS[sortBy]}
@@ -1172,13 +1259,20 @@
 			</span>
 			<ChevronDown class="text-muted-foreground size-4 shrink-0" />
 		</Popover.Trigger>
-		<Popover.Content align="center" class="max-h-[calc(100vh-2rem)] w-[min(44rem,calc(100vw-2.5rem))] gap-0 overflow-y-auto p-0">
+		<Popover.Content
+			align="center"
+			class="max-h-[calc(100vh-2rem)] w-[min(44rem,calc(100vw-2.5rem))] gap-0 overflow-y-auto p-0"
+		>
 			<div class="border-b p-4">
 				<Popover.Title>{m.board_views()}</Popover.Title>
 				<Popover.Description>{m.board_view_description()}</Popover.Description>
 			</div>
 			<div class="flex flex-wrap items-center gap-2 border-b p-4">
-				<Select.Root type="single" value={activeViewId ?? 'current'} onValueChange={(value) => selectView(value ?? 'current')}>
+				<Select.Root
+					type="single"
+					value={activeViewId ?? 'current'}
+					onValueChange={(value) => selectView(value ?? 'current')}
+				>
 					<Select.Trigger class="min-w-48 flex-1">
 						<span class="truncate">{activeView?.name ?? m.current_board_settings()}</span>
 					</Select.Trigger>
@@ -1190,10 +1284,12 @@
 						{/each}
 					</Select.Content>
 				</Select.Root>
-				<Button variant="outline" size="sm" onclick={() => openViewDialog('create')}><Plus /> {m.save_as_view()}</Button>
+				<Button variant="outline" size="sm" onclick={() => openViewDialog('create')}><Plus /> {m.save_as_view()}</Button
+				>
 				{#if activeView}
 					<Button variant="outline" size="sm" disabled={!viewChanged} onclick={updateActiveView}>
-						<Save /> {m.update_view()}
+						<Save />
+						{m.update_view()}
 					</Button>
 					<DropdownMenu.Root>
 						<DropdownMenu.Trigger
@@ -1203,9 +1299,12 @@
 							<Ellipsis />
 						</DropdownMenu.Trigger>
 						<DropdownMenu.Content align="end">
-							<DropdownMenu.Item onclick={() => openViewDialog('rename')}><Pencil /> {m.rename_view()}</DropdownMenu.Item>
+							<DropdownMenu.Item onclick={() => openViewDialog('rename')}
+								><Pencil /> {m.rename_view()}</DropdownMenu.Item
+							>
 							<DropdownMenu.Item variant="destructive" onclick={() => (deleteViewOpen = true)}>
-								<Trash2 /> {m.delete_view()}
+								<Trash2 />
+								{m.delete_view()}
 							</DropdownMenu.Item>
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
@@ -1214,122 +1313,125 @@
 			<div class="p-4">
 				<h2 class="mb-3 text-sm font-semibold">{m.filters()}</h2>
 				<div class="grid gap-4 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-assignee">{m.assignee()}</label>
-					<Select.Root type="multiple" bind:value={assigneeFilter}>
-						<Select.Trigger id="board-view-assignee" class="w-full">
-							<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="me">{m.assigned_to_me()}</Select.Item>
-							<Select.Item value="none">{m.unassigned()}</Select.Item>
-							<Select.Separator />
-							{#each data.users as u (u.id)}
-								<Select.Item value={u.id}>{u.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-status-filter">{m.status()}</label>
-					<Select.Root type="multiple" bind:value={statusFilter}>
-						<Select.Trigger id="board-view-status-filter" class="w-full">
-							<span class="truncate">{statusFilterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each data.columns as column (column.id)}
-								<Select.Item value={String(column.id)}>{column.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-priority-filter">{m.priority_2()}</label>
-					<Select.Root type="multiple" bind:value={priorityFilter}>
-						<Select.Trigger id="board-view-priority-filter" class="w-full">
-							<span class="truncate">{priorityFilterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(PRIORITY_LABELS) as [priority, label] (priority)}
-								<Select.Item value={priority}>{label}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-tag">{m.tags()}</label>
-					<Select.Root type="multiple" bind:value={tagFilter}>
-						<Select.Trigger id="board-view-tag" class="w-full">
-							<span class="flex items-center gap-2 truncate"><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each data.tags as g (g.id)}
-								<Select.Item value={String(g.id)}><TagBadge name={g.name} color={g.color} /></Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-assignee">{m.assignee()}</label>
+						<Select.Root type="multiple" bind:value={assigneeFilter}>
+							<Select.Trigger id="board-view-assignee" class="w-full">
+								<span class="flex items-center gap-2"><UserRound class="text-muted-foreground" />{filterLabel}</span>
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="me">{m.assigned_to_me()}</Select.Item>
+								<Select.Item value="none">{m.unassigned()}</Select.Item>
+								<Select.Separator />
+								{#each data.users as u (u.id)}
+									<Select.Item value={u.id}>{u.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-status-filter">{m.status()}</label>
+						<Select.Root type="multiple" bind:value={statusFilter}>
+							<Select.Trigger id="board-view-status-filter" class="w-full">
+								<span class="truncate">{statusFilterLabel}</span>
+							</Select.Trigger>
+							<Select.Content>
+								{#each data.columns as column (column.id)}
+									<Select.Item value={String(column.id)}>{column.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-priority-filter">{m.priority_2()}</label>
+						<Select.Root type="multiple" bind:value={priorityFilter}>
+							<Select.Trigger id="board-view-priority-filter" class="w-full">
+								<span class="truncate">{priorityFilterLabel}</span>
+							</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(PRIORITY_LABELS) as [priority, label] (priority)}
+									<Select.Item value={priority}>{label}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-tag">{m.tags()}</label>
+						<Select.Root type="multiple" bind:value={tagFilter}>
+							<Select.Trigger id="board-view-tag" class="w-full">
+								<span class="flex items-center gap-2 truncate"
+									><TagIcon class="text-muted-foreground" />{tagFilterLabel}</span
+								>
+							</Select.Trigger>
+							<Select.Content>
+								{#each data.tags as g (g.id)}
+									<Select.Item value={String(g.id)}><TagBadge name={g.name} color={g.color} /></Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
 				</div>
 			</div>
 			<div class="border-t p-4">
 				<h2 class="mb-3 text-sm font-semibold">{m.appearance()}</h2>
 				<div class="grid gap-4 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-group">{m.group()}</label>
-					<Select.Root type="single" value={groupBy} onValueChange={(v) => setGroupBy(v as Group)}>
-						<Select.Trigger id="board-view-group" class="w-full">
-							<span class="flex items-center gap-2"><Rows3 class="text-muted-foreground" />{GROUPS[groupBy]}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(GROUPS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-columns">{m.columns()}</label>
-					<Select.Root type="single" value={columnBy} onValueChange={(v) => setColumnBy(v as ColumnBy)}>
-						<Select.Trigger id="board-view-columns" class="w-full">
-							<span class="flex items-center gap-2">{COLUMNS[columnBy]}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(COLUMNS) as [v, l] (v)}
-								<Select.Item value={v} disabled={v === groupBy}>{l}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium" for="board-view-sort">{m.sort()}</label>
-					<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
-						<Select.Trigger id="board-view-sort" class="w-full">
-							<span class="flex items-center gap-2"><ArrowDownUp class="text-muted-foreground" />{SORTS[sortBy]}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-				<div class="space-y-2">
-					<span class="text-sm font-medium">{m.card_properties()}</span>
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger
-							class="border-input bg-background hover:bg-muted focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 text-sm outline-none focus-visible:ring-3"
-						>
-							<span>{m.properties_selected({ count: cardFields.length })}</span>
-							<ChevronDown class="text-muted-foreground size-4" />
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Content class="w-56">
-							{#each CARD_FIELDS as field (field)}
-								<DropdownMenu.CheckboxItem
-									checked={cardFields.includes(field)}
-									onCheckedChange={(show) => toggleCardField(field, show)}
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-group">{m.group()}</label>
+						<Select.Root type="single" value={groupBy} onValueChange={(v) => setGroupBy(v as Group)}>
+							<Select.Trigger id="board-view-group" class="w-full">
+								<span class="flex items-center gap-2"><Rows3 class="text-muted-foreground" />{GROUPS[groupBy]}</span>
+							</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(GROUPS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-columns">{m.columns()}</label>
+						<Select.Root type="single" value={columnBy} onValueChange={(v) => setColumnBy(v as ColumnBy)}>
+							<Select.Trigger id="board-view-columns" class="w-full">
+								<span class="flex items-center gap-2">{COLUMNS[columnBy]}</span>
+							</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(COLUMNS) as [v, l] (v)}
+									<Select.Item value={v} disabled={v === groupBy}>{l}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium" for="board-view-sort">{m.sort()}</label>
+						<Select.Root type="single" value={sortBy} onValueChange={(v) => (sortBy = v as Sort)}>
+							<Select.Trigger id="board-view-sort" class="w-full">
+								<span class="flex items-center gap-2"><ArrowDownUp class="text-muted-foreground" />{SORTS[sortBy]}</span
 								>
-									{CARD_FIELD_LABELS[field]}
-								</DropdownMenu.CheckboxItem>
-							{/each}
-						</DropdownMenu.Content>
-					</DropdownMenu.Root>
-				</div>
+							</Select.Trigger>
+							<Select.Content>
+								{#each Object.entries(SORTS) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+					<div class="space-y-2">
+						<span class="text-sm font-medium">{m.card_properties()}</span>
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger
+								class="border-input bg-background hover:bg-muted focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 text-sm outline-none focus-visible:ring-3"
+							>
+								<span>{m.properties_selected({ count: cardFields.length })}</span>
+								<ChevronDown class="text-muted-foreground size-4" />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content class="w-56">
+								{#each CARD_FIELDS as field (field)}
+									<DropdownMenu.CheckboxItem
+										checked={cardFields.includes(field)}
+										onCheckedChange={(show) => toggleCardField(field, show)}
+									>
+										{CARD_FIELD_LABELS[field]}
+									</DropdownMenu.CheckboxItem>
+								{/each}
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					</div>
 				</div>
 			</div>
 		</Popover.Content>
@@ -1385,7 +1487,13 @@
 				)}
 				onclick={() => showMainTask(task.id, hiddenMainIds.has(task.id))}
 			>
-				<span class={cn('truncate', mainTaskState(task) === 'active' && 'font-bold', mainTaskState(task) === 'done' && 'line-through opacity-70')}>{task.title}</span>
+				<span
+					class={cn(
+						'truncate',
+						mainTaskState(task) === 'active' && 'font-bold',
+						mainTaskState(task) === 'done' && 'line-through opacity-70'
+					)}>{task.title}</span
+				>
 			</button>
 		{/each}
 		{#each selectedMoreMainTasks as task (task.id)}
@@ -1395,7 +1503,13 @@
 				class="border-primary bg-primary text-primary-foreground focus-visible:ring-ring/50 inline-flex h-7 max-w-48 items-center rounded-full border px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-3"
 				onclick={() => showMainTask(task.id, false)}
 			>
-				<span class={cn('truncate', mainTaskState(task) === 'active' && 'font-bold', mainTaskState(task) === 'done' && 'line-through opacity-70')}>{task.title}</span>
+				<span
+					class={cn(
+						'truncate',
+						mainTaskState(task) === 'active' && 'font-bold',
+						mainTaskState(task) === 'done' && 'line-through opacity-70'
+					)}>{task.title}</span
+				>
 			</button>
 		{/each}
 		{#if moreMainTaskGroups.length}
@@ -1403,18 +1517,31 @@
 				<DropdownMenu.Trigger
 					class="border-border hover:bg-accent focus-visible:ring-ring/50 inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium outline-none focus-visible:ring-3"
 				>
-					{m.more_main_tasks()} <ChevronDown class="size-3" />
+					{m.more_main_tasks()}
+					<ChevronDown class="size-3" />
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content align="start" class="max-h-80 w-72 overflow-y-auto">
 					{#each moreMainTaskGroups as group, index (group.key)}
 						{#if index}<DropdownMenu.Separator />{/if}
-						<DropdownMenu.Label class={cn('truncate', group.state === 'active' && 'text-primary font-semibold', group.state === 'done' && 'text-muted-foreground line-through')}>{group.label}</DropdownMenu.Label>
+						<DropdownMenu.Label
+							class={cn(
+								'truncate',
+								group.state === 'active' && 'text-primary font-semibold',
+								group.state === 'done' && 'text-muted-foreground line-through'
+							)}>{group.label}</DropdownMenu.Label
+						>
 						{#each group.tasks as task (task.id)}
 							<DropdownMenu.CheckboxItem
 								checked={!hiddenMainIds.has(task.id)}
 								onCheckedChange={(show) => showMainTask(task.id, show)}
 							>
-								<span class={cn('truncate', mainTaskState(task) === 'active' && 'text-primary font-semibold', mainTaskState(task) === 'done' && 'text-muted-foreground line-through')}>{task.title}</span>
+								<span
+									class={cn(
+										'truncate',
+										mainTaskState(task) === 'active' && 'text-primary font-semibold',
+										mainTaskState(task) === 'done' && 'text-muted-foreground line-through'
+									)}>{task.title}</span
+								>
 							</DropdownMenu.CheckboxItem>
 						{/each}
 					{/each}
@@ -1444,45 +1571,45 @@
 		{@render backlogColumn()}
 		<div class="scrollbar-soft min-w-0 grow overflow-x-auto" use:scrollActivity>
 			<div class="flex w-max min-w-full flex-col gap-2">
-			<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
-			<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">
-				{#each boardColumns as col (col.key)}
-					<div class="w-72 shrink-0">{@render columnHeader(col, null)}</div>
-				{/each}
-			</div>
-			{#each shownLanes as lane (lane.key)}
-				{@const open = !collapsedLanes.has(lane.key)}
-				<div class="group/lane flex flex-col gap-1.5">
-					<Button
-						variant="ghost"
-						size="sm"
-						class="sticky left-0 w-fit gap-2 font-semibold"
-						aria-expanded={open}
-						onclick={() => toggleLane(lane.key)}
-					>
-						<ChevronRight class={cn('text-muted-foreground size-4 transition-transform', open && 'rotate-90')} />
-						{#if lane.kind === 'tag' && lane.color}
-							<TagBadge name={lane.label} color={lane.color} />
-						{:else if lane.kind === 'assignee'}
-							<UserAvatar name={lane.userName} size="sm" />{lane.label}
-						{:else if lane.kind === 'priority'}
-							<span class="prio prio-{lane.priority}"></span>{lane.label}
-						{:else}
-							<span class="text-muted-foreground">{lane.label}</span>
-						{/if}
-						<span class="text-muted-foreground text-xs font-medium">{laneCount(lane)}</span>
-					</Button>
-					{#if open}
-						<div class="flex items-stretch gap-3.5 border-b pb-3">
-							{#each boardColumns as col (col.key)}
-								{@render columnCell(lane, col, true)}
-							{/each}
-						</div>
-					{/if}
+				<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
+				<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">
+					{#each boardColumns as col (col.key)}
+						<div class="w-72 shrink-0">{@render columnHeader(col, null)}</div>
+					{/each}
 				</div>
-			{:else}
-				<p class="text-muted-foreground px-2 py-6 text-sm">{m.no_tickets_match_these_filters()}</p>
-			{/each}
+				{#each shownLanes as lane (lane.key)}
+					{@const open = !collapsedLanes.has(lane.key)}
+					<div class="group/lane flex flex-col gap-1.5">
+						<Button
+							variant="ghost"
+							size="sm"
+							class="sticky left-0 w-fit gap-2 font-semibold"
+							aria-expanded={open}
+							onclick={() => toggleLane(lane.key)}
+						>
+							<ChevronRight class={cn('text-muted-foreground size-4 transition-transform', open && 'rotate-90')} />
+							{#if lane.kind === 'tag' && lane.color}
+								<TagBadge name={lane.label} color={lane.color} />
+							{:else if lane.kind === 'assignee'}
+								<UserAvatar name={lane.userName} size="sm" />{lane.label}
+							{:else if lane.kind === 'priority'}
+								<span class="prio prio-{lane.priority}"></span>{lane.label}
+							{:else}
+								<span class="text-muted-foreground">{lane.label}</span>
+							{/if}
+							<span class="text-muted-foreground text-xs font-medium">{laneCount(lane)}</span>
+						</Button>
+						{#if open}
+							<div class="flex items-stretch gap-3.5 border-b pb-3">
+								{#each boardColumns as col (col.key)}
+									{@render columnCell(lane, col, true)}
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<p class="text-muted-foreground px-2 py-6 text-sm">{m.no_tickets_match_these_filters()}</p>
+				{/each}
 			</div>
 		</div>
 	</div>
@@ -1511,7 +1638,9 @@
 	<AlertDialog.Content>
 		<AlertDialog.Header>
 			<AlertDialog.Title>{m.delete_board_view()}</AlertDialog.Title>
-			<AlertDialog.Description>{m.delete_board_view_description({ name: activeView?.name ?? '' })}</AlertDialog.Description>
+			<AlertDialog.Description
+				>{m.delete_board_view_description({ name: activeView?.name ?? '' })}</AlertDialog.Description
+			>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>{m.cancel()}</AlertDialog.Cancel>

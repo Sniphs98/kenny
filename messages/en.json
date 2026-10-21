@@ -2,6 +2,7 @@
 	"language": "Language",
 	"language_de": "Deutsch",
 	"language_en": "English",
+	"you_killed_kenny": "You killed Kenny",
 	"login_invalid": "Invalid email or password.",
 	"login_failed": "Sign-in failed. Please try again.",
 	"register_exists": "An account already exists for this email address.",

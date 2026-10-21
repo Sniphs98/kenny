@@ -447,3 +447,28 @@ export const notificationsDtoSchema = z.object({
 
 export type UpdateNotificationsInput = z.input<typeof updateNotificationsSchema>;
 export type NotificationsDto = z.output<typeof notificationsDtoSchema>;
+
+// --- E-Mail-Benachrichtigungen eines Projekts ---
+
+export const EMAIL_NOTIFICATION_EVENTS = ['created', 'closed', 'public_comment'] as const;
+export type EmailNotificationEvent = (typeof EMAIL_NOTIFICATION_EVENTS)[number];
+
+export const updateEmailNotificationsSchema = z.strictObject({
+	enabled: z.boolean().optional(),
+	events: z.array(z.enum(EMAIL_NOTIFICATION_EVENTS)).max(EMAIL_NOTIFICATION_EVENTS.length).optional(),
+	locale: z.enum(NOTIFICATION_LOCALES).optional(),
+	senderName: z.string().trim().min(1).max(100).regex(/^[^\r\n]+$/).optional()
+});
+
+export const emailNotificationsDtoSchema = z.object({
+	configured: z.boolean(),
+	smtpConfigured: z.boolean(),
+	events: z.array(z.enum(EMAIL_NOTIFICATION_EVENTS)),
+	locale: z.enum(NOTIFICATION_LOCALES),
+	senderName: z.string(),
+	lastSentAt: timestamp.nullable(),
+	lastError: z.string().nullable()
+});
+
+export type UpdateEmailNotificationsInput = z.input<typeof updateEmailNotificationsSchema>;
+export type EmailNotificationsDto = z.output<typeof emailNotificationsDtoSchema>;

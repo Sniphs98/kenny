@@ -29,6 +29,7 @@ import {
 import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
+import { notifyEmail } from './email-notifications.js';
 import { searchTokens } from '#lib/search.js';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
@@ -307,12 +308,19 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 	const input = parseInput(createCommentSchema, raw);
 	const row = db.insert(ticketComment).values({ ticketId: t.id, authorId: actorId, ...input }).returning().get();
 	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
-	return db
+	const result = db
 		.select(commentFields)
 		.from(ticketComment)
 		.leftJoin(user, eq(ticketComment.authorId, user.id))
 		.where(eq(ticketComment.id, row.id))
 		.get()!;
+	if (!result.internal) {
+		notifyEmail('public_comment', t.projectId, t.id, {
+			body: result.body,
+			authorName: result.authorName ?? '–'
+		});
+	}
+	return result;
 }
 
 export function deleteComment(ref: string | number, commentId: number, actorId: string) {
@@ -613,7 +621,12 @@ function setAssignees(tx: Tx, ticketId: number, projectId: number, refs: string[
 }
 
 /** Herkunft eines Tickets aus einem Formular (nur intern, nicht über die API setzbar) */
-export type TicketOrigin = { intakeFormId: number; reporterEmail: string | null; systemName?: string | null };
+export type TicketOrigin = {
+	intakeFormId: number;
+	reporterEmail: string | null;
+	systemName?: string | null;
+	deferCreatedEmail?: boolean;
+};
 
 export function createTicket(
 	projectRef: string | number,
@@ -697,6 +710,7 @@ export function createTicket(
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
+	if (!origin?.deferCreatedEmail) notifyEmail('created', p.id, created.id);
 	if (created.added.length) notifyTicket('assigned', p.id, created.id);
 	return result;
 }
@@ -769,7 +783,10 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 
 /** Benachrichtigung, wenn ein Ticket erledigt wurde (Vergleich vorher/nachher) */
 function notifyChanges(before: Ticket, after: Ticket) {
-	if (before.closedAt === null && after.closedAt !== null) notifyTicket('closed', after.projectId, after.id);
+	if (before.closedAt === null && after.closedAt !== null) {
+		notifyTicket('closed', after.projectId, after.id);
+		notifyEmail('closed', after.projectId, after.id);
+	}
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */

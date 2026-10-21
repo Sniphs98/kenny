@@ -17,8 +17,20 @@ export const TEAMS_APP_ID = '';
 export const TEAMS_APP_VERSION = '';
 export const TEAMS_DEVELOPER_NAME = '';
 export const ATTACHMENT_MAX_MB = '';
+export const SMTP_HOST = '';
+export const SMTP_PORT = '';
+export const SMTP_SECURE = '';
+export const SMTP_USER = '';
+export const SMTP_PASSWORD = '';
+export const SMTP_FROM = '';
 export const env = {
 	DATABASE_URL,
 	ATTACHMENTS_DIR,
-	MIGRATIONS_DIR
+	MIGRATIONS_DIR,
+	SMTP_HOST,
+	SMTP_PORT,
+	SMTP_SECURE,
+	SMTP_USER,
+	SMTP_PASSWORD,
+	SMTP_FROM
 };

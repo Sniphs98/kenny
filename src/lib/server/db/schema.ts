@@ -56,7 +56,8 @@ import {
 	type IntakeFields,
 	type IntakeFieldOrder,
 	type IntakeDesign,
-	type NotificationEvent
+	type NotificationEvent,
+	type EmailNotificationEvent
 } from '#lib/contracts/index.js';
 
 export const ticket = sqliteTable(
@@ -303,6 +304,21 @@ export const projectNotification = sqliteTable('project_notification', {
 	webhookUrl: text('webhook_url').notNull(),
 	events: text('events', { mode: 'json' }).$type<NotificationEvent[]>().notNull(),
 	locale: text('locale', { enum: NOTIFICATION_LOCALES }).notNull().default('de'),
+	lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+	lastError: text('last_error')
+});
+
+/** E-Mail-Benachrichtigungen eines Projekts; SMTP-Zugangsdaten kommen ausschließlich aus der Umgebung */
+export const projectEmailNotification = sqliteTable('project_email_notification', {
+	projectId: integer('project_id')
+		.primaryKey()
+		.references(() => project.id, { onDelete: 'cascade' }),
+	events: text('events', { mode: 'json' })
+		.$type<EmailNotificationEvent[]>()
+		.notNull()
+		.default(sql`'["created","closed","public_comment"]'`),
+	locale: text('locale', { enum: NOTIFICATION_LOCALES }).notNull().default('de'),
+	senderName: text('sender_name').notNull().default(''),
 	lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
 	lastError: text('last_error')
 });

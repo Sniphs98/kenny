@@ -120,6 +120,27 @@
       "when": 1792140120000,
       "tag": "0016_ticket_board_group",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792584000000,
+      "tag": "0017_project_email_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792587600000,
+      "tag": "0018_email_notifications_use_reporter",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792591200000,
+      "tag": "0019_email_notification_sender_name",
+      "breakpoints": true
     }
   ]
 }

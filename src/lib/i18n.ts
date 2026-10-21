@@ -280,7 +280,16 @@ const errorTranslations = [
 		pattern: /^Testnachricht fehlgeschlagen: (.+)$/,
 		translate: (values: string[]) => m.notification_test_failed({ error: localizeError(values[0]) })
 	},
-	{ pattern: /^Webhook-Adresse ist nicht erlaubt\.$/, translate: () => m.notification_url_not_allowed() }
+	{ pattern: /^Webhook-Adresse ist nicht erlaubt\.$/, translate: () => m.notification_url_not_allowed() },
+	{
+		pattern: /^Für dieses Projekt sind keine E-Mail-Benachrichtigungen eingerichtet\.$/,
+		translate: () => m.email_notification_not_configured()
+	},
+	{
+		pattern: /^Test-E-Mail fehlgeschlagen: (.+)$/,
+		translate: (values: string[]) => m.email_notification_test_failed({ error: localizeError(values[0]) })
+	},
+	{ pattern: /^SMTP ist nicht konfiguriert\.$/, translate: () => m.email_notification_smtp_not_configured() }
 ];
 
 export function localizeError(message: string | undefined): string {

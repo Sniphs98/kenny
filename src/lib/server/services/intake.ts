@@ -18,6 +18,7 @@ import { db } from '../db';
 import { intakeForm, intakeFormProject, intakeFormTag, project, projectMember, tag } from '../db/schema';
 import { ApiError } from '../errors';
 import { parseInput } from '../validation';
+import { notifyEmail } from './email-notifications';
 import { requireActiveUser } from './access';
 import { addAttachments, checkFileSizes } from './attachments';
 import { createTicket, updateTicket } from './tickets';
@@ -386,7 +387,7 @@ export async function submitForm(
 		target.id,
 		{ title: input.title, description, priority: priority || undefined, startDate, dueDate, tags: tagIds },
 		context.user?.id ?? null,
-		{ intakeFormId: form.id, reporterEmail, systemName: systemName ?? null }
+		{ intakeFormId: form.id, reporterEmail, systemName: systemName ?? null, deferCreatedEmail: true }
 	);
 	if (files.length) await addAttachments(ticket.key, files, context.user?.id ?? null);
 	if (usedInlineImages.length) {
@@ -395,5 +396,6 @@ export async function submitForm(
 		for (const [index, image] of usedInlineImages.entries()) markdown = markdown.replaceAll(image.url, uploaded[index].url);
 		updateTicket(ticket.key, { description: markdown });
 	}
+	notifyEmail('created', target.id, ticket.id);
 	return { key: ticket.key };
 }

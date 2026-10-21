@@ -33,6 +33,7 @@ Self-hosted project and task management with Kanban boards, Gantt timelines and 
 - **AI assistants (MCP):** read-only access to projects and tasks for tools such as Claude Code
 - **Microsoft Teams:** personal app, channel tabs with a project's board, and automatic sign-in (Teams SSO)
 - **Teams channel notifications** for new, completed and assigned tasks
+- **E-mail notifications** to form submitters when their ticket is created or completed or receives a public comment, configurable per project
 
 **Everyday use**
 
@@ -81,6 +82,10 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
       ATTACHMENT_MAX_MB: ${ATTACHMENT_MAX_MB:-25}
       BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-30M}
+      # Optional: e-mail notifications through Gmail SMTP
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       # Optional: Microsoft sign-in and Teams, see Configuration below
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
@@ -148,6 +153,9 @@ docker compose start
 | `BODY_SIZE_LIMIT`                                           | `30M`                          | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                               |
 | `DATABASE_URL`                                              | `/app/data/kenny.db`           | SQLite database file.                                                                                                |
 | `ATTACHMENTS_DIR`                                           | `/app/data/attachments`        | Storage directory for attachments.                                                                                   |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`                     | `smtp.gmail.com`, `465`, `true` | SMTP server for project e-mail notifications.                                                                        |
+| `SMTP_USER`, `SMTP_PASSWORD`                                | –                              | SMTP login. For Gmail, use the Gmail address and a Google app password.                                              |
+| `SMTP_FROM`                                                 | `SMTP_USER`                    | Sender address; Gmail normally requires the authenticated Gmail address.                                             |
 | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                              | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.             |
 | `MICROSOFT_TENANT_ID`                                       | `common`                       | Entra tenant; use your tenant ID for a company installation.                                                         |
 | `MICROSOFT_AUTHORITY`                                       | Microsoft default              | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                   |
@@ -155,6 +163,10 @@ docker compose start
 | `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`      | Details of the Teams app package.                                                                                    |
 
 Variables that are not listed in `compose.yaml` (such as `MICROSOFT_AUTHORITY` or `TEAMS_APP_ID`) need an extra line under `environment`.
+
+### Gmail e-mail notifications
+
+Enable two-step verification for the Gmail account and create a Google app password. Set `SMTP_USER` to the Gmail address, `SMTP_PASSWORD` to that app password and `SMTP_FROM` to the same address. After restarting Kenny, a project administrator can configure the sender name, language and events under **Project settings → E-mail notifications** and send a test message to their own account address. Notifications are sent only for tickets submitted through a form and go to the submitter address stored on that ticket; tickets without an address do not trigger e-mail. The regular Google account password is not supported or stored by Kenny.
 
 ## Tech stack
 
@@ -174,7 +186,7 @@ Open <http://localhost:5173> and register an account. The database is stored at 
 
 ### SvelteKit 3 runtime
 
-Use Node.js 22.17 or newer within the pinned Node 22 line. Run `npm run build` followed by `npm start` for the production server. The startup script preserves runtime `ORIGIN` configuration (falling back to `BETTER_AUTH_URL`) with adapter-node 6; use this entry point instead of `node build` so the same image works at different public URLs. Compose already supplies these settings. Internal origin headers are overwritten before request handling, preserving CSRF checks.
+Use Node.js 22.17 or newer within the pinned Node 22 line. Run `npm run build` followed by `npm start` for the production server. The startup script loads a local `.env` file, preserves runtime `ORIGIN` configuration (falling back to `BETTER_AUTH_URL`) with adapter-node 6, and keeps environment variables supplied by the host or container authoritative. Use this entry point instead of `node build` so the same image works at different public URLs. Compose already supplies these settings. Internal origin headers are overwritten before request handling, preserving CSRF checks.
 
 State-changing JSON API requests must send `Content-Type: application/json`, including POST or DELETE requests without a body. This follows SvelteKit 3’s stricter CSRF validation; the built-in client already supplies it.
 

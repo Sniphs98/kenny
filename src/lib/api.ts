@@ -36,7 +36,10 @@ import {
 	type UpdateTicketInput,
 	notificationsDtoSchema,
 	updateNotificationsSchema,
-	type UpdateNotificationsInput
+	type UpdateNotificationsInput,
+	emailNotificationsDtoSchema,
+	updateEmailNotificationsSchema,
+	type UpdateEmailNotificationsInput
 } from '#lib/contracts/index.js';
 
 const errorSchema = z.object({ error: z.string() });
@@ -195,6 +198,18 @@ export async function updateNotifications(project: string | number, input: Updat
 }
 export async function sendTestNotification(project: string | number) {
 	return notificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/notifications/test`));
+}
+
+/** E-Mail-Benachrichtigungen eines Projekts (nur Projektadministratoren) */
+export async function updateEmailNotifications(project: string | number, input: UpdateEmailNotificationsInput) {
+	return emailNotificationsDtoSchema.parse(
+		await api('PUT', `/projects/${ref(project)}/email-notifications`, updateEmailNotificationsSchema.parse(input))
+	);
+}
+export async function sendTestEmailNotification(project: string | number) {
+	return emailNotificationsDtoSchema.parse(
+		await api('POST', `/projects/${ref(project)}/email-notifications/test`)
+	);
 }
 
 /** Tickets aller sichtbaren Projekte, nach Treffergüte sortiert */

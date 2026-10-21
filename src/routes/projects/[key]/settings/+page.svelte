@@ -7,6 +7,7 @@
 	import TagBadge from '#lib/components/TagBadge.svelte';
 	import TagColorButton from '#lib/components/TagColorButton.svelte';
 	import Notifications from './Notifications.svelte';
+	import EmailNotifications from './EmailNotifications.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -318,6 +319,7 @@
 	</Card.Root>
 
 	<Notifications project={data.project.key} notifications={data.notifications} />
+	<EmailNotifications project={data.project.key} notifications={data.emailNotifications} />
 
 	<Card.Root class="border-destructive/30">
 		<Card.Header class="flex items-center gap-4">

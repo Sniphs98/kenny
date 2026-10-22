@@ -33,7 +33,7 @@ test('project form reports invalid keys and duplicate keys', async ({ page, requ
 test('ticket dialog uses Superforms and the typed API command', async ({ page, request }) => {
 	const project = await createProject(request);
 	await open(page, `/projects/${project.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Titel').fill('Ticket through Superforms');
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();

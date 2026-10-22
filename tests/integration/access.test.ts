@@ -78,7 +78,13 @@ describe('user management and project permissions', () => {
 		const main = createTicket(p.key, { title: 'Main', kind: 'main', parentId: version.id }, 'owner');
 		for (const item of [version, main, t]) {
 			const created = addComment(item.id, { body: '  **Hello**  ', internal: true }, 'member');
-			expect(created).toMatchObject({ ticketId: item.id, body: '**Hello**', internal: true, authorId: 'member', authorName: 'Member' });
+			expect(created).toMatchObject({
+				ticketId: item.id,
+				body: '**Hello**',
+				internal: true,
+				authorId: 'member',
+				authorName: 'Member'
+			});
 			expect(created.createdAt).toBeInstanceOf(Date);
 			expect(viewTicket(item.id, 'reader').comments).toEqual([created]);
 			expect(getTicketDetail(item.id).comments).toEqual([created]);

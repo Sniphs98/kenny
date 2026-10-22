@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { api, card, createProject, createTicket as createRawTicket, day, getTicket, open, reload } from './helpers';
 
-const createTicket = (request: Parameters<typeof createRawTicket>[0], projectKey: string, data: Record<string, unknown>) =>
+const createTicket = (
+	request: Parameters<typeof createRawTicket>[0],
+	projectKey: string,
+	data: Record<string, unknown>
+) =>
 	createRawTicket(request, projectKey, { kind: 'main', ...data });
 
 /** Ticketzeile in der Liste links */
@@ -32,9 +36,26 @@ test('Gantt legt zuerst eine Version und darunter eine Hauptaufgabe an', async (
 
 test('Version und Hauptaufgabe im Gantt, nur Tasks im Kanban', async ({ page, request }) => {
 	const p = await createProject(request);
-	const version = await createTicket(request, p.key, { title: 'Version 1', kind: 'version', startDate: day(0), dueDate: day(10) });
-	const main = await createTicket(request, p.key, { title: 'Hauptaufgabe A', kind: 'main', parentId: version.id, startDate: day(1), dueDate: day(5) });
-	await createTicket(request, p.key, { title: 'Task A', kind: 'task', parentId: main.id, startDate: day(2), dueDate: day(3) });
+	const version = await createTicket(request, p.key, {
+		title: 'Version 1',
+		kind: 'version',
+		startDate: day(0),
+		dueDate: day(10)
+	});
+	const main = await createTicket(request, p.key, {
+		title: 'Hauptaufgabe A',
+		kind: 'main',
+		parentId: version.id,
+		startDate: day(1),
+		dueDate: day(5)
+	});
+	await createTicket(request, p.key, {
+		title: 'Task A',
+		kind: 'task',
+		parentId: main.id,
+		startDate: day(2),
+		dueDate: day(3)
+	});
 	await open(page, `/projects/${p.key}/gantt`);
 	await expect(row(page, 'Version 1')).toBeVisible();
 	await row(page, 'Version 1').getByRole('button', { name: /Unteraufgaben aufklappen/ }).click();
@@ -101,13 +122,22 @@ test('neues Ticket direkt aus der Einplanen-Suche anlegen', async ({ page, reque
 	await page.getByRole('option', { name: '„Messestand planen“ als neue Hauptaufgabe anlegen' }).click();
 
 	await expect(row(page, 'Messestand planen')).toBeVisible();
-	const [t] = await api<{ title: string; kind: string; parentId: number | null; startDate: string }[]>(request, 'GET', `/projects/${p.key}/tickets`);
+	const [t] = await api<{ title: string; kind: string; parentId: number | null; startDate: string }[]>(
+		request,
+		'GET',
+		`/projects/${p.key}/tickets`
+	);
 	expect(t).toMatchObject({ title: 'Messestand planen', kind: 'main', parentId: null, startDate: day(0) });
 });
 
 test('Unteraufgaben im Gantt auf- und zuklappen', async ({ page, request }) => {
 	const p = await createProject(request);
-	const parent = await createTicket(request, p.key, { title: 'Umzug', kind: 'version', startDate: day(0), dueDate: day(10) });
+	const parent = await createTicket(request, p.key, {
+		title: 'Umzug',
+		kind: 'version',
+		startDate: day(0),
+		dueDate: day(10)
+	});
 	await createTicket(request, p.key, {
 		title: 'Kisten packen',
 		parent: parent.key,

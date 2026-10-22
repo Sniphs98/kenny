@@ -41,12 +41,16 @@ test('Ton beim Ziehen in eine Erledigt-Spalte', async ({ page, request }) => {
 	await createTicket(request, p.key, { title: 'Fertig machen' });
 	await open(page, `/projects/${p.key}/board`);
 
-	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Review', exact: true }));
-	await expect(page.getByRole('region', { name: 'Review', exact: true }).locator('[data-card]')).toHaveCount(1);
+	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Allgemein: Review', exact: true }));
+	await expect(page.getByRole('region', { name: 'Allgemein: Review', exact: true }).locator('[data-card]')).toHaveCount(
+		1
+	);
 	expect(await sounds(page)).toBe(0);
 
-	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Erledigt', exact: true }));
-	await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).locator('[data-card]')).toHaveCount(1);
+	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Allgemein: Erledigt', exact: true }));
+	await expect(
+		page.getByRole('region', { name: 'Allgemein: Erledigt', exact: true }).locator('[data-card]')
+	).toHaveCount(1);
 	await expect.poll(() => sounds(page)).toBe(1);
 });
 

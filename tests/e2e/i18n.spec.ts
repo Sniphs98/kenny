@@ -30,9 +30,9 @@ test('language switch persists across reloads and translates the project and tic
 	await page.getByRole('button', { name: 'Create', exact: true }).click();
 	await expect(page).toHaveURL(new RegExp(`/projects/${key}/board`));
 	await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Task', exact: true }).click();
 	const dialog = page.getByRole('dialog');
-	await expect(dialog.getByRole('heading', { name: 'New ticket' })).toBeVisible();
+	await expect(dialog.getByRole('heading', { name: 'New task' })).toBeVisible();
 	await dialog.getByLabel('Title', { exact: true }).fill('User content stays unchanged');
 	await expect(dialog.getByText('Medium', { exact: true })).toBeVisible();
 	await dialog.getByRole('button', { name: 'Create', exact: true }).click();
@@ -42,12 +42,12 @@ test('language switch persists across reloads and translates the project and tic
 		'placeholder',
 		'Add a description…'
 	);
-	await expect(page.getByRole('button', { name: 'Delete ticket', exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Delete task', exact: true })).toBeVisible();
 	await page.keyboard.press('Escape');
 	await chooseLanguage(page, 'Language', 'Deutsch');
 	await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 	await page.getByRole('link', { name: 'User content stays unchanged', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Ticket löschen', exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Aufgabe löschen', exact: true })).toBeVisible();
 	await expect(page.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('User content stays unchanged');
 });
 

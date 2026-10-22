@@ -51,8 +51,12 @@ export const card = (page: Page, title: string) => page.locator('[data-card]').f
 
 /** Ein Select (bits-ui) über den Text im Auslöser öffnen und eine Option wählen */
 export async function choose(page: Page, triggerText: string | RegExp, option: string) {
+	const settings = page.getByRole('button', { name: /Aktuelle Einstellungen/ });
+	await settings.click();
 	await page.getByRole('button').filter({ hasText: triggerText }).click();
 	await page.getByRole('option', { name: option, exact: true }).click();
+	if (await page.getByRole('listbox').isVisible()) await page.keyboard.press('Escape');
+	if ((await settings.getAttribute('aria-expanded')) === 'true') await settings.click();
 }
 
 /** Datum als YYYY-MM-DD, relativ zu heute */

@@ -12,9 +12,9 @@ test('Ticket über die Auswahl verknüpfen', async ({ page, request }) => {
 	await expect(link).toBeDisabled();
 
 	// Durchsuchbare Auswahl statt nativer Browser-Liste; das eigene Ticket wird nicht angeboten
-	await page.getByRole('button', { name: 'Ticket wählen' }).click();
+	await page.getByRole('button', { name: 'Aufgabe wählen' }).click();
 	await expect(page.getByRole('option', { name: new RegExp(b.key) })).toHaveCount(0);
-	await page.getByPlaceholder('Nummer oder Titel suchen…').fill('entwerfen');
+	await page.getByPlaceholder('Titel suchen…').fill('entwerfen');
 	await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);
 	await page.getByRole('option', { name: /API entwerfen/ }).click();
 
@@ -28,7 +28,7 @@ test('Ticket über die Auswahl verknüpfen', async ({ page, request }) => {
 	]);
 
 	// Bereits verknüpfte Tickets werden nicht erneut angeboten
-	await page.getByRole('button', { name: 'Ticket wählen' }).click();
+	await page.getByRole('button', { name: 'Aufgabe wählen' }).click();
 	await expect(page.getByRole('option', { name: /Doku schreiben/ })).toBeVisible();
 	await expect(page.getByRole('option', { name: /API entwerfen/ })).toHaveCount(0);
 });

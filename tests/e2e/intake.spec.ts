@@ -97,7 +97,9 @@ test('Öffentliches Formular: Ticket ohne Anmeldung einreichen, E-Mail ist Pflic
 	await expect(submittedTicket.locator('[data-new-submission]')).toHaveText('neu');
 	await submittedTicket.dragTo(page.getByRole('region', { name: 'Support bearbeiten: Offen' }));
 	await expect.poll(async () => (await getTicket(request, `${p.key}-1`)).parentId).toBe(main.id);
-	await expect(page.getByRole('region', { name: 'Support bearbeiten: Offen' }).getByText('Rechnung fehlt')).toBeVisible();
+	await expect(
+		page.getByRole('region', { name: 'Support bearbeiten: Offen' }).getByText('Rechnung fehlt')
+	).toBeVisible();
 	await expect(submittedTicket.getByText('Support bearbeiten')).toBeVisible();
 	await expect(submittedTicket.getByText('Ticketsystem')).toHaveCount(0);
 
@@ -139,7 +141,9 @@ test('Enable-Design zeigt Logo und Formular und erstellt Tickets', async ({ page
 	});
 	const guest = await anonymous(browser, baseURL);
 	await guest.goto(link);
-	await expect(guest.locator('[data-design="enable"] img[src="/brands/ecomplete_software_icon.png"]').first()).toBeVisible();
+	await expect(
+		guest.locator('[data-design="enable"] img[src="/brands/ecomplete_software_icon.png"]').first()
+	).toBeVisible();
 	await expect(guest.getByRole('heading', { name: `Fehler ${p.key}` })).toBeVisible();
 	await guest.getByLabel('Titel').fill('Fehler beim Laden');
 	await guest.getByRole('button', { name: 'Einreichen' }).click();

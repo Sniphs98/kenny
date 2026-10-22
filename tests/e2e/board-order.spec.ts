@@ -96,12 +96,12 @@ test('eigene Reihenfolge auch in einer sortierten Spalte', async ({ page, reques
 
 	await open(page, `/projects/${p.key}/board`);
 	await choose(page, /Sortierung/, 'Titel A–Z');
-	expect(await cardTitles(page, 'Offen')).toEqual(['Affe', 'Bär', 'Chamäleon']);
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Affe', 'Bär', 'Chamäleon']);
 
 	// Chamäleon nach ganz oben: die Spalte übernimmt die gezeigte Reihenfolge und wird manuell
 	const affe = card(page, 'Affe');
 	await card(page, 'Chamäleon').dragTo(affe, { targetPosition: { x: 40, y: 4 } });
-	await expect.poll(() => cardTitles(page, 'Offen')).toEqual(['Chamäleon', 'Affe', 'Bär']);
+	await expect.poll(() => cardTitles(page, 'Allgemein: Offen')).toEqual(['Chamäleon', 'Affe', 'Bär']);
 	await expect(page.getByRole('button', { name: 'Spalte Offen sortieren' })).toContainText('Manuell');
 	await expect(page.getByText('„Offen“ nutzt jetzt deine eigene Reihenfolge')).toBeVisible();
 
@@ -113,8 +113,8 @@ test('eigene Reihenfolge auch in einer sortierten Spalte', async ({ page, reques
 
 	// Bleibt nach Neuladen, andere Spalten sortieren weiter nach Titel
 	await reload(page);
-	expect(await cardTitles(page, 'Offen')).toEqual(['Chamäleon', 'Affe', 'Bär']);
-	await expect(page.getByRole('button').filter({ hasText: 'Sortierung:Titel A–Z' })).toBeVisible();
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Chamäleon', 'Affe', 'Bär']);
+	await expect(page.getByRole('button', { name: /Aktuelle Einstellungen.*Titel A–Z/ })).toBeVisible();
 });
 
 test('Ablegen an der sortierten Stelle behält die Sortierung', async ({ page, request }) => {
@@ -128,6 +128,6 @@ test('Ablegen an der sortierten Stelle behält die Sortierung', async ({ page, r
 	// Bär gehört alphabetisch zwischen Affe und Zebra
 	await card(page, 'Bär').dragTo(card(page, 'Zebra'), { targetPosition: { x: 40, y: 4 } });
 	await expect.poll(async () => (await getTicket(request, t.key)).status).toBe('Review');
-	expect(await cardTitles(page, 'Review')).toEqual(['Affe', 'Bär', 'Zebra']);
+	expect(await cardTitles(page, 'Allgemein: Review')).toEqual(['Affe', 'Bär', 'Zebra']);
 	await expect(page.getByRole('button', { name: 'Spalte Review sortieren' })).not.toContainText('Manuell');
 });

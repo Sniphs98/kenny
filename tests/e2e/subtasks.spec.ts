@@ -20,7 +20,7 @@ test('mehrere Unteraufgaben nacheinander im Modal anlegen', async ({ page, reque
 		await expect(modal.getByRole('link', { name: new RegExp(title) })).toBeVisible();
 		await expect(input).toHaveValue('');
 	}
-	await expect(page.getByText(/Ticket ".*" nicht gefunden/)).toHaveCount(0);
+	await expect(page.getByText(/Aufgabe ".*" nicht gefunden/)).toHaveCount(0);
 
 	const detail = await getTicket(request, parent.key);
 	expect(detail.subtasks.map((s: { title: string }) => s.title)).toEqual([

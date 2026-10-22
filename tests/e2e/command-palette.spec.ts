@@ -72,11 +72,11 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 	const p = await createProject(request, 'Befehle');
 	await open(page, `/projects/${p.key}/settings`);
 	await page.keyboard.press('Control+k');
-	await page.keyboard.type('neues ticket');
+	await page.keyboard.type('neue aufgabe');
 	await page.keyboard.press('Enter');
 	// Wechselt zum Board und öffnet dort den Dialog
 	await expect(page).toHaveURL(`/projects/${p.key}/board`);
-	const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Neues Ticket' }) });
+	const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Neue Aufgabe' }) });
 	await expect(dialog).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(dialog).toBeHidden();
@@ -85,7 +85,7 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 	await open(page, `/projects/${p.key}/gantt`);
 	await page.keyboard.press('Control+k');
 	await palette(page)
-		.getByRole('option', { name: /Neues Ticket in Befehle/ })
+		.getByRole('option', { name: /Neue Aufgabe in Befehle/ })
 		.click();
 	await dialog.getByLabel('Titel').fill('Aus dem Gantt');
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
@@ -106,7 +106,7 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 test('„Weitere erstellen“ hält den Dialog offen und behält die Felder', async ({ page, request }) => {
 	const p = await createProject(request, 'Serie');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	const title = dialog.getByLabel('Titel');
 	await dialog.getByRole('checkbox', { name: 'Weitere erstellen' }).click();
@@ -140,10 +140,10 @@ test('„Weitere erstellen“ hält den Dialog offen und behält die Felder', as
 	expect(tickets.find((t) => t.title === 'Zweites')?.priority).toBe('high');
 
 	// Der Haken wird pro Browser gemerkt
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	await dialog.getByRole('checkbox', { name: 'Weitere erstellen' }).click();
 	await page.keyboard.press('Escape');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	await expect(page.getByRole('dialog').getByRole('checkbox', { name: 'Weitere erstellen' })).toBeChecked();
 });

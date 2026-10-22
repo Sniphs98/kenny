@@ -5,7 +5,7 @@ test('Spalten-Scrollleiste erscheint beim Scrollen und blendet danach wieder aus
 	const p = await createProject(request, 'Scrollen');
 	for (let i = 1; i <= 20; i++) await createTicket(request, p.key, { title: `Aufgabe ${i}` });
 	await open(page, `/projects/${p.key}/board`);
-	const column = page.getByRole('region', { name: 'Offen', exact: true });
+	const column = page.getByRole('region', { name: 'Allgemein: Offen', exact: true });
 	await expect(column).toHaveClass(/scrollbar-soft/);
 	expect(await column.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 

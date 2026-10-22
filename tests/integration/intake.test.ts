@@ -47,7 +47,13 @@ const update = (form: { id: number; name: string; projects: { id: number }[] }, 
 describe('intake forms: management', () => {
 	it('creates forms with projects, default fields and a random token', () => {
 		const { web, app, form } = setup();
-		expect(form).toMatchObject({ name: 'Support', requireLogin: false, emailMode: 'optional', design: 'default', active: true });
+		expect(form).toMatchObject({
+			name: 'Support',
+			requireLogin: false,
+			emailMode: 'optional',
+			design: 'default',
+			active: true
+		});
 		expect(form.fields).toEqual({
 			system: 'optional',
 			description: 'optional',
@@ -195,7 +201,9 @@ describe('intake forms: configurable fields', () => {
 			{ key: 'APP', systems: ['Mobile'] },
 			{ key: 'WEB', systems: ['ERP', 'CRM'] }
 		]);
-		await expect(submitForm(both.token, { project: 'APP', title: 'Falsch', system: 'ERP' }, anonymous)).rejects.toThrow(/System gibt es nicht/);
+		await expect(
+			submitForm(both.token, { project: 'APP', title: 'Falsch', system: 'ERP' }, anonymous)
+		).rejects.toThrow(/System gibt es nicht/);
 		await submitForm(both.token, { project: 'WEB', title: 'Richtig', system: 'ERP' }, anonymous);
 		expect(getTicketDetail('WEB-1').submission?.system).toBe('ERP');
 	});

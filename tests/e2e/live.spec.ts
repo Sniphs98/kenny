@@ -13,7 +13,9 @@ test('Board zeigt Änderungen über die API ohne Neuladen', async ({ page, reque
 
 	await api(request, 'PATCH', `/tickets/${t.key}`, { title: 'Live umbenannt', column: 'Review' });
 	await expect(card(page, 'Live umbenannt')).toBeVisible();
-	await expect(page.getByRole('region', { name: 'Review', exact: true }).locator('[data-card]')).toHaveCount(1);
+	await expect(page.getByRole('region', { name: 'Allgemein: Review', exact: true }).locator('[data-card]')).toHaveCount(
+		1
+	);
 });
 
 test('Offenes Ticket-Modal aktualisiert sich, ungespeicherte Eingaben bleiben erhalten', async ({ page, context }) => {

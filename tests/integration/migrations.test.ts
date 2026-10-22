@@ -26,12 +26,12 @@ it('upgrades populated databases from every earlier migration and can restart id
 			migrate(db, { migrationsFolder: 'drizzle' });
 			migrate(db, { migrationsFolder: 'drizzle' });
 			expect(client.prepare('SELECT title FROM ticket').get()).toEqual({ title: 'Existing ticket' });
-			expect(client.prepare("SELECT count(*) AS n FROM pragma_table_info('ticket') WHERE name = 'bucket_id'").get()).toEqual({
-				n: 0
-			});
-			expect(client.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'bucket'").get()).toEqual({
-				n: 0
-			});
+			expect(
+				client.prepare("SELECT count(*) AS n FROM pragma_table_info('ticket') WHERE name = 'bucket_id'").get()
+			).toEqual({ n: 0 });
+			expect(
+				client.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'bucket'").get()
+			).toEqual({ n: 0 });
 			expect(client.prepare('SELECT is_backlog FROM board_column').get()).toEqual({ is_backlog: 0 });
 			expect(client.prepare('SELECT * FROM attachment').all()).toEqual([]);
 			// Formular löschen lässt eingereichte Tickets bestehen und leert nur die Herkunft

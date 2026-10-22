@@ -1,4 +1,4 @@
-import { expect, test, type BrowserType, type BrowserContextOptions } from '@playwright/test';
+import { expect, test, type BrowserType, type BrowserContextOptions, type Page } from '@playwright/test';
 import { api, card, createProject, createTicket, getTicket, open } from './helpers';
 
 async function freshBrowser(browserType: BrowserType, options: BrowserContextOptions) {
@@ -11,6 +11,12 @@ async function freshBrowser(browserType: BrowserType, options: BrowserContextOpt
 		await browser.close();
 		throw error;
 	}
+}
+
+async function openSubtasksCardField(page: Page) {
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+	await page.getByRole('button', { name: /Eigenschaften ausgewählt/ }).click();
+	return page.getByRole('menuitemcheckbox', { name: 'Unteraufgaben', exact: true });
 }
 
 for (const mode of ['root', 'subtask-card', 'expanded-subtask'] as const) {
@@ -37,7 +43,12 @@ for (const mode of ['root', 'subtask-card', 'expanded-subtask'] as const) {
 		let state: BrowserContextOptions['storageState'];
 		try {
 			await open(first.page, `/projects/${p.key}/board`);
-			if (mode === 'subtask-card') await first.page.getByLabel('Unteraufgaben anzeigen').check();
+			if (mode === 'subtask-card') {
+				const subtasks = await openSubtasksCardField(first.page);
+				await subtasks.click();
+				await first.page.keyboard.press('Escape');
+				await first.page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+			}
 			if (mode === 'expanded-subtask') {
 				await card(first.page, parent!.title)
 					.getByRole('button', { name: /Unteraufgaben/ })
@@ -47,10 +58,10 @@ for (const mode of ['root', 'subtask-card', 'expanded-subtask'] as const) {
 			} else {
 				await first.page
 					.locator(`[data-card="${t.id}"]`)
-					.dragTo(first.page.getByRole('region', { name: 'Erledigt', exact: true }));
+					.dragTo(first.page.getByRole('region', { name: 'Allgemein: Erledigt', exact: true }));
 				await expect(
 					first.page
-						.getByRole('region', { name: 'Erledigt', exact: true })
+						.getByRole('region', { name: 'Allgemein: Erledigt', exact: true })
 						.getByRole('link', { name: t.title, exact: true })
 				).toBeVisible();
 			}
@@ -73,17 +84,17 @@ for (const mode of ['root', 'subtask-card', 'expanded-subtask'] as const) {
 			} else {
 				await expect(
 					second.page
-						.getByRole('region', { name: 'Erledigt', exact: true })
+						.getByRole('region', { name: 'Allgemein: Erledigt', exact: true })
 						.getByRole('link', { name: t.title, exact: true })
 				).toBeVisible();
 			}
 			if (mode === 'subtask-card') {
-				await expect(second.page.getByLabel('Unteraufgaben anzeigen')).toBeChecked();
+				await expect(await openSubtasksCardField(second.page)).not.toBeChecked();
 				const other = await createProject(request, 'Independent board view');
 				await open(second.page, `/projects/${other.key}/board`);
-				await expect(second.page.getByLabel('Unteraufgaben anzeigen')).not.toBeChecked();
+				await expect(await openSubtasksCardField(second.page)).toBeChecked();
 				await open(second.page, `/projects/${p.key}/board`);
-				await expect(second.page.getByLabel('Unteraufgaben anzeigen')).toBeChecked();
+				await expect(await openSubtasksCardField(second.page)).not.toBeChecked();
 			}
 		} finally {
 			await second.browser.close();
@@ -104,14 +115,20 @@ test('failed completion saves show an error and revert the optimistic board move
 				})
 			: route.continue()
 	);
-	await card(page, t.title).dragTo(page.getByRole('region', { name: 'Erledigt', exact: true }));
+	await card(page, t.title).dragTo(page.getByRole('region', { name: 'Allgemein: Erledigt', exact: true }));
 	await expect(page.getByText('Speichern fehlgeschlagen', { exact: true })).toBeVisible();
 	await expect(
-		page.getByRole('region', { name: 'Offen', exact: true }).getByRole('link', { name: t.title, exact: true })
+		page.getByRole('region', { name: 'Allgemein: Offen', exact: true }).getByRole('link', {
+			name: t.title,
+			exact: true
+		})
 	).toBeVisible();
 	expect((await getTicket(request, t.key)).closed).toBe(false);
 	await page.reload();
 	await expect(
-		page.getByRole('region', { name: 'Offen', exact: true }).getByRole('link', { name: t.title, exact: true })
+		page.getByRole('region', { name: 'Allgemein: Offen', exact: true }).getByRole('link', {
+			name: t.title,
+			exact: true
+		})
 	).toBeVisible();
 });

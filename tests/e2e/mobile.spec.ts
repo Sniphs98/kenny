@@ -47,7 +47,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 		.filter({ hasText: `Touch workflow ${p.key}` })
 		.tap();
 	await expect(page).toHaveURL(`/projects/${p.key}/board`);
-	await card(page, t.title).getByRole('button', { name: 'Ticket verschieben' }).tap();
+	await card(page, t.title).getByRole('button', { name: 'Aufgabe verschieben' }).tap();
 	await page.getByRole('menuitem', { name: 'Review', exact: true }).tap();
 	await expect.poll(async () => (await getTicket(request, t.key)).status).toBe('Review');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -107,7 +107,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 test('long create dialogs scroll and project columns can be reordered by touch', async ({ page, request }) => {
 	const p = await createProject(request, 'Mobile settings');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).tap();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).tap();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Titel', { exact: true }).fill('Created on a phone');
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).tap();
@@ -157,7 +157,7 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 		await api(request, 'POST', `/projects/${p.key}/members`, { user: user.id, role: 'reader' });
 		const page = await context.newPage();
 		await open(page, `/projects/${p.key}/board`);
-		await expect(page.getByRole('button', { name: 'Ticket verschieben' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Aufgabe verschieben' })).toHaveCount(0);
 		await card(page, t.title).getByRole('link', { name: t.title, exact: true }).tap();
 		await expect(page.getByRole('dialog').getByRole('textbox', { name: 'Titel', exact: true })).toHaveAttribute(
 			'readonly',

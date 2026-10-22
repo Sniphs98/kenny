@@ -14,14 +14,14 @@ test('Board nach Priorität sortieren, Einstellung bleibt nach Neuladen', async 
 	await createTicket(request, p.key, { title: 'Hoch', priority: 'high' });
 
 	await open(page, `/projects/${p.key}/board`);
-	expect(await cardTitles(page, 'Offen')).toEqual(['Niedrig', 'Dringend', 'Hoch']);
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Niedrig', 'Dringend', 'Hoch']);
 
 	await choose(page, /Sortierung/, 'Priorität: hoch → niedrig');
-	expect(await cardTitles(page, 'Offen')).toEqual(['Dringend', 'Hoch', 'Niedrig']);
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Dringend', 'Hoch', 'Niedrig']);
 
 	await reload(page);
-	await expect(page.getByRole('button').filter({ hasText: 'Sortierung:Priorität: hoch → niedrig' })).toBeVisible();
-	expect(await cardTitles(page, 'Offen')).toEqual(['Dringend', 'Hoch', 'Niedrig']);
+	await expect(page.getByRole('button', { name: /Aktuelle Einstellungen.*Priorität: hoch → niedrig/ })).toBeVisible();
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Dringend', 'Hoch', 'Niedrig']);
 });
 
 test('einzelne Spalte abweichend sortieren', async ({ page, request }) => {
@@ -32,7 +32,7 @@ test('einzelne Spalte abweichend sortieren', async ({ page, request }) => {
 	await open(page, `/projects/${p.key}/board`);
 	await page.getByRole('button', { name: 'Spalte Offen sortieren' }).click();
 	await page.getByRole('menuitemradio', { name: 'Titel A–Z' }).click();
-	expect(await cardTitles(page, 'Offen')).toEqual(['Affe', 'Zebra']);
+	expect(await cardTitles(page, 'Allgemein: Offen')).toEqual(['Affe', 'Zebra']);
 	await expect(page.getByRole('button', { name: 'Spalte Offen sortieren' })).toContainText('Titel A–Z');
 });
 
@@ -66,7 +66,7 @@ test('Schnell-Anlegen in einer Bahn übernimmt den Tag', async ({ page, request 
 	await choose(page, /Gruppe/, 'Tag');
 	const lane = page.getByRole('region', { name: 'Bug: Review' }).locator('..');
 	await lane.hover();
-	await lane.getByRole('button', { name: 'Ticket hinzufügen' }).click();
+	await lane.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
 	await page.getByPlaceholder('Titel, Enter zum Anlegen').fill('Neuer Bug');
 	await page.getByPlaceholder('Titel, Enter zum Anlegen').press('Enter');
 
@@ -80,7 +80,7 @@ test('Karten werden in einer vollen Spalte nicht abgeschnitten', async ({ page, 
 		await createTicket(request, p.key, { title: `Benachrichtigungen per E-Mail versenden ${i}`, dueDate: day(i) });
 
 	await open(page, `/projects/${p.key}/board`);
-	const list = page.getByRole('region', { name: 'Offen', exact: true });
+	const list = page.getByRole('region', { name: 'Allgemein: Offen', exact: true });
 	await expect(list.locator('[data-card]')).toHaveCount(14);
 
 	// Die Spalte scrollt, statt die Karten zusammenzudrücken

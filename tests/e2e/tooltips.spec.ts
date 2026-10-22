@@ -25,7 +25,12 @@ test('Gantt: Tooltip am Balken, beim Ziehen ausgeblendet; Einplan-Zeile zeigt ih
 	request
 }) => {
 	const p = await createProject(request);
-	const t = await createTicket(request, p.key, { title: 'Balken mit Tooltip', kind: 'main', startDate: day(1), dueDate: day(6) });
+	const t = await createTicket(request, p.key, {
+		title: 'Balken mit Tooltip',
+		kind: 'main',
+		startDate: day(1),
+		dueDate: day(6)
+	});
 	await open(page, `/projects/${p.key}/gantt`);
 	const tooltip = page.locator('[data-slot="tooltip-content"]');
 
@@ -46,7 +51,7 @@ test('Gantt: Tooltip am Balken, beim Ziehen ausgeblendet; Einplan-Zeile zeigt ih
 	const planBox = (await plan.boundingBox())!;
 	const x = planBox.x + 40;
 	await page.mouse.move(x, planBox.y + planBox.height / 2);
-	await expect(tooltip).toContainText('Klicken, um ein Ticket ab diesem Tag einzuplanen');
+	await expect(tooltip).toContainText('Klicken, um eine Aufgabe ab diesem Tag einzuplanen');
 	const tipBox = (await tooltip.boundingBox())!;
 	expect(Math.abs(tipBox.x + tipBox.width / 2 - x)).toBeLessThan(tipBox.width);
 	expect(tipBox.x + tipBox.width / 2).toBeLessThan(planBox.x + planBox.width / 2);

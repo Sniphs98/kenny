@@ -85,6 +85,7 @@ test('Öffentliches Formular: Ticket ohne Anmeldung einreichen, E-Mail ist Pflic
 	await expect(page.locator('[data-submission-header]')).toContainText('Ersteller: kunde@example.com');
 	await expect(page.locator('[data-submission-header]')).toContainText('Erstellt');
 	await expect(page.locator('[data-submission-header]').getByRole('link', { name: 'kunde@example.com' })).toBeVisible();
+	await expect(page.getByText('Ticketsystem', { exact: true })).toBeVisible();
 
 	const main = await api<{ id: number }>(request, 'POST', `/projects/${p.key}/tickets`, {
 		title: 'Support bearbeiten',

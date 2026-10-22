@@ -11,7 +11,7 @@ import {
 	submitForm,
 	updateForm
 } from '#lib/server/services/intake.js';
-import { createProject, updateProject } from '#lib/server/services/projects.js';
+import { addColumn, createProject, updateProject } from '#lib/server/services/projects.js';
 import { createTag, deleteTag, listTags } from '#lib/server/services/tags.js';
 import { getTicketDetail, listTickets } from '#lib/server/services/tickets.js';
 
@@ -123,15 +123,17 @@ describe('intake forms: management', () => {
 describe('intake forms: submitting', () => {
 	it('submits to the only project and records the origin', async () => {
 		const { web, form } = setup();
+		const backlog = addColumn(web.id, { name: 'Backlog', isBacklog: true });
 		const submitted = await submitForm(form.token, { title: 'Login kaputt', email: 'kunde@example.com' }, anonymous);
 		expect(submitted.key).toBe('WEB-1');
 		expect('statusPath' in submitted && submitted.statusPath).toMatch(/^\/status\/WEB-1\/[A-Za-z0-9_-]{43}$/);
 		const detail = getTicketDetail('WEB-1');
 		expect(detail.ticket.title).toBe('Login kaputt');
+		expect(detail.ticket.boardGroup).toBe('tickets');
 		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com' });
 		expect(detail.ticket.createdAt).toBeInstanceOf(Date);
-		expect(listTickets(web.id)[0].submitted).toBe(true);
-		expect(listTickets(web.id)[0].status).toBe('Offen');
+		expect(listTickets(web.id)[0]).toMatchObject({ submitted: true, boardGroup: 'tickets', status: 'Offen' });
+		expect(listTickets(web.id)[0].columnId).not.toBe(backlog.id);
 	});
 
 	it('lets the submitter choose among several projects', async () => {

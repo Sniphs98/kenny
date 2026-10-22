@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { userSchema } from '../../src/lib/contracts';
-import { api, card, choose, createProject, createTicket, getTicket, open } from './helpers';
+import { api, card, createProject, createTicket, getTicket, open } from './helpers';
 
 let counter = 0;
 
@@ -82,16 +82,26 @@ test('Board zeigt alle Zuständigen und filtert und gruppiert nach jeder Person'
 		card(page, 'Pair-Programming').getByRole('button', { name: 'Zuständig: Anna Board, Ben Board', exact: true })
 	).toBeVisible();
 
-	await choose(page, /Alle Zuständigen/, 'Ben Board');
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+	await page.locator('#board-view-assignee').click();
+	await page.getByRole('option', { name: 'Ben Board', exact: true }).click();
+	await page.keyboard.press('Escape');
 	await expect(card(page, 'Pair-Programming')).toBeVisible();
 	await expect(card(page, 'Nur Anna')).toHaveCount(0);
-	await choose(page, /Ben Board/, 'Nicht zugewiesen');
+	await page.locator('#board-view-assignee').click();
+	await page.getByRole('option', { name: 'Ben Board', exact: true }).click();
+	await page.getByRole('option', { name: 'Nicht zugewiesen', exact: true }).click();
+	await page.keyboard.press('Escape');
 	await expect(card(page, 'Offen für alle')).toBeVisible();
 	await expect(card(page, 'Pair-Programming')).toHaveCount(0);
-	await choose(page, /Nicht zugewiesen/, 'Alle Zuständigen');
+	await page.locator('#board-view-assignee').click();
+	await page.getByRole('option', { name: 'Nicht zugewiesen', exact: true }).click();
+	await page.keyboard.press('Escape');
 
 	// Gruppiert erscheint das Ticket in beiden Bahnen; Ziehen ersetzt nur die Person der alten Bahn
-	await choose(page, /Gruppe/, 'Zuständig');
+	await page.locator('#board-view-group').click();
+	await page.getByRole('option', { name: 'Zuständig', exact: true }).click();
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
 	await expect(page.getByRole('region', { name: 'Anna Board: Offen' }).getByText('Pair-Programming')).toBeVisible();
 	await expect(page.getByRole('region', { name: 'Ben Board: Offen' }).getByText('Pair-Programming')).toBeVisible();
 	await page
@@ -114,7 +124,7 @@ test('neues Ticket mit mehreren Zuständigen anlegen', async ({ page, request, p
 	const ben = await addPerson(playwright, baseURL!, request, p.key, 'Ben Dialog');
 
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Titel').fill('Zu zweit');
 	await dialog.getByRole('button', { name: 'Niemandem zugewiesen', exact: true }).click();

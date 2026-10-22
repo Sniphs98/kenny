@@ -216,6 +216,7 @@ export const publicTicketStatusSchema = z.object({
 export const dependencySchema = z.object({ id, sourceId: id, targetId: id });
 export const userSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
 export const ticketDetailSchema = ticketDtoSchema.extend({
+	boardGroup: z.enum(['general', 'tickets']).nullable(),
 	parent: ticketSchema.nullable(),
 	/** openBlockers: offene Voraussetzungen (depends_on) der Unteraufgabe */
 	subtasks: z.array(ticketSchema.extend({ openBlockers: z.number().int(), tags: z.array(tagSchema) })),

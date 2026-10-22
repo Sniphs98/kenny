@@ -16,6 +16,10 @@ test('Karte lässt sich auf den freien Platz unter einer Spalte ziehen', async (
 	const t = await createTicket(request, p.key, { title: 'Nach unten ziehen' });
 
 	await open(page, `/projects/${p.key}/board`);
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
+	await page.locator('#board-view-group').click();
+	await page.getByRole('option', { name: 'Keine', exact: true }).click();
+	await page.getByRole('button', { name: /Aktuelle Einstellungen/ }).click();
 	const review = column(page, 'Review');
 	const box = (await review.boundingBox())!;
 	const list = (await page.getByRole('region', { name: 'Review', exact: true }).boundingBox())!;

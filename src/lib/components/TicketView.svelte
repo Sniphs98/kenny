@@ -183,9 +183,21 @@
 	});
 	const subDone = $derived(data.subtasks.filter((s) => s.closed).length);
 	const columnName = $derived(data.columns.find((c) => c.id === t.columnId)?.name ?? '');
+	const inTicketSystem = $derived(
+		t.kind === 'task' &&
+			t.parentId === null &&
+			(t.boardGroup === 'tickets' || (t.boardGroup === null && data.submission !== null))
+	);
+	const parentValue = $derived(t.parentId ? String(t.parentId) : inTicketSystem ? 'tickets' : '');
 	const parentLabel = $derived.by(() => {
 		const p = parentCandidates.find((o) => o.id === t.parentId);
-		return p ? p.title : t.kind === 'main' ? m.no_version() : m.no_main_task();
+		return p
+			? p.title
+			: t.kind === 'main'
+				? m.no_version()
+				: inTicketSystem
+					? m.ticket_system()
+					: m.no_main_task();
 	});
 </script>
 
@@ -495,11 +507,20 @@
 						<Select.Root
 							disabled={!data.canEdit}
 							type="single"
-							value={t.parentId ? String(t.parentId) : ''}
-							onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
+							value={parentValue}
+							onValueChange={(v) =>
+								patch(
+									v === 'tickets'
+										? { parentId: null, boardGroup: 'tickets' }
+										: { parentId: v ? Number(v) : null, ...(v ? {} : { boardGroup: 'general' }) }
+								)
+							}
 						>
 							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
 							<Select.Content class="max-h-72">
+								{#if t.kind === 'task'}
+									<Select.Item value="tickets">{m.ticket_system()}</Select.Item>
+								{/if}
 								<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
 								{#if t.kind === 'task'}
 									{#each parentGroups as group (group.key)}

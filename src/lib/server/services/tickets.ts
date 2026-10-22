@@ -425,6 +425,7 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	return {
 		ticket: {
 			...present(t, p.key, colMap.get(t.columnId), assignees),
+			boardGroup: t.boardGroup,
 			tags: tags.get(t.id) ?? []
 		},
 		project: p,
@@ -649,7 +650,7 @@ export function createTicket(
 			? resolveColumn(p.id, input.column)
 			: input.columnId !== undefined
 				? resolveColumn(p.id, input.columnId)
-				: (input.kind ?? 'task') === 'task' && !hasParent
+				: (input.kind ?? 'task') === 'task' && !hasParent && !origin
 					? (cols.find((c) => c.isBacklog) ?? cols.find((c) => !c.isDone) ?? cols[0])
 					: (cols.find((c) => !c.isBacklog && !c.isDone) ?? cols.find((c) => !c.isDone) ?? cols[0]);
 	if (!col) throw new ApiError(409, 'Projekt hat keine Spalten.');
@@ -681,6 +682,7 @@ export function createTicket(
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
 				parentId,
+				boardGroup: origin ? 'tickets' : null,
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,

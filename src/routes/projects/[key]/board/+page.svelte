@@ -1123,6 +1123,9 @@
 			!grouped && 'max-h-[calc(100vh-210px)]',
 			target && 'ring-primary/30 ring-2'
 		)}
+		style={col.kind === 'tag' && col.color
+			? `background: color-mix(in srgb, ${col.color} 12%, transparent)`
+			: undefined}
 		role="group"
 		data-dropzone
 		ondragover={(e) => onDragOver(e, lane.key, col.key, e.currentTarget as HTMLElement)}

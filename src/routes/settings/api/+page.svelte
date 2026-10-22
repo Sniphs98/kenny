@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BASE_PATH } from '#lib/paths.js';
 	import { localizeError } from '#lib/i18n.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -21,7 +22,8 @@
 
 	let { data, form } = $props();
 
-	const origin = $derived(page.url.origin);
+	// Öffentliche Adresse inklusive Unterpfad (z.B. https://host/kenny)
+	const origin = $derived(page.url.origin + BASE_PATH);
 	const fmt = (d: Date | null) => (d ? new Date(d).toLocaleString(intlLocale()) : m.never());
 
 	let copied = $state(false);

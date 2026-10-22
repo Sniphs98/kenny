@@ -6,18 +6,21 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts && npm rebuild better-sqlite3 esbuild
 
 FROM dependencies AS build
+# Optional subpath behind a reverse proxy, e.g. /kenny; SvelteKit fixes it at build time
+ARG BASE_PATH=""
 COPY . .
-RUN npm run build
+RUN BASE_PATH="$BASE_PATH" npm run build
 
 FROM dependencies AS production-dependencies
 RUN npm prune --omit=dev --ignore-scripts
 
 FROM mirror.gcr.io/library/node:22.23.2-bookworm-slim AS runtime
+ARG BASE_PATH=""
 LABEL org.opencontainers.image.source="https://github.com/Sniphs98/kenny"
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 \
     DATABASE_URL=/app/data/kenny.db ATTACHMENTS_DIR=/app/data/attachments \
-    MIGRATIONS_DIR=/app/drizzle BODY_SIZE_LIMIT=30M
+    MIGRATIONS_DIR=/app/drizzle BODY_SIZE_LIMIT=30M BASE_PATH=$BASE_PATH
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/drizzle ./drizzle
@@ -28,5 +31,5 @@ RUN chmod 755 /app/scripts && chmod 644 /app/package.json \
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:3000'+(process.env.BASE_PATH||'')+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "scripts/start-server.mjs"]

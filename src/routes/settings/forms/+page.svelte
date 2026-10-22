@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { untrack } from 'svelte';
 	import { enhance as enhanceAction } from '$app/forms';
 	import { page } from '$app/state';
@@ -158,7 +159,7 @@
 		moveField($form.fieldOrder.indexOf(field), $form.fieldOrder.indexOf(field) + direction);
 	}
 
-	const link = (f: IntakeFormDto) => `${page.url.origin}/submit/${f.token}`;
+	const link = (f: IntakeFormDto) => `${page.url.origin}${withBase(`/submit/${f.token}`)}`;
 	const code = $derived(embedding ? embedCode(page.url.origin, embedding.token, embedding.name) : '');
 
 	async function copyCode() {

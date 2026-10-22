@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { localizeError } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { untrack } from 'svelte';
@@ -62,7 +63,7 @@
 		<div class="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-4">
 			{#each data.projects as p (p.id)}
 				{@const done = p.total - p.open}
-				<a href="/projects/{p.key}/board" class="group" style="--c: {p.color}">
+				<a href={withBase(`/projects/${p.key}/board`)} class="group" style="--c: {p.color}">
 					<Card.Root class="hover:border-foreground/25 h-full gap-4 py-5 transition-colors">
 						<Card.Header class="flex items-center gap-3 px-5">
 							<span

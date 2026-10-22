@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -50,7 +51,7 @@
 		{#each tabs as t (t.href)}
 			{@const active = page.route.id?.endsWith('/' + t.href)}
 			<a
-				href="/projects/{data.project.key}/{t.href}"
+				href={withBase(`/projects/${data.project.key}/${t.href}`)}
 				class={cn(
 					'text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
 					active && 'border-primary text-foreground'
@@ -70,7 +71,7 @@
 	project={data.project.key}
 	onDeleted={() => {
 		toast.info(m.project_was_deleted());
-		goto('/', { refreshAll: true });
+		goto(withBase('/'), { refreshAll: true });
 	}}
 />
 

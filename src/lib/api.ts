@@ -1,3 +1,4 @@
+import { withBase } from '#lib/paths.js';
 import { localizeError, intlLocale } from '#lib/i18n.js';
 import { clientId, LIVE_ORIGIN_HEADER } from '#lib/live-client.js';
 import { m } from '#lib/paraglide/messages.js';
@@ -46,7 +47,7 @@ const errorSchema = z.object({ error: z.string() });
 
 // The low-level transport returns unknown; typed commands parse their responses.
 export async function api(method: string, path: string, body?: unknown): Promise<unknown> {
-	const res = await fetch(`/api/v1${path}`, {
+	const res = await fetch(withBase(`/api/v1${path}`), {
 		method,
 		// Tab-Kennung: Live-Updates über die eigene Änderung ignoriert dieser Tab
 		headers: {
@@ -121,7 +122,11 @@ export async function deleteComment(ticket: string | number, commentId: number) 
 export async function upload(path: string, files: File[]): Promise<unknown> {
 	const body = new FormData();
 	for (const f of files) body.append('file', f);
-	const res = await fetch(`/api/v1${path}`, { method: 'POST', body, headers: { [LIVE_ORIGIN_HEADER]: clientId } });
+	const res = await fetch(withBase(`/api/v1${path}`), {
+		method: 'POST',
+		body,
+		headers: { [LIVE_ORIGIN_HEADER]: clientId }
+	});
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok)
 		throw new Error(

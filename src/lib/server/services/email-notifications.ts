@@ -29,6 +29,7 @@ import { parseInput } from '../validation.js';
 import { requireActiveUser, requireProjectAccess } from './access.js';
 import { getProject } from './projects.js';
 import { publicTicketStatusUrlToken } from './public-ticket-status.js';
+import { BASE_PATH } from '#lib/paths.js';
 
 type Locale = 'de' | 'en';
 type Row = typeof projectEmailNotification.$inferSelect;
@@ -81,7 +82,7 @@ export function updateEmailNotifications(projectRef: string | number, rawInput: 
 	return present(rowOf(p.id), p.name);
 }
 
-const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
+const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '') + BASE_PATH;
 
 function ticketData(ticketId: number) {
 	const row = db

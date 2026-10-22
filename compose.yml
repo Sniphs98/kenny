@@ -1,7 +1,10 @@
 services:
   kenny:
     image: ghcr.io/sniphs98/kenny:${KENNY_VERSION:-latest}
-    build: .
+    build:
+      context: .
+      args:
+        BASE_PATH: ${KENNY_BASE_PATH:-}
     restart: unless-stopped
     ports:
       - '127.0.0.1:3000:3000'

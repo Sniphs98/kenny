@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { refreshAll } from '$app/navigation';
 	import { m } from '#lib/paraglide/messages.js';
 	import { assignUserProject, changeUserProject } from '#lib/api.js';
@@ -60,7 +61,7 @@
 
 <svelte:head><title>{m.um_user_projects()} · {data.managedUser.name} · Kenny</title></svelte:head>
 <div class="mx-auto max-w-4xl space-y-5 px-5 py-6">
-	<a href="/admin/users" class="text-primary text-sm underline">{m.um_back_to_users()}</a>
+	<a href={withBase('/admin/users')} class="text-primary text-sm underline">{m.um_back_to_users()}</a>
 	<div>
 		<h1 class="text-2xl font-semibold">{m.um_projects_for_user({ name: data.managedUser.name })}</h1>
 		<p class="text-muted-foreground mt-1 text-sm">{data.managedUser.email}</p>
@@ -112,7 +113,7 @@
 				>{#each data.memberships as membership (membership.projectId)}
 					<tr class="border-t"
 						><td class="p-3"
-							><a class="text-primary underline" href={`/projects/${membership.key}/board`}
+							><a class="text-primary underline" href={withBase(`/projects/${membership.key}/board`)}
 								>{membership.key} — {membership.name}</a
 							></td
 						>

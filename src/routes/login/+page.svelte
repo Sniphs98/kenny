@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
+	import { safeTarget } from '#lib/safe-target.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import KennyLogo from '#lib/components/KennyLogo.svelte';
 	import { goto } from '$app/navigation';
@@ -45,7 +47,7 @@
 							: m.login_failed();
 			return;
 		}
-		await goto(target.startsWith('/') ? target : '/', { refreshAll: true });
+		await goto(withBase(safeTarget(target)), { refreshAll: true });
 	}
 
 	async function microsoft() {

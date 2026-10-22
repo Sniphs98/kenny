@@ -1,3 +1,5 @@
+import { withBase } from '#lib/paths.js';
+
 // Einbettungscode für Formulare (iframe auf fremden Webseiten)
 
 /** Nachricht der eingebetteten Seite an die Webseite drumherum: { type, height } */
@@ -11,7 +13,7 @@ const escapeAttr = (v: string) =>
  * und nimmt nur Nachrichten von Kenny selbst an.
  */
 export function embedCode(origin: string, token: string, title: string) {
-	const src = `${origin}/submit/${encodeURIComponent(token)}?embed`;
+	const src = `${origin}${withBase(`/submit/${encodeURIComponent(token)}`)}?embed`;
 	return [
 		`<iframe src="${escapeAttr(src)}" title="${escapeAttr(title)}" loading="lazy"`,
 		`  style="display:block;width:100%;max-width:560px;height:640px;border:0"></iframe>`,

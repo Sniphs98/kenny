@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BASE_PATH } from '#lib/paths.js';
 	import { onMount } from 'svelte';
 	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -41,7 +42,7 @@
 		teams.pages.config.registerOnSaveHandler((save) => {
 			const chosen = project;
 			if (!chosen) return save.notifyFailure(m.teams_choose_project());
-			const origin = page.url.origin;
+			const origin = page.url.origin + BASE_PATH;
 			const board = `/projects/${chosen.key}/board`;
 			teams.pages.config
 				.setConfig({

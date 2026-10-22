@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isAppPath, withBase } from '#lib/paths.js';
 	import { onDestroy, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
@@ -75,7 +76,8 @@
 				if (result.type === 'success') {
 					const key = String(result.data?.submitted ?? '');
 					const statusTicket = result.data?.statusTicket;
-					const statusPath = typeof statusTicket?.path === 'string' ? statusTicket.path : null;
+					const statusPath =
+						typeof statusTicket?.path === 'string' && isAppPath(statusTicket.path) ? statusTicket.path : null;
 					if (key && statusPath)
 						rememberTicketStatus({
 							key,
@@ -161,7 +163,7 @@
 		{:else}
 			<div class="mb-6 flex w-full max-w-lg flex-col items-center justify-end self-end text-center">
 				{#if enableDesign}
-					<img src="/brands/ecomplete_software_icon.png" alt="e.complete" class="size-20 object-contain" />
+					<img src={withBase('/brands/ecomplete_software_icon.png')} alt="e.complete" class="size-20 object-contain" />
 				{:else}
 					<span class="bg-primary text-primary-foreground inline-grid size-11 place-items-center rounded-xl shadow-lg">
 						<Inbox class="size-5" />
@@ -184,7 +186,7 @@
 							{submitted ? m.submitted_text({ key: submitted }) : m.submitted_text_plain()}
 						</p>
 						<div class="flex flex-wrap justify-center gap-2">
-							{#if submittedPath}<Button href="/status">{m.my_tickets()}</Button>{/if}
+							{#if submittedPath}<Button href={withBase('/status')}>{m.my_tickets()}</Button>{/if}
 							<Button variant="outline" onclick={() => (submitted = null)}>{m.submit_another()}</Button>
 						</div>
 					</div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { withoutBase } from '#lib/paths.js';
+	import { withBase } from '#lib/paths.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { accentStyle } from '#lib/theme.js';
@@ -23,7 +25,7 @@
 		rememberTicketStatus({
 			key: ticket.key,
 			title: ticket.title,
-			path: window.location.pathname,
+			path: withoutBase(window.location.pathname),
 			status: ticket.status,
 			closed: ticket.closed,
 			updatedAt: ticket.updatedAt.getTime(),
@@ -44,7 +46,7 @@
 >
 	<div class="mx-auto grid w-full max-w-2xl gap-5">
 		<header class="relative text-center">
-			<Button href="/status" variant="outline" class="mb-5 sm:absolute sm:top-0 sm:left-0 sm:mb-0"
+			<Button href={withBase('/status')} variant="outline" class="mb-5 sm:absolute sm:top-0 sm:left-0 sm:mb-0"
 				>{m.my_tickets()}</Button
 			>
 			<p class="text-primary text-sm font-semibold">{ticket.project.name} · {ticket.key}</p>

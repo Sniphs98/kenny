@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase, withoutBase } from '#lib/paths.js';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { listProjects, searchTickets } from '#lib/api.js';
@@ -46,8 +47,9 @@
 
 	/** Neues Ticket: auf Board/Gantt sofort, sonst zuerst zum Board des Projekts */
 	async function newTicket(key: string) {
-		const here = page.url.pathname;
-		if (here !== `/projects/${key}/board` && here !== `/projects/${key}/gantt`) await goto(`/projects/${key}/board`);
+		const here = withoutBase(page.url.pathname);
+		if (here !== `/projects/${key}/board` && here !== `/projects/${key}/gantt`)
+			await goto(withBase(`/projects/${key}/board`));
 		requestNewTicket();
 	}
 
@@ -76,17 +78,17 @@
 							id: 'board',
 							label: `${p.name}: ${m.board()}`,
 							icon: SquareKanban,
-							run: () => goto(`/projects/${p.key}/board`)
+							run: () => goto(withBase(`/projects/${p.key}/board`))
 						},
 						{
 							id: 'gantt',
 							label: `${p.name}: ${m.gantt()}`,
 							icon: ChartGantt,
-							run: () => goto(`/projects/${p.key}/gantt`)
+							run: () => goto(withBase(`/projects/${p.key}/gantt`))
 						}
 					]
 				: []),
-			{ id: 'projects', label: m.projects(), icon: FolderKanban, run: () => goto('/') },
+			{ id: 'projects', label: m.projects(), icon: FolderKanban, run: () => goto(withBase('/')) },
 			...projects
 				.filter((x) => x.key !== p?.key)
 				.map((x) => ({
@@ -94,7 +96,7 @@
 					label: `${x.name}: ${m.board()}`,
 					hint: x.key,
 					icon: SquareKanban,
-					run: () => goto(`/projects/${x.key}/board`)
+					run: () => goto(withBase(`/projects/${x.key}/board`))
 				})),
 			...(p && current.canEdit
 				? [
@@ -102,16 +104,23 @@
 							id: 'settings',
 							label: `${p.name}: ${m.settings()}`,
 							icon: Settings,
-							run: () => goto(`/projects/${p.key}/settings`)
+							run: () => goto(withBase(`/projects/${p.key}/settings`))
 						}
 					]
 				: []),
-			...(isAdmin ? [{ id: 'forms', label: m.forms(), icon: Inbox, run: () => goto('/settings/forms') }] : []),
-			{ id: 'api', label: m.api_tokens(), icon: KeyRound, run: () => goto('/settings/api') },
+			...(isAdmin
+				? [{ id: 'forms', label: m.forms(), icon: Inbox, run: () => goto(withBase('/settings/forms')) }]
+				: []),
+			{ id: 'api', label: m.api_tokens(), icon: KeyRound, run: () => goto(withBase('/settings/api')) },
 			...(isAdmin
 				? [
-						{ id: 'users', label: m.um_users(), icon: Users, run: () => goto('/admin/users') },
-						{ id: 'teams', label: m.teams_admin_title(), icon: MessagesSquare, run: () => goto('/admin/teams') }
+						{ id: 'users', label: m.um_users(), icon: Users, run: () => goto(withBase('/admin/users')) },
+						{
+							id: 'teams',
+							label: m.teams_admin_title(),
+							icon: MessagesSquare,
+							run: () => goto(withBase('/admin/teams'))
+						}
 					]
 				: [])
 		];
@@ -243,7 +252,7 @@
 					<Command.Item
 						value={`ticket-${t.key}`}
 						class="items-start"
-						onSelect={() => run(() => goto(`/tickets/${t.key}`))}
+						onSelect={() => run(() => goto(withBase(`/tickets/${t.key}`)))}
 					>
 						<span class="grid min-w-0 gap-0.5">
 							<span class={cn('truncate', t.closed && 'text-muted-foreground line-through')}

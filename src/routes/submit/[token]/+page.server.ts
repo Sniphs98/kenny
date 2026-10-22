@@ -1,3 +1,4 @@
+import { withBase, withoutBase } from '#lib/paths.js';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -17,7 +18,8 @@ function publicForm(token: string) {
 
 export const load = async ({ params, locals, url }) => {
 	const intake = publicForm(params.token);
-	if (intake.requireLogin && !locals.user) redirect(303, `/login?redirect=${encodeURIComponent(url.pathname)}`);
+	if (intake.requireLogin && !locals.user)
+		redirect(303, withBase(`/login?redirect=${encodeURIComponent(withoutBase(url.pathname))}`));
 	return {
 		intake,
 		signedInAs: locals.user?.name ?? null,

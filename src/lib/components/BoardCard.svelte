@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { onMount } from 'svelte';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -160,7 +161,7 @@
 			/>
 		{/if}
 		<a
-			href="/tickets/{t.key}"
+			href={withBase(`/tickets/${t.key}`)}
 			class={cn(
 				'line-clamp-3 min-w-0 grow font-medium break-words hover:underline',
 				t.closed && 'text-muted-foreground line-through'
@@ -307,7 +308,7 @@
 					{#each subtasks as s (s.id)}
 						<li>
 							<a
-								href="/tickets/{s.key}"
+								href={withBase(`/tickets/${s.key}`)}
 								class="hover:bg-muted flex items-center gap-1.5 rounded px-1 py-0.5 text-xs"
 								onclick={(e) => (e.stopPropagation(), openTicket(s.key, e))}
 								draggable="false"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { goto, preloadData, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -69,8 +70,9 @@
 			<Dialog.Header class="flex-row items-center gap-3 pr-12">
 				<Dialog.Title class="text-muted-foreground text-sm font-normal">
 					{data.project.name} /
-					{#if data.parent}<a class="hover:text-foreground hover:underline" href="/tickets/{data.parent.key}"
-							>{data.parent.title}</a
+					{#if data.parent}<a
+							class="hover:text-foreground hover:underline"
+							href={withBase(`/tickets/${data.parent.key}`)}>{data.parent.title}</a
 						>
 						/
 					{/if}{data.ticket.title}
@@ -79,13 +81,13 @@
 					{#snippet children(props)}
 						<a
 							{...props}
-							href="/tickets/{data.ticket.key}"
+							href={withBase(`/tickets/${data.ticket.key}`)}
 							data-full
 							class={buttonVariants({ variant: 'ghost', size: 'sm', class: 'text-muted-foreground ml-auto' })}
 							onclick={(e) => {
 								if (e.metaKey || e.ctrlKey) return;
 								e.preventDefault();
-								goto(`/tickets/${data.ticket.key}`);
+								goto(withBase(`/tickets/${data.ticket.key}`));
 							}}
 						>
 							<Maximize2 />

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -21,7 +22,7 @@
 		phase = 'signing-in';
 		try {
 			await signInWithTeams(sdk);
-			await goto(safeTarget(page.url.searchParams.get('to')), { replace: true, refreshAll: true });
+			await goto(withBase(safeTarget(page.url.searchParams.get('to'))), { replace: true, refreshAll: true });
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 			phase = 'error';

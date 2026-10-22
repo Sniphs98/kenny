@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { goto, refreshAll } from '$app/navigation';
 	import { api, updateProject } from '#lib/api.js';
@@ -144,7 +145,7 @@
 	async function remove() {
 		await api('DELETE', base);
 		toast.success(m.deleted_project({ value1: data.project.name }));
-		await goto('/', { refreshAll: true });
+		await goto(withBase('/'), { refreshAll: true });
 	}
 </script>
 

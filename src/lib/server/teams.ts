@@ -10,6 +10,7 @@ import {
 	TEAMS_APP_VERSION,
 	TEAMS_DEVELOPER_NAME
 } from '$app/env/private';
+import { BASE_PATH } from '#lib/paths.js';
 
 /**
  * Microsoft Teams: Kenny als Teams-App (persönlicher Tab und Kanal-Tab) mit Anmeldung per Teams-SSO.
@@ -56,7 +57,7 @@ function stableUuid(seed: string) {
 }
 
 export function teamsConfig(): TeamsConfig {
-	const baseUrl = (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
+	const baseUrl = (BETTER_AUTH_URL ?? '').replace(/\/+$/, '') + BASE_PATH;
 	const clientId = MICROSOFT_CLIENT_ID ?? '';
 	return {
 		baseUrl,

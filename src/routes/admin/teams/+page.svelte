@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import Hint from '#lib/components/Hint.svelte';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -43,7 +44,7 @@
 	async function downloadPackage() {
 		downloading = true;
 		try {
-			const response = await fetch('/admin/teams/package');
+			const response = await fetch(withBase('/admin/teams/package'));
 			if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 			const url = URL.createObjectURL(await response.blob());
 			const link = Object.assign(document.createElement('a'), { href: url, download: 'kenny-teams.zip' });

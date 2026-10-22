@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { PRIORITIES, type UpdateTicketInput } from '#lib/contracts/index.js';
@@ -144,7 +145,7 @@
 			data.submission ? m.deleted_submitted_ticket({ value1: t.title }) : m.deleted_ticket({ value1: t.title })
 		);
 		if (onDeleted) onDeleted();
-		else await goto(`/projects/${data.project.key}/board`, { refreshAll: true });
+		else await goto(withBase(`/projects/${data.project.key}/board`), { refreshAll: true });
 	}
 
 	const groups = $derived([
@@ -252,10 +253,9 @@
 				{openBlockers.length === 1
 					? m.waiting_for_one_ticket()
 					: m.waiting_for_many_tickets({ count: openBlockers.length })}
-				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.title}</a>{i <
-					openBlockers.length - 1
-						? ', '
-						: ''}{/each}
+				{#each openBlockers as b, i (b.id)}<a class="underline" href={withBase(`/tickets/${b.ticket.key}`)}
+						>{b.ticket.title}</a
+					>{i < openBlockers.length - 1 ? ', ' : ''}{/each}
 			</Alert.Title>
 		</Alert.Root>
 	{/if}
@@ -338,7 +338,7 @@
 													aria-label={m.done()}
 												/>
 												<a
-													href="/tickets/{s.key}"
+													href={withBase(`/tickets/${s.key}`)}
 													class={cn(
 														'min-w-0 grow break-words text-sm hover:underline',
 														s.closed && 'text-muted-foreground line-through'
@@ -364,7 +364,7 @@
 										aria-label={m.done()}
 									/>
 									<a
-										href="/tickets/{s.key}"
+										href={withBase(`/tickets/${s.key}`)}
 										class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
 									>
 										{s.title}
@@ -626,7 +626,7 @@
 								{#each g.items as l (l.id)}
 									<li class="hover:bg-muted flex items-center gap-2 rounded-md px-2 py-1">
 										<a
-											href="/tickets/{l.ticket.key}"
+											href={withBase(`/tickets/${l.ticket.key}`)}
 											class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
 										>
 											{l.ticket.title}

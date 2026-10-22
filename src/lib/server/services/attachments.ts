@@ -27,13 +27,14 @@ function present(a: Attachment, uploadedBy: string | null = null) {
 		mimeType: a.mimeType,
 		size: a.size,
 		isImage: INLINE_TYPES.includes(a.mimeType),
-		url: `/api/v1/attachments/${a.id}`,
+		url: withBase(`/api/v1/attachments/${a.id}`),
 		uploadedBy,
 		createdAt: a.createdAt
 	};
 }
 export type { AttachmentDto } from '#lib/contracts/index.js';
 import type { AttachmentDto } from '#lib/contracts/index.js';
+import { withBase } from '#lib/paths.js';
 
 export function listAttachments(ticketId: number): AttachmentDto[] {
 	return db

@@ -131,6 +131,31 @@ kenny.example.com {
 
 With nginx, set `proxy_buffering off;` and a long `proxy_read_timeout` (e.g. `1h`) for `/api/v1/events`, and raise `client_max_body_size` to at least the attachment limit.
 
+#### Serving Kenny under a subpath
+
+To serve Kenny under a path such as `https://example.com/kenny`, the path must be built into the image, because SvelteKit fixes it at build time. The published images serve Kenny at the root. Set the path and the plain origin (without the path) in `.env`, then build the image yourself:
+
+```bash
+KENNY_BASE_PATH=/kenny
+KENNY_ORIGIN=https://example.com
+```
+
+```bash
+docker compose up -d --build
+```
+
+The proxy must pass the path through unchanged. In Caddy, use `handle` and not `handle_path`, which would strip it:
+
+```
+example.com {
+	handle /kenny* {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+```
+
+Kenny is then available at `https://example.com/kenny/`, the API at `/kenny/api/v1` and the Microsoft redirect URI is `<KENNY_ORIGIN>/kenny/api/auth/callback/microsoft`. Without Docker, set `BASE_PATH=/kenny` for `npm run build`. Images in descriptions that were saved before moving Kenny to a subpath are still displayed.
+
 ### Updates and backups
 
 - **Update:** set `KENNY_VERSION` to the new release, then run `docker compose pull && docker compose up -d`. Migrations run at startup and are not reversed when you go back to an older image, so back up first.
@@ -144,23 +169,24 @@ docker compose start
 
 ## Configuration
 
-| Variable                                                    | Default                         | Description                                                                                                          |
-| ----------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`                                        | – (required)                    | Long random secret for sessions, e.g. `openssl rand -base64 32`. Changing it signs everyone out.                     |
-| `KENNY_ORIGIN`                                              | – (required in `compose.yaml`)  | Public URL of Kenny. Compose passes it on as `ORIGIN` and `BETTER_AUTH_URL`; set those two directly without Compose. |
-| `KENNY_VERSION`                                             | `latest`                        | Image version used by `compose.yaml`.                                                                                |
-| `ATTACHMENT_MAX_MB`                                         | `25`                            | Maximum size of one attachment in MB.                                                                                |
-| `BODY_SIZE_LIMIT`                                           | `30M`                           | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                               |
-| `DATABASE_URL`                                              | `/app/data/kenny.db`            | SQLite database file.                                                                                                |
-| `ATTACHMENTS_DIR`                                           | `/app/data/attachments`         | Storage directory for attachments.                                                                                   |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`                     | `smtp.gmail.com`, `465`, `true` | SMTP server for project e-mail notifications.                                                                        |
-| `SMTP_USER`, `SMTP_PASSWORD`                                | –                               | SMTP login. For Gmail, use the Gmail address and a Google app password.                                              |
-| `SMTP_FROM`                                                 | `SMTP_USER`                     | Sender address; Gmail normally requires the authenticated Gmail address.                                             |
-| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                               | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.             |
-| `MICROSOFT_TENANT_ID`                                       | `common`                        | Entra tenant; use your tenant ID for a company installation.                                                         |
-| `MICROSOFT_AUTHORITY`                                       | Microsoft default               | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                   |
-| `TEAMS_ENABLED`                                             | `false`                         | Run Kenny as a Microsoft Teams app; see [Microsoft Teams](docs/microsoft-teams.md).                                  |
-| `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`       | Details of the Teams app package.                                                                                    |
+| Variable                                                    | Default                         | Description                                                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`                                        | – (required)                    | Long random secret for sessions, e.g. `openssl rand -base64 32`. Changing it signs everyone out.                                                |
+| `KENNY_ORIGIN`                                              | – (required in `compose.yaml`)  | Public URL of Kenny. Compose passes it on as `ORIGIN` and `BETTER_AUTH_URL`; set those two directly without Compose.                            |
+| `KENNY_VERSION`                                             | `latest`                        | Image version used by `compose.yaml`.                                                                                                           |
+| `KENNY_BASE_PATH`                                           | – (served at the root)          | Subpath behind a reverse proxy, e.g. `/kenny`; build argument `BASE_PATH`, see [Serving Kenny under a subpath](#serving-kenny-under-a-subpath). |
+| `ATTACHMENT_MAX_MB`                                         | `25`                            | Maximum size of one attachment in MB.                                                                                                           |
+| `BODY_SIZE_LIMIT`                                           | `30M`                           | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                                                          |
+| `DATABASE_URL`                                              | `/app/data/kenny.db`            | SQLite database file.                                                                                                                           |
+| `ATTACHMENTS_DIR`                                           | `/app/data/attachments`         | Storage directory for attachments.                                                                                                              |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`                     | `smtp.gmail.com`, `465`, `true` | SMTP server for project e-mail notifications.                                                                                                   |
+| `SMTP_USER`, `SMTP_PASSWORD`                                | –                               | SMTP login. For Gmail, use the Gmail address and a Google app password.                                                                         |
+| `SMTP_FROM`                                                 | `SMTP_USER`                     | Sender address; Gmail normally requires the authenticated Gmail address.                                                                        |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                               | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.                                        |
+| `MICROSOFT_TENANT_ID`                                       | `common`                        | Entra tenant; use your tenant ID for a company installation.                                                                                    |
+| `MICROSOFT_AUTHORITY`                                       | Microsoft default               | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                                              |
+| `TEAMS_ENABLED`                                             | `false`                         | Run Kenny as a Microsoft Teams app; see [Microsoft Teams](docs/microsoft-teams.md).                                                             |
+| `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`       | Details of the Teams app package.                                                                                                               |
 
 Variables that are not listed in `compose.yaml` (such as `MICROSOFT_AUTHORITY` or `TEAMS_APP_ID`) need an extra line under `environment`.
 

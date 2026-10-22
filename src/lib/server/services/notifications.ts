@@ -19,6 +19,7 @@ import { ApiError } from '../errors';
 import { parseInput } from '../validation';
 import { requireProjectAccess } from './access';
 import { getProject } from './projects';
+import { BASE_PATH } from '#lib/paths.js';
 
 type Locale = 'de' | 'en';
 type Row = typeof projectNotification.$inferSelect;
@@ -85,7 +86,7 @@ const run = (text: string, style: Record<string, unknown> = {}) => ({ type: 'Tex
 const line = (...inlines: ReturnType<typeof run>[]) => ({ type: 'RichTextBlock', inlines });
 const fact = (label: string, value: string) => line(run(`${label}: `, { weight: 'Bolder' }), run(value));
 
-const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
+const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '') + BASE_PATH;
 
 export function adaptiveCard(body: unknown[], action?: { title: string; url: string }) {
 	return {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isAppPath, withBase } from '#lib/paths.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { refreshStoredTicketStatuses, type StoredTicketStatus } from '#lib/ticket-status-storage.js';
@@ -43,7 +44,7 @@
 
 {#snippet ticketCard(ticket: StoredTicketStatus, completed: boolean)}
 	<a
-		href={ticket.path}
+		href={isAppPath(ticket.path) ? withBase(ticket.path) : undefined}
 		class={completed
 			? 'group bg-muted/35 relative overflow-hidden rounded-2xl border p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:bg-muted/55 hover:shadow-sm'
 			: 'group bg-card relative overflow-hidden rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md'}

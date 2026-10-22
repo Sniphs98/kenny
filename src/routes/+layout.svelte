@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase, withoutBase, type AppPath } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import '@fontsource-variable/inter';
 	import '../app.css';
@@ -34,17 +35,25 @@
 		document.documentElement.dataset.hydrated = '';
 	});
 
+	type NavLink = { href: AppPath; label: string; icon: typeof FolderKanban; match: (path: string) => boolean };
 	const links = $derived(
-		[
-			{
-				href: '/',
-				label: m.projects(),
-				icon: FolderKanban,
-				match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
-			},
-			{ href: '/settings/forms', label: m.forms(), icon: Inbox, match: (p: string) => p.startsWith('/settings/forms') },
-			{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') }
-		].filter((link) => link.href !== '/settings/forms' || data.user?.role === 'admin')
+		(
+			[
+				{
+					href: '/',
+					label: m.projects(),
+					icon: FolderKanban,
+					match: (p: string) => p === '/' || p.startsWith('/projects') || p.startsWith('/tickets')
+				},
+				{
+					href: '/settings/forms',
+					label: m.forms(),
+					icon: Inbox,
+					match: (p: string) => p.startsWith('/settings/forms')
+				},
+				{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') }
+			] satisfies NavLink[]
+		).filter((link) => link.href !== '/settings/forms' || data.user?.role === 'admin')
 	);
 
 	// In Projekten (und deren Tickets) wird die Projektfarbe zur Primärfarbe.
@@ -58,16 +67,14 @@
 	});
 
 	// Einreichungsformulare, öffentliche Statusseiten und Teams-Einstiegsseiten stehen für sich, ohne App-Navigation
+	const path = $derived(withoutBase(page.url.pathname));
 	const showHeader = $derived(
-		!!data.user &&
-			!page.url.pathname.startsWith('/submit/') &&
-			!/^\/status(\/|$)/.test(page.url.pathname) &&
-			!/^\/teams(\/|$)/.test(page.url.pathname)
+		!!data.user && !path.startsWith('/submit/') && !/^\/status(\/|$)/.test(path) && !/^\/teams(\/|$)/.test(path)
 	);
 
 	async function logout() {
 		await authClient.signOut();
-		await goto('/login', { refreshAll: true });
+		await goto(withBase('/login'), { refreshAll: true });
 	}
 </script>
 
@@ -85,7 +92,7 @@
 			<header
 				class="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-5 backdrop-blur max-sm:h-auto max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-1 max-sm:px-3 max-sm:py-2"
 			>
-				<a href="/" class="mr-3 flex shrink-0 items-center gap-2 font-semibold tracking-tight max-sm:mr-0">
+				<a href={withBase('/')} class="mr-3 flex shrink-0 items-center gap-2 font-semibold tracking-tight max-sm:mr-0">
 					<KennyLogo class="size-7" />
 					Kenny
 				</a>
@@ -95,10 +102,10 @@
 				>
 					{#each links as l (l.href)}
 						<a
-							href={l.href}
+							href={withBase(l.href)}
 							class={cn(
 								'text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 max-sm:justify-center',
-								l.match(page.url.pathname) && 'bg-muted text-foreground'
+								l.match(path) && 'bg-muted text-foreground'
 							)}
 						>
 							<l.icon class="size-4" />
@@ -126,12 +133,12 @@
 						<DropdownMenu.Separator />
 						<LanguageSwitcher />
 						<SoundToggle />
-						{#if data.user.role === 'admin'}<DropdownMenu.Item onSelect={() => goto('/admin/users')}
+						{#if data.user.role === 'admin'}<DropdownMenu.Item onSelect={() => goto(withBase('/admin/users'))}
 								><Users />{m.um_users()}</DropdownMenu.Item
-							><DropdownMenu.Item onSelect={() => goto('/admin/teams')}
+							><DropdownMenu.Item onSelect={() => goto(withBase('/admin/teams'))}
 								><MessagesSquare />{m.teams_admin_title()}</DropdownMenu.Item
 							>{/if}
-						<DropdownMenu.Item onSelect={() => goto('/settings/api')}>
+						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/api'))}>
 							<KeyRound />
 							{m.api_tokens()}
 						</DropdownMenu.Item>

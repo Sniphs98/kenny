@@ -1,3 +1,4 @@
+import { withBase } from '#lib/paths.js';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -21,6 +22,6 @@ export const actions = {
 			if (error instanceof ApiError) return fail(error.status, { form: { ...form, message: error.message } });
 			throw error;
 		}
-		redirect(303, `/projects/${key}/board`);
+		redirect(303, withBase(`/projects/${key}/board`));
 	}
 };

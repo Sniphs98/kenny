@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { ganttSpan, planningDates } from '#lib/schedule.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -684,7 +685,7 @@
 					</DropdownMenu.Root>
 					<Hint text={t.title} side="right">
 						{#snippet children(props)}
-							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
+							<a {...props} class="link" href={withBase(`/tickets/${t.key}`)} onclick={(e) => openTicket(t.key, e)}>
 								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
 							</a>
 						{/snippet}

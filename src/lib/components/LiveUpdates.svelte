@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { refreshAll } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import { clientId, LIVE_EVENT } from '#lib/live-client.js';
@@ -19,7 +20,7 @@
 	const DEBOUNCE_MS = 250;
 
 	$effect(() => {
-		const url = `/api/v1/events${project ? `?project=${encodeURIComponent(project)}` : ''}`;
+		const url = withBase(`/api/v1/events${project ? `?project=${encodeURIComponent(project)}` : ''}`);
 		const source = new EventSource(url);
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		let opened = false;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import LiveUpdates from '#lib/components/LiveUpdates.svelte';
 	import TicketView from '#lib/components/TicketView.svelte';
 	import * as Breadcrumb from '#lib/components/ui/breadcrumb/index.js';
@@ -12,13 +13,14 @@
 	<Breadcrumb.Root class="mb-4">
 		<Breadcrumb.List>
 			<Breadcrumb.Item class="min-w-0 max-w-full">
-				<Breadcrumb.Link class="truncate" href="/projects/{data.project.key}/board">{data.project.name}</Breadcrumb.Link
+				<Breadcrumb.Link class="truncate" href={withBase(`/projects/${data.project.key}/board`)}
+					>{data.project.name}</Breadcrumb.Link
 				>
 			</Breadcrumb.Item>
 			<Breadcrumb.Separator />
 			{#if data.parent}
 				<Breadcrumb.Item>
-					<Breadcrumb.Link href="/tickets/{data.parent.key}">{data.parent.title}</Breadcrumb.Link>
+					<Breadcrumb.Link href={withBase(`/tickets/${data.parent.key}`)}>{data.parent.title}</Breadcrumb.Link>
 				</Breadcrumb.Item>
 				<Breadcrumb.Separator />
 			{/if}

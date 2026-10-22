@@ -10,6 +10,7 @@ import { protectFraming } from '#lib/server/framing.js';
 import { TEAMS_FRAME_ANCESTORS, teamsEnabled } from '#lib/server/teams.js';
 import '#lib/locale-choice.js';
 import { paraglideMiddleware } from '#lib/paraglide/server.js';
+import { withBase, withoutBase } from '#lib/paths.js';
 
 // /submit/: Formulare zum Einreichen; ob eine Anmeldung nötig ist, entscheidet das Formular selbst
 const PUBLIC_PATHS = ['/login', '/api/', '/submit/', '/status/'];
@@ -27,9 +28,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	const path = event.url.pathname;
+	const path = withoutBase(event.url.pathname);
 	if (!event.locals.user && !PUBLIC_PAGES.includes(path) && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
-		redirect(303, `/login?redirect=${encodeURIComponent(path + event.url.search)}`);
+		redirect(303, withBase(`/login?redirect=${encodeURIComponent(path + event.url.search)}`));
 	}
 
 	const response = await svelteKitHandler({ event, resolve, auth, building });

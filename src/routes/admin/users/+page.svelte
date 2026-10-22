@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { refreshAll } from '$app/navigation';
 	import { m } from '#lib/paraglide/messages.js';
 	import { updateUser } from '#lib/api.js';
@@ -104,7 +105,7 @@
 						<td class="p-3"
 							><a
 								class="mr-2 inline-flex rounded-md border px-3 py-1.5"
-								href={`/admin/users/${encodeURIComponent(user.id)}/projects`}>{m.um_user_projects()}</a
+								href={withBase(`/admin/users/${encodeURIComponent(user.id)}/projects`)}>{m.um_user_projects()}</a
 							>
 							<Button
 								variant="outline"

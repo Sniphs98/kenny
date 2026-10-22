@@ -18,6 +18,7 @@ import { APIError } from 'better-auth/api';
 import { requireActiveUser } from './services/access';
 import { bootstrapAdministrator, registrationAllowed } from './services/users';
 import { teamsEnabled } from './teams';
+import { withBase } from '#lib/paths.js';
 
 // Microsoft-Login wird nur aktiviert, wenn die Zugangsdaten gesetzt sind (siehe README)
 const socialProviders: BetterAuthOptions['socialProviders'] = {};
@@ -38,6 +39,8 @@ export const microsoftEnabled = !!socialProviders.microsoft;
 
 export const auth = betterAuth({
 	baseURL: building ? 'http://localhost:3000' : BETTER_AUTH_URL || undefined,
+	// BETTER_AUTH_URL ist nur die Origin; ein Unterpfad hinter einem Reverse Proxy gehört hierher
+	basePath: withBase('/api/auth'),
 	// Build analysis needs an auth instance, but must never need a production secret.
 	secret: building ? 'build-only-placeholder-never-used-at-runtime-0123456789' : BETTER_AUTH_SECRET || undefined,
 	database: drizzleAdapter(db, { provider: 'sqlite', schema }),

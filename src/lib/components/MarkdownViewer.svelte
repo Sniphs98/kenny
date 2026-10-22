@@ -2,15 +2,28 @@
 	import '@toast-ui/editor/dist/toastui-editor-viewer.css';
 	import { onMount } from 'svelte';
 	import type { Viewer } from '@toast-ui/editor';
+	import { BASE_PATH } from '#lib/paths.js';
 
 	let { value }: { value: string } = $props();
 	let container: HTMLDivElement;
 	let viewer = $state<Viewer | undefined>();
 
+	/** Vor einem Umzug unter einen Unterpfad gespeicherte Beschreibungen verweisen noch auf /api/v1/attachments/… */
+	function prefixLegacyAttachmentUrls() {
+		if (!BASE_PATH) return;
+		const legacy = 'img[src^="/api/v1/attachments/"], a[href^="/api/v1/attachments/"]';
+		for (const element of container.querySelectorAll(legacy)) {
+			const attribute = element instanceof HTMLImageElement ? 'src' : 'href';
+			element.setAttribute(attribute, BASE_PATH + element.getAttribute(attribute));
+		}
+	}
+
 	onMount(() => {
 		let active = true;
 		import('@toast-ui/editor/dist/toastui-editor-viewer').then(({ default: ToastViewer }) => {
-			if (active) viewer = new ToastViewer({ el: container, initialValue: value, usageStatistics: false });
+			if (!active) return;
+			viewer = new ToastViewer({ el: container, initialValue: value, usageStatistics: false });
+			prefixLegacyAttachmentUrls();
 		});
 		return () => {
 			active = false;
@@ -19,7 +32,9 @@
 	});
 
 	$effect(() => {
-		viewer?.setMarkdown(value);
+		if (!viewer) return;
+		viewer.setMarkdown(value);
+		prefixLegacyAttachmentUrls();
 	});
 </script>
 

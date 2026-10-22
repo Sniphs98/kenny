@@ -1,3 +1,4 @@
+import { withBase } from '#lib/paths.js';
 import { publicTicketStatusSchema } from '#lib/contracts/index.js';
 
 export type StoredTicketStatus = {
@@ -58,7 +59,7 @@ export async function refreshStoredTicketStatuses() {
 	const items = storedTicketStatuses();
 	const refreshed = await Promise.all(
 		items.map(async (item): Promise<StoredTicketStatus | null> => {
-			const response = await fetch(`/api/v1${item.path}`);
+			const response = await fetch(withBase(`/api/v1${item.path}`));
 			if (response.status === 404) return null;
 			if (!response.ok) throw new Error('Ticketstatus konnte nicht geladen werden.');
 			const current = publicTicketStatusSchema.parse(await response.json());

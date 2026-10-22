@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBase } from '#lib/paths.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import KennyLogo from '#lib/components/KennyLogo.svelte';
 	import { Button, buttonVariants } from '#lib/components/ui/button/index.js';
@@ -31,7 +32,7 @@
 				{:else if state === 'outside'}
 					<h1 class="text-lg font-semibold">{m.teams_outside_title()}</h1>
 					<p class="text-muted-foreground text-sm">{m.teams_outside_text()}</p>
-					<a href="/" class={buttonVariants()}>{m.teams_open_kenny()}</a>
+					<a href={withBase('/')} class={buttonVariants()}>{m.teams_open_kenny()}</a>
 				{:else}
 					<CircleAlert class="text-destructive size-6" />
 					<h1 class="text-lg font-semibold">{m.teams_sign_in_failed()}</h1>

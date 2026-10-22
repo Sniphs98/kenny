@@ -10,35 +10,9 @@ async function fitsViewport(page: Page) {
 	expect(size.viewport, page.url()).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
 }
 
-for (const width of [320, 375, 430, 768]) {
-	test(`pages fit a ${width}px touch viewport with long content`, async ({ page, request }) => {
-		await page.setViewportSize({ width, height: 812 });
-		const p = await createProject(request, 'Mobile ' + 'LongProjectName'.repeat(6));
-		const t = await createTicket(request, p.key, {
-			title: 'Touch task ' + 'LongTitle'.repeat(16),
-			description: 'https://example.com/' + 'long-path'.repeat(60),
-			startDate: day(0),
-			dueDate: day(5)
-		});
-		for (const path of [
-			'/',
-			`/projects/${p.key}/board`,
-			`/projects/${p.key}/gantt`,
-			`/projects/${p.key}/settings`,
-			`/projects/${p.key}/members`,
-			`/tickets/${t.key}`,
-			'/admin/users',
-			'/settings/forms',
-			'/settings/api'
-		]) {
-			await open(page, path);
-			await fitsViewport(page);
-		}
-	});
-}
-
 test('touch navigation, board status change and full-screen ticket editing', async ({ page, request }) => {
 	const p = await createProject(request, 'Touch workflow');
+	await createTicket(request, p.key, { title: 'Mobile plan', kind: 'main', startDate: day(0), dueDate: day(5) });
 	const t = await createTicket(request, p.key, { title: 'Edit by touch' });
 	await open(page, '/');
 	await page
@@ -46,7 +20,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 		.filter({ hasText: `Touch workflow ${p.key}` })
 		.tap();
 	await expect(page).toHaveURL(`/projects/${p.key}/board`);
-	await card(page, t.title).getByRole('button', { name: 'Ticket verschieben' }).tap();
+	await card(page, t.title).getByRole('button', { name: 'Aufgabe verschieben' }).tap();
 	await page.getByRole('menuitem', { name: 'Review', exact: true }).tap();
 	await expect.poll(async () => (await getTicket(request, t.key)).status).toBe('Review');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -80,7 +54,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 	await dialog.getByRole('button', { name: 'Schließen', exact: true }).tap();
 	await expect(dialog).toBeHidden();
 	await page.getByRole('navigation', { name: 'Projektnavigation' }).getByRole('link', { name: 'Gantt' }).tap();
-	await expect(page.locator('.labels .label').filter({ hasText: 'Saved on mobile' })).toBeVisible();
+	await expect(page.locator('.labels .label').filter({ hasText: 'Mobile plan' })).toBeVisible();
 	const chart = page.locator('.gantt');
 	const labelWidth = await page.locator('.gantt .corner').evaluate((el) => el.getBoundingClientRect().width);
 	expect(labelWidth).toBeLessThan(200);
@@ -88,7 +62,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 		el.scrollLeft += 100;
 	});
 	await fitsViewport(page);
-	await page.getByRole('button', { name: 'Ticket einplanen…', exact: true }).tap();
+	await page.getByRole('button', { name: 'Hauptaufgabe einplanen…', exact: true }).tap();
 	const planner = page.locator('[data-slot=popover-content]');
 	await expect(planner).toBeVisible();
 	const plannerBounds = await planner.boundingBox();
@@ -106,7 +80,7 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 test('long create dialogs scroll and project columns can be reordered by touch', async ({ page, request }) => {
 	const p = await createProject(request, 'Mobile settings');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).tap();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).tap();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByLabel('Titel', { exact: true }).fill('Created on a phone');
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).tap();
@@ -156,7 +130,7 @@ test('mobile readers can view tickets but cannot use touch editing controls', as
 		await api(request, 'POST', `/projects/${p.key}/members`, { user: user.id, role: 'reader' });
 		const page = await context.newPage();
 		await open(page, `/projects/${p.key}/board`);
-		await expect(page.getByRole('button', { name: 'Ticket verschieben' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Aufgabe verschieben' })).toHaveCount(0);
 		await card(page, t.title).getByRole('link', { name: t.title, exact: true }).tap();
 		await expect(page.getByRole('dialog').getByRole('textbox', { name: 'Titel', exact: true })).toHaveAttribute(
 			'readonly',

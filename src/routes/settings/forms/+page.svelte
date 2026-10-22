@@ -4,7 +4,14 @@
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { INTAKE_FIELDS, intakeFieldsSchema, intakeFormSchema, type IntakeFormDto } from '#lib/contracts/index.js';
+	import {
+		INTAKE_FIELDS,
+		INTAKE_FIELD_ORDER,
+		intakeFieldsSchema,
+		intakeFormSchema,
+		type IntakeFieldOrder,
+		type IntakeFormDto
+	} from '#lib/contracts/index.js';
 	import { embedCode } from '#lib/embed.js';
 	import { localizeError } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -24,6 +31,7 @@
 	import Code from '@lucide/svelte/icons/code';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -37,8 +45,10 @@
 		optional: m.email_mode_optional(),
 		required: m.email_mode_required()
 	};
+	const DESIGNS = { default: m.form_design_default(), enable: m.form_design_enable() };
 
 	const FIELD_LABELS = {
+		system: m.system(),
 		description: m.description(),
 		priority: m.priority_2(),
 		startDate: m.start(),
@@ -46,6 +56,7 @@
 		tags: m.tags(),
 		attachments: m.attachments()
 	};
+	const ORDER_LABELS = { project: m.project(), title: m.title(), ...FIELD_LABELS, email: m.your_email() };
 
 	/** Angebotene Felder für die Übersicht, Pflichtfelder mit * */
 	const offered = (f: IntakeFormDto) =>
@@ -83,7 +94,9 @@
 				projectIds: [],
 				requireLogin: false,
 				emailMode: 'optional',
+				design: 'default',
 				fields: intakeFieldsSchema.parse({}),
+				fieldOrder: [...INTAKE_FIELD_ORDER],
 				restrictTags: false,
 				tagIds: [],
 				active: true
@@ -100,7 +113,9 @@
 				projectIds: f.projects.map((p) => p.id),
 				requireLogin: f.requireLogin,
 				emailMode: f.emailMode,
+				design: f.design,
 				fields: { ...f.fields },
+				fieldOrder: [...f.fieldOrder],
 				restrictTags: f.restrictTags,
 				tagIds: [...f.tagIds],
 				active: f.active
@@ -121,6 +136,26 @@
 
 	function toggleTag(id: number, on: boolean) {
 		$form.tagIds = on ? [...$form.tagIds, id] : $form.tagIds.filter((t) => t !== id);
+	}
+	let armedField = $state<string | null>(null);
+	let draggedField = $state<IntakeFieldOrder | null>(null);
+	function moveField(from: number, to: number) {
+		if (from < 0 || to < 0 || to >= $form.fieldOrder.length || from === to) return;
+		const next = [...$form.fieldOrder];
+		const [moved] = next.splice(from, 1);
+		next.splice(to, 0, moved);
+		$form.fieldOrder = next;
+	}
+	function onFieldDragOver(event: DragEvent, target: IntakeFieldOrder) {
+		if (!draggedField || draggedField === target) return;
+		event.preventDefault();
+		moveField($form.fieldOrder.indexOf(draggedField), $form.fieldOrder.indexOf(target));
+	}
+	function onFieldKeydown(event: KeyboardEvent, field: IntakeFieldOrder) {
+		const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+		if (!direction) return;
+		event.preventDefault();
+		moveField($form.fieldOrder.indexOf(field), $form.fieldOrder.indexOf(field) + direction);
 	}
 
 	const link = (f: IntakeFormDto) => `${page.url.origin}/submit/${f.token}`;
@@ -173,6 +208,7 @@
 				{#if !f.active}<Badge variant="outline">{m.form_inactive()}</Badge>{/if}
 				<Badge variant="secondary">{f.requireLogin ? m.require_login() : m.public_form()}</Badge>
 				{#if !f.requireLogin}<Badge variant="secondary">{m.email()}: {EMAIL_MODES[f.emailMode]}</Badge>{/if}
+				{#if f.design === 'enable'}<Badge variant="outline">{DESIGNS[f.design]}</Badge>{/if}
 			</Card.Header>
 			<Card.Content class="gap-3">
 				<div class="flex flex-wrap gap-1.5">
@@ -261,6 +297,15 @@
 			</div>
 			<Label class="font-normal"><Checkbox bind:checked={$form.requireLogin} /> {m.require_login()}</Label>
 			<div class="grid gap-2">
+				<Label id="form-design-label">{m.form_design()}</Label>
+				<Select.Root type="single" bind:value={$form.design}>
+					<Select.Trigger class="w-full" aria-labelledby="form-design-label">{DESIGNS[$form.design]}</Select.Trigger>
+					<Select.Content>
+						{#each Object.entries(DESIGNS) as [value, label] (value)}<Select.Item {value}>{label}</Select.Item>{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			<div class="grid gap-2">
 				<Label id="email-mode-label">{m.email_field()}</Label>
 				<Select.Root type="single" bind:value={$form.emailMode} disabled={$form.requireLogin}>
 					<Select.Trigger class="w-full" aria-labelledby="email-mode-label"
@@ -274,22 +319,56 @@
 			</div>
 			<fieldset class="grid gap-2">
 				<legend class="mb-2 text-sm font-medium">{m.fields()}</legend>
-				<div class="grid gap-2 rounded-md border p-3">
-					{#each INTAKE_FIELDS as field (field)}
-						<div class="flex items-center gap-3">
-							<span class="grow text-sm" id="field-{field}">{FIELD_LABELS[field]}</span>
-							<Select.Root type="single" bind:value={$form.fields[field]}>
-								<Select.Trigger class="w-36" size="sm" aria-labelledby="field-{field}"
-									>{EMAIL_MODES[$form.fields[field]]}</Select.Trigger
-								>
-								<Select.Content>
-									{#each Object.entries(EMAIL_MODES) as [v, l] (v)}<Select.Item value={v}>{l}</Select.Item>{/each}
-								</Select.Content>
-							</Select.Root>
+				<div class="grid gap-1 rounded-md border p-3">
+					{#each $form.fieldOrder as field (field)}
+						<div
+							class="flex items-center gap-2 rounded-md px-1 py-1"
+							class:bg-muted={draggedField === field}
+							draggable={armedField === field}
+							ondragstart={(event) => {
+								draggedField = field;
+								event.dataTransfer!.effectAllowed = 'move';
+								event.dataTransfer!.setData('text/plain', field);
+							}}
+							ondragover={(event) => onFieldDragOver(event, field)}
+							ondrop={(event) => event.preventDefault()}
+							ondragend={() => {
+								draggedField = null;
+								armedField = null;
+							}}
+						>
+							<button
+								type="button"
+								class="text-muted-foreground cursor-grab touch-none rounded p-1 focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label={m.move_form_field({ field: ORDER_LABELS[field] })}
+								title={m.drag_to_reorder_or_use_arrow_keys()}
+								onpointerdown={() => (armedField = field)}
+								onpointerup={() => {
+									if (!draggedField) armedField = null;
+								}}
+								onkeydown={(event) => onFieldKeydown(event, field)}><GripVertical class="size-4" /></button
+							>
+							<span class="grow text-sm" id="field-{field}">{ORDER_LABELS[field]}</span>
+							{#if field === 'project' || field === 'title'}
+								<span class="text-muted-foreground text-xs">{m.email_mode_required()}</span>
+							{:else if field === 'email'}
+								<span class="text-muted-foreground text-xs">{EMAIL_MODES[$form.emailMode]}</span>
+							{:else}
+								<Select.Root type="single" bind:value={$form.fields[field]}>
+									<Select.Trigger class="w-36" size="sm" aria-labelledby="field-{field}"
+										>{EMAIL_MODES[$form.fields[field]]}</Select.Trigger
+									>
+									<Select.Content
+										>{#each Object.entries(EMAIL_MODES) as [value, label] (value)}<Select.Item {value}
+												>{label}</Select.Item
+											>{/each}</Select.Content
+									>
+								</Select.Root>
+							{/if}
 						</div>
 					{/each}
 				</div>
-				<p class="text-muted-foreground text-xs">{m.title_always_required()}</p>
+				<p class="text-muted-foreground text-xs">{m.drag_to_reorder_or_use_arrow_keys()}</p>
 			</fieldset>
 			{#if $form.fields.tags !== 'hidden'}
 				<div class="grid gap-2">

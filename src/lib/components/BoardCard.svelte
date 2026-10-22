@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { PRIORITY_LABELS } from '#lib/api.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import Hint from '#lib/components/Hint.svelte';
@@ -23,6 +26,7 @@
 	let {
 		readOnly = false,
 		t,
+		inTicketSystem = false,
 		parent,
 		subtasks,
 		users,
@@ -30,14 +34,18 @@
 		expanded,
 		dragging,
 		onToggleSubtasks,
+		onToggleStatus,
 		onAssign,
 		columns,
+		fields,
+		showMove = true,
 		onMove,
 		ondragstart,
 		ondragend
 	}: {
 		readOnly?: boolean;
 		t: TicketListItem;
+		inTicketSystem?: boolean;
 		parent?: TicketListItem;
 		/** Unteraufgaben für die aufklappbare Liste */
 		subtasks: TicketListItem[];
@@ -46,17 +54,44 @@
 		expanded: boolean;
 		dragging: boolean;
 		onToggleSubtasks: () => void;
+		onToggleStatus: () => void;
 		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
+		fields: (
+			| 'status'
+			| 'statusCheckbox'
+			| 'parent'
+			| 'tags'
+			| 'priority'
+			| 'dueDate'
+			| 'blockers'
+			| 'attachments'
+			| 'assignees'
+			| 'subtasks'
+		)[];
+		showMove?: boolean;
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
 		ondragend: (e: DragEvent) => void;
 	} = $props();
 
 	const blocked = $derived(t.openBlockers > 0 && !t.closed);
+	let isNew = $state(false);
 	/** Unteraufgaben, die noch auf offene Voraussetzungen warten */
 	const blockedSubtasks = $derived(subtasks.filter((s) => s.openBlockers > 0 && !s.closed).length);
 	const overdue = $derived(!t.closed && !!t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10));
+
+	onMount(() => {
+		isNew = t.submitted && localStorage.getItem(`kenny:seen-ticket:${t.key}`) === null;
+	});
+
+	function viewTicket(e: MouseEvent) {
+		if (t.submitted) {
+			localStorage.setItem(`kenny:seen-ticket:${t.key}`, '1');
+			isNew = false;
+		}
+		openTicket(t.key, e);
+	}
 
 	/** Fälligkeit kurz: "12.10.", in anderen Jahren mit Jahr */
 	function shortDate(d: string) {
@@ -68,7 +103,7 @@
 
 <!-- Tags oben rechts in der Ecke: neben der ersten Zeile (Elternticket oder Titel) -->
 {#snippet tagList()}
-	{#if t.tags.length}
+	{#if fields.includes('tags') && t.tags.length}
 		<div class="flex max-w-[50%] shrink-0 flex-wrap justify-end gap-1">
 			{#each t.tags as g (g.id)}<TagBadge name={g.name} color={g.color} />{/each}
 		</div>
@@ -90,91 +125,135 @@
 	role="listitem"
 	{ondragstart}
 	{ondragend}
-	onclick={(e) => openTicket(t.key, e)}
+	onclick={viewTicket}
 >
-	{#if parent}
+	{#if (parent && fields.includes('parent')) || inTicketSystem || isNew}
 		<div class="-mb-0.5 flex items-start gap-2">
-			<Hint text={m.subtask_of({ value1: parent.key, value2: parent.title })}>
-				{#snippet children(props)}
-					<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
-						<CornerDownRight class="size-3 shrink-0" />
-						<span class="shrink-0 font-mono">{parent.key}</span>
-						<span class="truncate">{parent.title}</span>
-					</div>
-				{/snippet}
-			</Hint>
+			{#if parent && fields.includes('parent')}
+				<Hint text={m.subtask_of({ value1: parent.title, value2: '' })}>
+					{#snippet children(props)}
+						<div {...props} class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
+							<CornerDownRight class="size-3 shrink-0" />
+							<span class="truncate">{parent.title}</span>
+						</div>
+					{/snippet}
+				</Hint>
+			{:else if inTicketSystem && !parent}
+				<div class="text-muted-foreground flex min-h-5 min-w-0 grow items-center gap-1 text-xs">
+					<CornerDownRight class="size-3 shrink-0" />
+					<span class="truncate">{m.ticket_system()}</span>
+				</div>
+			{:else}<span class="grow"></span>{/if}
+			{#if isNew}<Badge data-new-submission>{m.new()}</Badge>{/if}
 			{@render tagList()}
 		</div>
 	{/if}
 	<div class="flex items-start gap-2">
+		{#if fields.includes('statusCheckbox')}
+			<Checkbox
+				checked={t.closed}
+				disabled={readOnly}
+				class="mt-0.5"
+				aria-label={m.status_checkbox()}
+				onclick={(event) => event.stopPropagation()}
+				onCheckedChange={onToggleStatus}
+			/>
+		{/if}
 		<a
 			href="/tickets/{t.key}"
 			class={cn(
 				'line-clamp-3 min-w-0 grow font-medium break-words hover:underline',
 				t.closed && 'text-muted-foreground line-through'
 			)}
-			onclick={(e) => (e.stopPropagation(), openTicket(t.key, e))}
+			onclick={(e) => (e.stopPropagation(), viewTicket(e))}
 			draggable="false">{t.title}</a
 		>
-		{#if !parent}{@render tagList()}{/if}
+		{#if !(parent && fields.includes('parent')) && !inTicketSystem}{@render tagList()}{/if}
 	</div>
-	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
-		<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
-			{#snippet children(props)}
-				<span {...props} class="flex items-center gap-1.5">
-					<span class="prio prio-{t.priority}"></span>
-					<span class="font-mono">{t.key}</span>
+	{#if fields.some( (field) => ['status', 'priority', 'dueDate', 'blockers', 'attachments', 'assignees'].includes(field) )}
+		<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
+			{#if fields.includes('status')}
+				{#if readOnly}
+					<span class="truncate">{columns.find((column) => column.id === t.columnId)?.name}</span>
+				{:else}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger
+							class="hover:bg-muted text-foreground -ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium"
+							onclick={(event) => event.stopPropagation()}
+						>
+							{columns.find((column) => column.id === t.columnId)?.name}
+							<ChevronRight class="size-3 rotate-90" />
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content align="start">
+							{#each columns as column (column.id)}
+								<DropdownMenu.Item disabled={column.id === t.columnId} onSelect={() => onMove(column.id)}>
+									{column.name}
+								</DropdownMenu.Item>
+							{/each}
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				{/if}
+			{/if}
+			{#if fields.includes('priority')}
+				<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
+					{#snippet children(props)}
+						<span {...props} class="flex items-center gap-1.5">
+							<span class="prio prio-{t.priority}"></span>
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('dueDate') && t.dueDate}
+				<Hint
+					text={m.due_on({
+						value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
+						value2: overdue ? m.overdue_suffix() : ''
+					})}
+				>
+					{#snippet children(props)}
+						<span {...props} class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}>
+							<Calendar />
+							{shortDate(t.dueDate!)}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('blockers') && blocked}
+				<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
+					{#snippet children(props)}
+						<span {...props} class="text-warning flex items-center gap-1">
+							<Ban />
+							{t.openBlockers}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('attachments') && t.attachmentCount > 0}
+				<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
+					{#snippet children(props)}
+						<span {...props} class="flex items-center gap-1" data-attachments>
+							<Paperclip />
+							{t.attachmentCount}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('assignees')}
+				<span class="ml-auto">
+					<AssigneePicker
+						assigned={t.assignees}
+						disabled={readOnly}
+						compact
+						{users}
+						{me}
+						value={t.assigneeIds}
+						onchange={onAssign}
+					/>
 				</span>
-			{/snippet}
-		</Hint>
-		{#if t.dueDate}
-			<Hint
-				text={m.due_on({
-					value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
-					value2: overdue ? m.overdue_suffix() : ''
-				})}
-			>
-				{#snippet children(props)}
-					<span {...props} class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}>
-						<Calendar />
-						{shortDate(t.dueDate!)}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		{#if blocked}
-			<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
-				{#snippet children(props)}
-					<span {...props} class="text-warning flex items-center gap-1">
-						<Ban />
-						{t.openBlockers}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		{#if t.attachmentCount > 0}
-			<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
-				{#snippet children(props)}
-					<span {...props} class="flex items-center gap-1" data-attachments>
-						<Paperclip />
-						{t.attachmentCount}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		<span class="ml-auto">
-			<AssigneePicker
-				assigned={t.assignees}
-				disabled={readOnly}
-				compact
-				{users}
-				{me}
-				value={t.assigneeIds}
-				onchange={onAssign}
-			/>
-		</span>
-	</div>
-	{#if !readOnly}
+			{/if}
+		</div>
+	{/if}
+	{#if !readOnly && showMove}
 		<div class="sm:hidden">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
@@ -190,7 +269,7 @@
 			</DropdownMenu.Root>
 		</div>
 	{/if}
-	{#if t.subtaskCount > 0}
+	{#if fields.includes('subtasks') && t.subtaskCount > 0}
 		<div class="-mx-3 -mb-2.5 border-t">
 			<Hint text={expanded ? m.collapse_subtasks() : m.expand_subtasks()}>
 				{#snippet children(props)}
@@ -238,7 +317,6 @@
 								{:else}
 									<Circle class="text-muted-foreground size-3.5 shrink-0" />
 								{/if}
-								<span class="text-muted-foreground shrink-0 font-mono">{s.key}</span>
 								<span class={cn('truncate', s.closed && 'text-muted-foreground line-through')}>{s.title}</span>
 								{#if s.openBlockers > 0 && !s.closed}
 									<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>

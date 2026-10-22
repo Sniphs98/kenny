@@ -21,6 +21,10 @@ export const project = sqliteTable('project', {
 	name: text('name').notNull(),
 	description: text('description').notNull().default(''),
 	color: text('color').notNull().default('#6366f1'),
+	systems: text('systems', { mode: 'json' })
+		.$type<string[]>()
+		.notNull()
+		.default(sql`'[]'`),
 	/** Zähler für fortlaufende Ticketnummern pro Projekt */
 	ticketCounter: integer('ticket_counter').notNull().default(0),
 	ownerId: text('owner_id').references(() => user.id, { onDelete: 'set null' }),
@@ -28,18 +32,6 @@ export const project = sqliteTable('project', {
 });
 
 /** Spalten des Kanban-Boards eines Projekts */
-export const bucket = sqliteTable(
-	'bucket',
-	{
-		id: integer('id').primaryKey({ autoIncrement: true }),
-		projectId: integer('project_id')
-			.notNull()
-			.references(() => project.id, { onDelete: 'cascade' }),
-		name: text('name').notNull()
-	},
-	(t) => [uniqueIndex('bucket_project_name_idx').on(t.projectId, t.name)]
-);
-
 export const boardColumn = sqliteTable(
 	'board_column',
 	{
@@ -60,11 +52,15 @@ export const boardColumn = sqliteTable(
 export { PRIORITIES, type Priority } from '#lib/contracts/index.js';
 import {
 	PRIORITIES,
+	TICKET_KINDS,
 	LINK_TYPES,
 	INTAKE_EMAIL_MODES,
 	NOTIFICATION_LOCALES,
 	type IntakeFields,
-	type NotificationEvent
+	type IntakeFieldOrder,
+	type IntakeDesign,
+	type NotificationEvent,
+	type EmailNotificationEvent
 } from '#lib/contracts/index.js';
 
 export const ticket = sqliteTable(
@@ -76,6 +72,7 @@ export const ticket = sqliteTable(
 			.references(() => project.id, { onDelete: 'cascade' }),
 		number: integer('number').notNull(),
 		title: text('title').notNull(),
+		kind: text('kind', { enum: TICKET_KINDS }).notNull().default('task'),
 		description: text('description').notNull().default(''),
 		columnId: integer('column_id')
 			.notNull()
@@ -84,7 +81,8 @@ export const ticket = sqliteTable(
 		priority: text('priority', { enum: PRIORITIES }).notNull().default('medium'),
 		/** Übergeordnetes Ticket, wenn dieses Ticket eine Unteraufgabe ist */
 		parentId: integer('parent_id').references((): AnySQLiteColumn => ticket.id, { onDelete: 'cascade' }),
-		bucketId: integer('bucket_id').references(() => bucket.id, { onDelete: 'set null' }),
+		/** Explizite Board-Gruppe; null übernimmt die bisherige Zuordnung aus der Herkunft */
+		boardGroup: text('board_group', { enum: ['general', 'tickets'] }),
 		assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
 		/** Start und Ende als YYYY-MM-DD für das Gantt-Chart */
 		startDate: text('start_date'),
@@ -95,8 +93,9 @@ export const ticket = sqliteTable(
 		intakeFormId: integer('intake_form_id').references((): AnySQLiteColumn => intakeForm.id, {
 			onDelete: 'set null'
 		}),
-		/** E-Mail der einreichenden Person bei Formularen ohne Anmeldung */
+		/** E-Mail der einreichenden Person zum Zeitpunkt der Formulareinreichung */
 		reporterEmail: text('reporter_email'),
+		systemName: text('system_name'),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull(),
 		updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
 			.default(now)
@@ -108,6 +107,21 @@ export const ticket = sqliteTable(
 		index('ticket_column_idx').on(t.columnId),
 		index('ticket_parent_idx').on(t.parentId)
 	]
+);
+
+export const ticketComment = sqliteTable(
+	'ticket_comment',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		internal: integer('internal', { mode: 'boolean' }).notNull().default(false),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(now).notNull()
+	},
+	(t) => [index('ticket_comment_ticket_idx').on(t.ticketId)]
 );
 
 /**
@@ -223,9 +237,9 @@ export const intakeForm = sqliteTable('intake_form', {
 	token: text('token').notNull().unique(),
 	requireLogin: integer('require_login', { mode: 'boolean' }).notNull().default(false),
 	emailMode: text('email_mode', { enum: INTAKE_EMAIL_MODES }).notNull().default('optional'),
-	/** Welche Ticketfelder angeboten werden (ausgeblendet/optional/Pflicht); fehlende Felder nutzen die Standardwerte */
+	/** Feldeinstellungen und Formular-Design; fehlende Werte nutzen die Standardwerte */
 	fields: text('fields', { mode: 'json' })
-		.$type<Partial<IntakeFields>>()
+		.$type<Partial<IntakeFields> & { design?: IntakeDesign; fieldOrder?: IntakeFieldOrder[] }>()
 		.notNull()
 		.default(sql`'{}'`),
 	/** Nur die Tags aus intake_form_tag anbieten statt aller Tags der Projekte */
@@ -295,6 +309,21 @@ export const projectNotification = sqliteTable('project_notification', {
 	webhookUrl: text('webhook_url').notNull(),
 	events: text('events', { mode: 'json' }).$type<NotificationEvent[]>().notNull(),
 	locale: text('locale', { enum: NOTIFICATION_LOCALES }).notNull().default('de'),
+	lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+	lastError: text('last_error')
+});
+
+/** E-Mail-Benachrichtigungen eines Projekts; SMTP-Zugangsdaten kommen ausschließlich aus der Umgebung */
+export const projectEmailNotification = sqliteTable('project_email_notification', {
+	projectId: integer('project_id')
+		.primaryKey()
+		.references(() => project.id, { onDelete: 'cascade' }),
+	events: text('events', { mode: 'json' })
+		.$type<EmailNotificationEvent[]>()
+		.notNull()
+		.default(sql`'["created","closed","public_comment"]'`),
+	locale: text('locale', { enum: NOTIFICATION_LOCALES }).notNull().default('de'),
+	senderName: text('sender_name').notNull().default(''),
 	lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
 	lastError: text('last_error')
 });

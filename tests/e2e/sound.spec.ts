@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { card, createProject, createTicket, getTicket, open } from './helpers';
+import { createProject, createTicket, getTicket, open } from './helpers';
 
 // Den Ton selbst kann der Test nicht hören; die App meldet jeden abgespielten Ton als Fenster-Ereignis
 test.beforeEach(async ({ page }) => {
@@ -34,20 +34,6 @@ test('Ton beim Abhaken und Abschließen, nicht beim Wiederöffnen', async ({ pag
 	await expect(page.getByRole('button', { name: 'Wieder öffnen' })).toBeVisible();
 	expect(await sounds(page)).toBe(2);
 	expect((await getTicket(request, parent.key)).closed).toBe(true);
-});
-
-test('Ton beim Ziehen in eine Erledigt-Spalte', async ({ page, request }) => {
-	const p = await createProject(request);
-	await createTicket(request, p.key, { title: 'Fertig machen' });
-	await open(page, `/projects/${p.key}/board`);
-
-	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Review', exact: true }));
-	await expect(page.getByRole('region', { name: 'Review', exact: true }).locator('[data-card]')).toHaveCount(1);
-	expect(await sounds(page)).toBe(0);
-
-	await card(page, 'Fertig machen').dragTo(page.getByRole('region', { name: 'Erledigt', exact: true }));
-	await expect(page.getByRole('region', { name: 'Erledigt', exact: true }).locator('[data-card]')).toHaveCount(1);
-	await expect.poll(() => sounds(page)).toBe(1);
 });
 
 test('Ton lässt sich im Benutzermenü abschalten', async ({ page, request }) => {

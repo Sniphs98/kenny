@@ -5,12 +5,11 @@
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { ticketFormSchema, type Priority } from '#lib/contracts/index.js';
+	import { ticketFormSchema, type Priority, type TicketKind } from '#lib/contracts/index.js';
 	import { createTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import TagPicker from '#lib/components/TagPicker.svelte';
-	import BucketPicker from '#lib/components/BucketPicker.svelte';
 	import { newTicketRequest, takeNewTicketRequest } from '#lib/new-ticket.svelte.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
@@ -21,25 +20,21 @@
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import { toast } from 'svelte-sonner';
 
-	type Option = { id: number | string; label: string };
+	type Option = { id: number | string; label: string; kind: TicketKind };
 	let {
 		projectKey,
 		users,
 		tags,
-		buckets = [],
 		parents,
 		canCreate = true,
-		canManage = false,
 		preset = () => ({})
 	}: {
 		projectKey: string;
 		users: { id: string; name: string; email?: string }[];
 		tags: { id: number; name: string; color: string }[];
-		buckets?: { id: number; name: string }[];
 		parents: Option[];
 		/** Ohne Schreibrechte öffnet die Befehlspalette den Dialog nicht */
 		canCreate?: boolean;
-		canManage?: boolean;
 		/** Vorbelegung beim Öffnen aus der Befehlspalette (z.B. Datum im Gantt) */
 		preset?: () => Partial<ReturnType<typeof blank>>;
 	} = $props();
@@ -61,6 +56,7 @@
 		}
 	}
 	let createdAnother = false;
+	let assigneesTouched = false;
 
 	let isOpen = $state(false);
 	const { form, errors, enhance, reset, submitting } = superForm(blank(), {
@@ -75,12 +71,14 @@
 			if (!validated.valid) return;
 			error = '';
 			try {
-				const created = await createTicket(projectKey, {
+				const input: Parameters<typeof createTicket>[1] = {
 					...validated.data,
 					startDate: validated.data.startDate || null,
 					dueDate: validated.data.dueDate || null,
 					parentId: validated.data.parentId ? Number(validated.data.parentId) : null
-				});
+				};
+				if (!assigneesTouched) delete input.assignees;
+				const created = await createTicket(projectKey, input);
 				if (createMore) {
 					// Titel und Beschreibung leeren, Priorität, Zuständigkeit, Tags, Spalte usw. behalten
 					validated.data.title = '';
@@ -106,11 +104,11 @@
 	function blank() {
 		return {
 			title: '',
+			kind: 'task' as TicketKind,
 			description: '',
 			priority: 'medium' as Priority,
 			assignees: [] as string[],
 			tags: [] as (number | string)[],
-			bucketId: null as number | null,
 			startDate: '',
 			dueDate: '',
 			parentId: '',
@@ -121,6 +119,7 @@
 	/** Dialog öffnen, optional mit Vorbelegung (z.B. Spalte oder Datum) */
 	export function open(preset: Partial<ReturnType<typeof blank>> = {}) {
 		reset({ data: { ...blank(), ...preset } });
+		assigneesTouched = preset.assignees !== undefined;
 		error = '';
 		isOpen = true;
 	}
@@ -130,7 +129,9 @@
 		if (newTicketRequest.pending && canCreate && takeNewTicketRequest()) open(preset());
 	});
 
-	const parentLabel = $derived(parents.find((p) => String(p.id) === $form.parentId)?.label ?? m.no_parent_ticket());
+	const parentOptions = $derived(parents.filter((p) => p.kind === ($form.kind === 'task' ? 'main' : 'version')));
+	const emptyParentLabel = $derived($form.kind === 'main' ? m.no_version() : m.no_main_task());
+	const parentLabel = $derived(parentOptions.find((p) => String(p.id) === $form.parentId)?.label ?? emptyParentLabel);
 </script>
 
 <Dialog.Root bind:open={isOpen}>
@@ -142,6 +143,26 @@
 			<div class="grid gap-2">
 				<Label for="t-title">{m.title()}</Label>
 				<Input id="t-title" bind:value={$form.title} required maxlength={300} />
+			</div>
+			<div class="grid gap-2">
+				<Label>{m.element_type()}</Label>
+				<Select.Root
+					type="single"
+					value={$form.kind}
+					onValueChange={(v) => {
+						$form.kind = v as TicketKind;
+						$form.parentId = '';
+					}}
+				>
+					<Select.Trigger class="w-full"
+						>{$form.kind === 'version' ? m.version() : $form.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger
+					>
+					<Select.Content>
+						<Select.Item value="version">{m.version()}</Select.Item>
+						<Select.Item value="main">{m.main_task()}</Select.Item>
+						<Select.Item value="task">{m.task()}</Select.Item>
+					</Select.Content>
+				</Select.Root>
 			</div>
 			<div class="grid gap-2">
 				<Label for="t-desc">{m.description()}</Label>
@@ -169,7 +190,10 @@
 						{users}
 						me={page.data.user?.id}
 						value={$form.assignees}
-						onchange={(ids) => ($form.assignees = ids)}
+						onchange={(ids) => {
+							assigneesTouched = true;
+							$form.assignees = ids;
+						}}
 					/>
 				</div>
 				<div class="grid gap-2">
@@ -187,31 +211,21 @@
 				</div>
 			</div>
 			<div class="grid gap-2">
-				<Label>{m.bucket()}</Label>
-				<BucketPicker
-					project={projectKey}
-					{buckets}
-					value={$form.bucketId}
-					{canManage}
-					onchange={(id) => {
-						$form.bucketId = id;
-					}}
-				/>
 				<Label>{m.tags()}</Label>
 				<TagPicker {tags} value={$form.tags} onchange={(refs) => ($form.tags = refs)} />
 			</div>
-			<div class="grid gap-2">
-				<Label>{m.subtask_of_2()}</Label>
-				<Select.Root type="single" bind:value={$form.parentId}>
-					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-					<Select.Content class="max-h-72">
-						<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-						{#each parents as p (p.id)}
-							<Select.Item value={String(p.id)}>{p.label}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
+			{#if $form.kind !== 'version'}<div class="grid gap-2">
+					<Label>{$form.kind === 'main' ? m.version() : m.main_task()}</Label>
+					<Select.Root type="single" bind:value={$form.parentId}>
+						<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+						<Select.Content class="max-h-72">
+							<Select.Item value="">{emptyParentLabel}</Select.Item>
+							{#each parentOptions as p (p.id)}
+								<Select.Item value={String(p.id)}>{p.label}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>{/if}
 			{#each Object.values($errors)
 				.flat()
 				.filter((value): value is string => typeof value === 'string') as validationError, i (i)}<p

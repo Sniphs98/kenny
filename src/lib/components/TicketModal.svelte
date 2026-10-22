@@ -67,13 +67,13 @@
 	>
 		{#if data}
 			<Dialog.Header class="flex-row items-center gap-3 pr-12">
-				<Dialog.Title class="text-muted-foreground font-mono text-sm font-normal">
-					{data.project.key} /
+				<Dialog.Title class="text-muted-foreground text-sm font-normal">
+					{data.project.name} /
 					{#if data.parent}<a class="hover:text-foreground hover:underline" href="/tickets/{data.parent.key}"
-							>{data.parent.key}</a
+							>{data.parent.title}</a
 						>
 						/
-					{/if}{data.ticket.key}
+					{/if}{data.ticket.title}
 				</Dialog.Title>
 				<Hint text={m.open_as_separate_page()} side="bottom">
 					{#snippet children(props)}

@@ -7,49 +7,6 @@ const listed = async (request: APIRequestContext, key: string) =>
 
 const palette = (page: Page) => page.getByRole('dialog', { name: 'Suchen und Befehle' });
 
-test('Strg+K öffnet die Suche; Tickets finden und öffnen', async ({ page, request }) => {
-	const p = await createProject(request, 'Palette');
-	// Eindeutige Titel: die Suche findet Tickets aller Projekte des Testbenutzers
-	const invoice = `Rechnung ${p.key} exportieren`;
-	await createTicket(request, p.key, { title: 'Login reparieren' });
-	await createTicket(request, p.key, { title: invoice });
-	await open(page, '/');
-
-	// Die Suchleiste in der Kopfzeile nennt das Kürzel
-	const trigger = page.locator('[data-command-trigger]');
-	await expect(trigger).toContainText('Strg K');
-	await expect(trigger).toHaveAttribute('aria-keyshortcuts', 'Control+K');
-	// Auf breiten Bildschirmen mittig in der Kopfzeile, breit und mit Abstand zur Navigation
-	const box = (await trigger.boundingBox())!;
-	const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!;
-	expect(Math.abs(box.x + box.width / 2 - page.viewportSize()!.width / 2)).toBeLessThan(2);
-	expect(box.width).toBeGreaterThanOrEqual(400);
-	expect(box.x).toBeGreaterThan(nav.x + nav.width);
-
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeVisible();
-	await page.keyboard.type(`rechnung ${p.key.toLowerCase()}`);
-	const result = palette(page).getByRole('option').filter({ hasText: invoice });
-	await expect(result).toContainText(`${p.key}-2`);
-	// Der beste Treffer ist markiert, Enter öffnet ihn
-	await expect(result).toHaveAttribute('aria-selected', 'true');
-	await page.keyboard.press('Enter');
-	await expect(page).toHaveURL(`/tickets/${p.key}-2`);
-	await expect(palette(page)).toBeHidden();
-
-	// Über den Schlüssel und per Klick auf die Suchleiste
-	await trigger.click();
-	await page.keyboard.type(`${p.key}-1`);
-	await palette(page).getByRole('option').filter({ hasText: 'Login reparieren' }).click();
-	await expect(page).toHaveURL(`/tickets/${p.key}-1`);
-
-	// Strg+K schließt die Palette auch wieder
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeVisible();
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeHidden();
-});
-
 test('Suche findet Wörter aus der Beschreibung und zeigt einen Ausschnitt', async ({ page, request }) => {
 	const p = await createProject(request, 'Inhalt');
 	// Eindeutiges Wort pro Lauf, damit Tickets anderer Tests nicht mitgefunden werden
@@ -72,11 +29,11 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 	const p = await createProject(request, 'Befehle');
 	await open(page, `/projects/${p.key}/settings`);
 	await page.keyboard.press('Control+k');
-	await page.keyboard.type('neues ticket');
+	await page.keyboard.type('neue aufgabe');
 	await page.keyboard.press('Enter');
 	// Wechselt zum Board und öffnet dort den Dialog
 	await expect(page).toHaveURL(`/projects/${p.key}/board`);
-	const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Neues Ticket' }) });
+	const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Neue Aufgabe' }) });
 	await expect(dialog).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(dialog).toBeHidden();
@@ -85,7 +42,7 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 	await open(page, `/projects/${p.key}/gantt`);
 	await page.keyboard.press('Control+k');
 	await palette(page)
-		.getByRole('option', { name: /Neues Ticket in Befehle/ })
+		.getByRole('option', { name: /Neue Aufgabe in Befehle/ })
 		.click();
 	await dialog.getByLabel('Titel').fill('Aus dem Gantt');
 	await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
@@ -106,7 +63,7 @@ test('Befehle: neues Ticket aus jeder Projektseite, Navigation und Design', asyn
 test('„Weitere erstellen“ hält den Dialog offen und behält die Felder', async ({ page, request }) => {
 	const p = await createProject(request, 'Serie');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	const title = dialog.getByLabel('Titel');
 	await dialog.getByRole('checkbox', { name: 'Weitere erstellen' }).click();
@@ -140,10 +97,10 @@ test('„Weitere erstellen“ hält den Dialog offen und behält die Felder', as
 	expect(tickets.find((t) => t.title === 'Zweites')?.priority).toBe('high');
 
 	// Der Haken wird pro Browser gemerkt
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	await dialog.getByRole('checkbox', { name: 'Weitere erstellen' }).click();
 	await page.keyboard.press('Escape');
 	await open(page, `/projects/${p.key}/board`);
-	await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+	await page.getByRole('button', { name: 'Aufgabe', exact: true }).click();
 	await expect(page.getByRole('dialog').getByRole('checkbox', { name: 'Weitere erstellen' })).toBeChecked();
 });

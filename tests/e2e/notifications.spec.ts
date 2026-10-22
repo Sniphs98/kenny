@@ -18,7 +18,7 @@ test('Teams-Benachrichtigungen einrichten, ändern und entfernen', async ({ page
 	await expect(save).toBeDisabled();
 
 	await url.fill(WEBHOOK);
-	await card.getByRole('checkbox', { name: 'Ticket zugewiesen' }).click();
+	await card.getByRole('checkbox', { name: 'Aufgabe zugewiesen' }).click();
 	await save.click();
 	await expect(page.getByText('Benachrichtigungen gespeichert')).toBeVisible();
 	await expect(card.getByText('Aktiv', { exact: true })).toBeVisible();
@@ -35,8 +35,8 @@ test('Teams-Benachrichtigungen einrichten, ändern und entfernen', async ({ page
 	await save.click();
 	expect((await saved).status()).toBe(200);
 	await page.reload();
-	await expect(card.getByRole('checkbox', { name: 'Ticket zugewiesen' })).not.toBeChecked();
-	await expect(card.getByRole('checkbox', { name: 'Ticket erledigt' })).toBeChecked();
+	await expect(card.getByRole('checkbox', { name: 'Aufgabe zugewiesen' })).not.toBeChecked();
+	await expect(card.getByRole('checkbox', { name: 'Aufgabe erledigt' })).toBeChecked();
 	await expect(card.getByRole('button', { name: 'Sprache der Nachrichten' })).toContainText('English');
 
 	await card.getByRole('button', { name: 'Entfernen' }).click();

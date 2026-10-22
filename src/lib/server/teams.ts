@@ -85,10 +85,10 @@ export function teamsManifest(c: TeamsConfig) {
 			privacyUrl: c.baseUrl,
 			termsOfUseUrl: c.baseUrl
 		},
-		name: { short: 'Kenny', full: 'Kenny – Projekte und Tickets' },
+		name: { short: 'Kenny', full: 'Kenny – Projekte und Aufgaben' },
 		description: {
-			short: 'Kanban-Boards, Gantt und Tickets direkt in Teams.',
-			full: 'Kenny bringt Projekte, Kanban-Boards, Gantt-Diagramme und Tickets in Microsoft Teams: als persönliche App und als Kanal-Tab für ein Projekt. Die Anmeldung erfolgt automatisch mit dem Microsoft-Konto.'
+			short: 'Kanban-Boards, Gantt und Aufgaben direkt in Teams.',
+			full: 'Kenny bringt Projekte, Kanban-Boards, Gantt-Diagramme und Aufgaben in Microsoft Teams: als persönliche App und als Kanal-Tab für ein Projekt. Die Anmeldung erfolgt automatisch mit dem Microsoft-Konto.'
 		},
 		icons: { color: 'color.png', outline: 'outline.png' },
 		accentColor: '#1C1917',

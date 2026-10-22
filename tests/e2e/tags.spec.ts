@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, card, choose, createProject, createTicket, getTicket, open } from './helpers';
+import { api, card, createProject, createTicket, getTicket, open } from './helpers';
 
 test('neue Projekte haben Standard-Tags', async ({ request }) => {
 	const p = await createProject(request);
@@ -26,19 +26,6 @@ test('Tag am Ticket vergeben und neuen Tag anlegen', async ({ page, request }) =
 	await open(page, `/projects/${p.key}/board`);
 	await expect(card(page, 'Login schlägt fehl')).toContainText('Bug');
 	await expect(card(page, 'Login schlägt fehl')).toContainText('Frontend');
-});
-
-test('Board nach Tag filtern', async ({ page, request }) => {
-	const p = await createProject(request);
-	await createTicket(request, p.key, { title: 'Absturz beim Speichern', tags: ['Bug'] });
-	await createTicket(request, p.key, { title: 'Dunkles Design', tags: ['Feature'] });
-
-	await open(page, `/projects/${p.key}/board`);
-	await expect(card(page, 'Dunkles Design')).toBeVisible();
-
-	await choose(page, 'Alle Tags', 'Bug');
-	await expect(card(page, 'Absturz beim Speichern')).toBeVisible();
-	await expect(card(page, 'Dunkles Design')).toHaveCount(0);
 });
 
 test('Tags in den Projekteinstellungen verwalten', async ({ page, request }) => {

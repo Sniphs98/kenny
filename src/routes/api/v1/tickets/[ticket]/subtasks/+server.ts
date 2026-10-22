@@ -6,7 +6,11 @@ import { createTicket, resolveTicket } from '#lib/server/services/tickets.js';
 export const POST = apiHandler(
 	async (e, user) => {
 		const parent = resolveTicket(e.params.ticket!);
-		return createTicket(parent.projectId, { ...(await readJson(e)), parentId: parent.id }, user.id);
+		return createTicket(
+			parent.projectId,
+			{ ...(await readJson(e)), kind: parent.kind === 'version' ? 'main' : 'task', parentId: parent.id },
+			user.id
+		);
 	},
 	{ status: 201, responseSchema: ticketDtoSchema }
 );

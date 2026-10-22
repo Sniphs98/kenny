@@ -1,12 +1,12 @@
 import { requireProjectAccess, visibleUsers } from './access';
-import { resolveBucket } from './buckets';
 import { projectMember } from '../db/schema';
 import {
 	createTicketSchema,
 	updateTicketSchema,
 	createLinkSchema,
 	reorderTicketsSchema,
-	ticketSearchSchema
+	ticketSearchSchema,
+	createCommentSchema
 } from '#lib/contracts/index.js';
 import { parseInput } from '../validation';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
@@ -20,6 +20,7 @@ import {
 	project,
 	ticket,
 	ticketAssignee,
+	ticketComment,
 	ticketLink,
 	user,
 	type LinkType,
@@ -28,6 +29,7 @@ import {
 import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
+import { notifyEmail } from './email-notifications.js';
 import { searchTokens } from '#lib/search.js';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
@@ -57,7 +59,7 @@ export function resolveTicket(ref: string | number, tx: Tx | typeof db = db): Ti
 			.where(eq(ticket.id, Number(s)))
 			.get();
 	}
-	if (!row) throw new ApiError(404, `Ticket "${s}" nicht gefunden.`);
+	if (!row) throw new ApiError(404, `Aufgabe "${s}" nicht gefunden.`);
 	return row;
 }
 
@@ -91,6 +93,7 @@ function present(
 	return {
 		id: t.id,
 		key: `${projectKey}-${t.number}`,
+		kind: t.kind,
 		projectId: t.projectId,
 		number: t.number,
 		title: t.title,
@@ -102,7 +105,6 @@ function present(
 		closedAt: t.closedAt,
 		position: t.position,
 		parentId: t.parentId,
-		bucketId: t.bucketId,
 		assigneeId: assignees[0]?.id ?? null,
 		assigneeIds: assignees.map((a) => a.id),
 		startDate: t.startDate,
@@ -113,6 +115,29 @@ function present(
 }
 export type { TicketDto, TicketListItem } from '#lib/contracts/index.js';
 import type { TicketDetail, TicketDto, TicketListItem, TicketSearchResult } from '#lib/contracts/index.js';
+
+/** Gestartete, noch offene Versionen wechseln automatisch in die zweite aktive Projektspalte. */
+function advanceStartedVersions(projectId: number) {
+	const active = getColumns(projectId).filter((column) => !column.isBacklog && !column.isDone);
+	const [open, inProgress] = active;
+	if (!open || !inProgress) return;
+	const started = db
+		.select()
+		.from(ticket)
+		.where(
+			and(
+				eq(ticket.projectId, projectId),
+				eq(ticket.kind, 'version'),
+				eq(ticket.columnId, open.id),
+				isNull(ticket.closedAt),
+				sql`${ticket.startDate} <= ${new Date().toISOString().slice(0, 10)}`
+			)
+		)
+		.all();
+	if (!started.length) return;
+	db.transaction((tx) => started.forEach((version) => moveTicket(tx, version, inProgress, null)));
+	publish(projectId);
+}
 
 export function getTicket(ref: string | number): TicketDto {
 	const t = resolveTicket(ref);
@@ -126,6 +151,7 @@ export function getTicket(ref: string | number): TicketDto {
 
 /** Alle Tickets eines Projekts inkl. Unteraufgaben-Zähler und Abhängigkeiten */
 export function listTickets(projectId: number, filter: { closed?: boolean } = {}): TicketListItem[] {
+	advanceStartedVersions(projectId);
 	const p = getProject(projectId);
 	const cols = new Map(getColumns(projectId).map((c) => [c.id, c]));
 	const conds = [eq(ticket.projectId, projectId)];
@@ -169,6 +195,8 @@ export function listTickets(projectId: number, filter: { closed?: boolean } = {}
 		return {
 			...present(t, p.key, cols.get(t.columnId), assignees.get(t.id)),
 			tags: tags.get(t.id) ?? [],
+			submitted: t.intakeFormId !== null || t.reporterEmail !== null,
+			boardGroup: t.boardGroup,
 			assigneeName: assignees.get(t.id)?.[0]?.name ?? null,
 			assignees: (assignees.get(t.id) ?? []).map(({ id, name }) => ({ id, name })),
 			subtaskCount: s?.total ?? 0,
@@ -240,11 +268,79 @@ function searchRank(t: TicketListItem, query: string) {
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
 export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	requireProjectAccess(userId, resolveTicket(ref).projectId);
-	const { ticket, parent, subtasks, links, attachments, assignee, assignees, submission } = getTicketDetail(
+	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission } = getTicketDetail(
 		ref,
 		userId
 	);
-	return { ...ticket, parent, subtasks, links, attachments, assignee, assignees, submission };
+	return { ...ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission };
+}
+
+const commentFields = {
+	id: ticketComment.id,
+	ticketId: ticketComment.ticketId,
+	body: ticketComment.body,
+	internal: ticketComment.internal,
+	authorId: ticketComment.authorId,
+	authorName: user.name,
+	authorImage: user.image,
+	createdAt: ticketComment.createdAt
+};
+
+function commentsForTicket(ticketId: number) {
+	const hasReporter = !!db.select({ email: ticket.reporterEmail }).from(ticket).where(eq(ticket.id, ticketId)).get()
+		?.email;
+	return db
+		.select(commentFields)
+		.from(ticketComment)
+		.leftJoin(user, eq(ticketComment.authorId, user.id))
+		.where(eq(ticketComment.ticketId, ticketId))
+		.orderBy(asc(ticketComment.createdAt), asc(ticketComment.id))
+		.all()
+		.map((comment) => ({ ...comment, isReporter: hasReporter && comment.authorId === null }));
+}
+
+export function listComments(ref: string | number, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId);
+	return commentsForTicket(t.id);
+}
+
+export function addComment(ref: string | number, raw: unknown, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId, 'member');
+	const input = parseInput(createCommentSchema, raw);
+	const row = db
+		.insert(ticketComment)
+		.values({ ticketId: t.id, authorId: actorId, ...input })
+		.returning()
+		.get();
+	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
+	const result = db
+		.select(commentFields)
+		.from(ticketComment)
+		.leftJoin(user, eq(ticketComment.authorId, user.id))
+		.where(eq(ticketComment.id, row.id))
+		.get()!;
+	if (!result.internal) {
+		notifyEmail('public_comment', t.projectId, t.id, {
+			body: result.body,
+			authorName: result.authorName ?? '–'
+		});
+	}
+	return { ...result, isReporter: false };
+}
+
+export function deleteComment(ref: string | number, commentId: number, actorId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(actorId, t.projectId, 'member');
+	const comment = db
+		.select({ id: ticketComment.id })
+		.from(ticketComment)
+		.where(and(eq(ticketComment.id, commentId), eq(ticketComment.ticketId, t.id)))
+		.get();
+	if (!comment) throw new ApiError(404, 'Kommentar nicht gefunden.');
+	db.delete(ticketComment).where(eq(ticketComment.id, comment.id)).run();
+	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
 }
 
 /** Anzahl offener Voraussetzungen (depends_on auf nicht erledigte Tickets) je Ticket */
@@ -262,7 +358,9 @@ function openBlockerCounts(ids: number[]) {
 
 /** Detailansicht: Ticket mit Projekt, Unteraufgaben, übergeordnetem Ticket und Verknüpfungen */
 export function getTicketDetail(ref: string | number, actorId?: string) {
-	const t = resolveTicket(ref);
+	let t = resolveTicket(ref);
+	advanceStartedVersions(t.projectId);
+	t = resolveTicket(t.id);
 	const p = getProject(t.projectId);
 	const cols = getColumns(p.id);
 	const colMap = new Map(cols.map((c) => [c.id, c]));
@@ -316,8 +414,10 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	const parent = t.parentId ? db.select().from(ticket).where(eq(ticket.id, t.parentId)).get() : null;
 	const blockers = openBlockerCounts(subtaskRows.map((s) => s.id));
 	const people = assigneesByTicket([t.id, ...subtaskRows.map((s) => s.id), ...(parent ? [parent.id] : [])]);
+	const tags = tagsByTicket([t.id, ...subtaskRows.map((s) => s.id)]);
 	const subtasks = subtaskRows.map((s) => ({
 		...present(s, p.key, colMap.get(s.columnId), people.get(s.id)),
+		tags: tags.get(s.id) ?? [],
 		openBlockers: blockers.get(s.id) ?? 0
 	}));
 
@@ -326,7 +426,8 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	return {
 		ticket: {
 			...present(t, p.key, colMap.get(t.columnId), assignees),
-			tags: tagsByTicket([t.id]).get(t.id) ?? []
+			boardGroup: t.boardGroup,
+			tags: tags.get(t.id) ?? []
 		},
 		project: p,
 		columns: cols,
@@ -334,6 +435,7 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 		subtasks,
 		links,
 		attachments: listAttachments(t.id),
+		comments: commentsForTicket(t.id),
 		assignee: assignees[0] ?? null,
 		assignees,
 		submission:
@@ -343,7 +445,8 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 							? (db.select({ name: intakeForm.name }).from(intakeForm).where(eq(intakeForm.id, t.intakeFormId)).get()
 									?.name ?? null)
 							: null,
-						email: t.reporterEmail
+						email: t.reporterEmail,
+						system: t.systemName
 					}
 				: null
 	};
@@ -369,21 +472,101 @@ function resolveColumn(projectId: number, ref: unknown) {
 	return col;
 }
 
-function checkParent(tx: Tx, t: { id?: number; projectId: number }, parentRef: unknown) {
+function checkParent(
+	tx: Tx,
+	t: { id?: number; projectId: number; kind: 'version' | 'main' | 'task' },
+	parentRef: unknown
+) {
 	if (parentRef === null || parentRef === undefined || parentRef === '') return null;
 	const parent = resolveTicket(String(parentRef), tx);
 	if (parent.projectId !== t.projectId)
-		throw new ApiError(400, 'Unteraufgaben müssen im selben Projekt liegen wie das übergeordnete Ticket.');
+		throw new ApiError(400, 'Unteraufgaben müssen im selben Projekt liegen wie die übergeordnete Aufgabe.');
 	// Zyklen verhindern: das neue Elternticket darf kein Nachfahre dieses Tickets sein
 	for (let cur: Ticket | undefined = parent; cur;) {
-		if (cur.id === t.id) throw new ApiError(400, 'Ein Ticket kann nicht Unteraufgabe von sich selbst sein.');
+		if (cur.id === t.id) throw new ApiError(400, 'Eine Aufgabe kann nicht Unteraufgabe von sich selbst sein.');
 		cur = cur.parentId ? tx.select().from(ticket).where(eq(ticket.id, cur.parentId)).get() : undefined;
 	}
+	if (
+		t.kind === 'version' ||
+		(t.kind === 'main' && parent.kind !== 'version') ||
+		(t.kind === 'task' && parent.kind !== 'main' && parent.kind !== 'task')
+	)
+		throw new ApiError(
+			400,
+			'Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks.'
+		);
 	return parent.id;
 }
 
 function checkDates(start: string | null, due: string | null) {
 	if (start && due && start > due) throw new ApiError(400, 'Startdatum liegt nach dem Fälligkeitsdatum.');
+}
+
+const DAY = 86_400_000;
+const toDay = (date: string) => Math.round(Date.parse(`${date}T00:00:00Z`) / DAY);
+const fromDay = (day: number) => new Date(day * DAY).toISOString().slice(0, 10);
+const shiftDate = (date: string | null, days: number) => (date ? fromDay(toDay(date) + days) : null);
+
+/** Verschiebt alle Unterelemente zusammen mit ihrem Elternticket. */
+function shiftDescendants(tx: Tx, parent: Ticket, days: number) {
+	if (!days) return;
+	const rows = tx.select().from(ticket).where(eq(ticket.projectId, parent.projectId)).all();
+	let parentIds = new Set([parent.id]);
+	while (parentIds.size) {
+		const children = rows.filter((row) => row.parentId !== null && parentIds.has(row.parentId));
+		for (const child of children) {
+			tx.update(ticket)
+				.set({ startDate: shiftDate(child.startDate, days), dueDate: shiftDate(child.dueDate, days) })
+				.where(eq(ticket.id, child.id))
+				.run();
+		}
+		parentIds = new Set(children.map((child) => child.id));
+	}
+}
+
+/** Passt eine Version an die Zeitspanne ihrer Hauptaufgaben an. */
+function syncVersion(tx: Tx, versionId: number, exact: boolean) {
+	const version = tx.select().from(ticket).where(eq(ticket.id, versionId)).get();
+	if (!version || version.kind !== 'version') return;
+	const dates = tx
+		.select({ startDate: ticket.startDate, dueDate: ticket.dueDate })
+		.from(ticket)
+		.where(and(eq(ticket.parentId, version.id), eq(ticket.kind, 'main')))
+		.all()
+		.flatMap((child) => [child.startDate, child.dueDate])
+		.filter((date): date is string => date !== null);
+	if (!dates.length) return;
+	const earliest = dates.reduce((first, date) => (date < first ? date : first));
+	const latest = dates.reduce((last, date) => (date > last ? date : last));
+	const startDate = exact || !version.startDate || earliest < version.startDate ? earliest : version.startDate;
+	const dueDate = exact || !version.dueDate || latest > version.dueDate ? latest : version.dueDate;
+	if (startDate !== version.startDate || dueDate !== version.dueDate)
+		tx.update(ticket).set({ startDate, dueDate }).where(eq(ticket.id, version.id)).run();
+}
+
+/** Versionen folgen ihrer zeitlichen Reihenfolge und dürfen sich nicht überschneiden. */
+function sequenceVersions(tx: Tx, projectId: number) {
+	const versions = tx
+		.select()
+		.from(ticket)
+		.where(and(eq(ticket.projectId, projectId), eq(ticket.kind, 'version')))
+		.orderBy(asc(ticket.startDate), asc(ticket.number))
+		.all();
+	let previousEnd: number | null = null;
+	for (const version of versions) {
+		if (!version.startDate) continue;
+		const start = toDay(version.startDate);
+		const end = toDay(version.dueDate ?? version.startDate);
+		const days: number = previousEnd !== null && start <= previousEnd ? previousEnd + 1 - start : 0;
+		if (days) {
+			tx.update(ticket)
+				.set({ startDate: shiftDate(version.startDate, days), dueDate: shiftDate(version.dueDate, days) })
+				.where(eq(ticket.id, version.id))
+				.run();
+			shiftDescendants(tx, version, days);
+		}
+		previousEnd = end + days;
+	}
 }
 
 /** Benutzer per ID oder E-Mail finden */
@@ -407,6 +590,14 @@ function assigneeInput(input: {
 	if (input.assigneeId === undefined && input.assignee === undefined) return undefined;
 	const one = input.assigneeId ?? input.assignee;
 	return one ? [one] : [];
+}
+
+/** Tasks ohne eigene Auswahl übernehmen die Zuständigen ihrer neu gesetzten Hauptaufgabe. */
+function inheritedAssignees(tx: Tx, kind: Ticket['kind'], parentId: number | null) {
+	if (kind !== 'task' || parentId === null) return undefined;
+	const parent = tx.select({ kind: ticket.kind }).from(ticket).where(eq(ticket.id, parentId)).get();
+	if (parent?.kind !== 'main') return undefined;
+	return (assigneesByTicket([parentId], tx).get(parentId) ?? []).map((person) => person.id);
 }
 
 /**
@@ -449,7 +640,12 @@ function setAssignees(tx: Tx, ticketId: number, projectId: number, refs: string[
 }
 
 /** Herkunft eines Tickets aus einem Formular (nur intern, nicht über die API setzbar) */
-export type TicketOrigin = { intakeFormId: number; reporterEmail: string | null };
+export type TicketOrigin = {
+	intakeFormId: number;
+	reporterEmail: string | null;
+	systemName?: string | null;
+	deferCreatedEmail?: boolean;
+};
 
 export function createTicket(
 	projectRef: string | number,
@@ -460,12 +656,17 @@ export function createTicket(
 	const input = parseInput(createTicketSchema, rawInput);
 	const p = getProject(projectRef);
 	const cols = getColumns(p.id);
+	const hasParent = [input.parentId, input.parent].some(
+		(parent) => parent !== undefined && parent !== null && parent !== ''
+	);
 	const col =
 		input.column !== undefined && input.column !== null
 			? resolveColumn(p.id, input.column)
 			: input.columnId !== undefined
 				? resolveColumn(p.id, input.columnId)
-				: (cols.find((c) => !c.isDone) ?? cols[0]);
+				: (input.kind ?? 'task') === 'task' && !hasParent && !origin
+					? (cols.find((c) => c.isBacklog) ?? cols.find((c) => !c.isDone) ?? cols[0])
+					: (cols.find((c) => !c.isBacklog && !c.isDone) ?? cols.find((c) => !c.isDone) ?? cols[0]);
 	if (!col) throw new ApiError(409, 'Projekt hat keine Spalten.');
 
 	const title = str(input.title, 'title', { max: 300 });
@@ -474,6 +675,8 @@ export function createTicket(
 	checkDates(startDate, dueDate);
 
 	const created = db.transaction((tx) => {
+		const kind = input.kind ?? 'task';
+		const parentId = checkParent(tx, { projectId: p.id, kind }, input.parentId ?? input.parent);
 		const { ticketCounter } = tx
 			.update(project)
 			.set({ ticketCounter: sql`${project.ticketCounter} + 1` })
@@ -487,21 +690,25 @@ export function createTicket(
 				projectId: p.id,
 				number: ticketCounter,
 				title,
+				kind,
 				description: optStr(input.description, 'description') ?? '',
 				priority: input.priority !== undefined ? oneOf(input.priority, PRIORITIES, 'priority') : 'medium',
 				columnId: col.id,
 				position: nextPosition(tx, col.id),
-				parentId: checkParent(tx, { projectId: p.id }, input.parentId ?? input.parent),
-				bucketId: resolveBucket(p.id, input.bucketId ?? null),
+				parentId,
+				boardGroup: origin ? 'tickets' : null,
 				startDate,
 				dueDate,
 				closedAt: col.isDone ? new Date() : null,
 				createdById: userId,
 				intakeFormId: origin?.intakeFormId ?? null,
-				reporterEmail: origin?.reporterEmail ?? null
+				reporterEmail: origin?.reporterEmail ?? null,
+				systemName: origin?.systemName ?? null
 			})
 			.returning()
 			.get();
+		if (t.kind === 'main' && t.parentId) syncVersion(tx, t.parentId, true);
+		sequenceVersions(tx, t.projectId);
 
 		const dependsOn = input.dependsOn ?? [];
 		if (!Array.isArray(dependsOn)) throw new ApiError(400, 'Feld "dependsOn" muss eine Liste sein.');
@@ -512,13 +719,20 @@ export function createTicket(
 		for (const ref of relatesTo) insertLink(tx, t, String(ref), 'relates', userId);
 
 		if (input.tags !== undefined) setTicketTags(tx, t.id, p.id, input.tags);
-		const added = setAssignees(tx, t.id, p.id, assigneeInput(input) ?? [], false);
+		const added = setAssignees(
+			tx,
+			t.id,
+			p.id,
+			assigneeInput(input) ?? inheritedAssignees(tx, t.kind, t.parentId) ?? [],
+			false
+		);
 
 		return { ...t, added };
 	});
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
+	if (!origin?.deferCreatedEmail) notifyEmail('created', p.id, created.id);
 	if (created.added.length) notifyTicket('assigned', p.id, created.id);
 	return result;
 }
@@ -528,24 +742,54 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 	const t = resolveTicket(ref);
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
-		if (input.bucketId !== undefined) patch.bucketId = resolveBucket(t.projectId, input.bucketId);
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
 		if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 		if (input.priority !== undefined) patch.priority = oneOf(input.priority, PRIORITIES, 'priority');
+		if (input.boardGroup !== undefined) {
+			if ((input.kind ?? t.kind) !== 'task') throw new ApiError(400, 'Board-Gruppen gelten nur für Aufgaben.');
+			patch.boardGroup = input.boardGroup;
+		}
+		if (input.kind !== undefined) {
+			const children = tx.select({ id: ticket.id }).from(ticket).where(eq(ticket.parentId, t.id)).get();
+			if (children && input.kind !== t.kind)
+				throw new ApiError(400, 'Elemente mit Unterelementen können ihren Typ nicht ändern.');
+			patch.kind = input.kind;
+		}
 		if (input.startDate !== undefined) patch.startDate = optDate(input.startDate, 'startDate');
 		if (input.dueDate !== undefined) patch.dueDate = optDate(input.dueDate, 'dueDate');
-		if (input.parentId !== undefined || input.parent !== undefined)
-			patch.parentId = checkParent(tx, t, input.parentId ?? input.parent);
+		if (input.parentId !== undefined || input.parent !== undefined || input.kind !== undefined)
+			patch.parentId = checkParent(
+				tx,
+				{ ...t, kind: patch.kind ?? t.kind },
+				input.parentId !== undefined || input.parent !== undefined ? (input.parentId ?? input.parent) : t.parentId
+			);
 		checkDates(
 			patch.startDate !== undefined ? patch.startDate : t.startDate,
 			patch.dueDate !== undefined ? patch.dueDate : t.dueDate
 		);
-		if (Object.keys(patch).length) tx.update(ticket).set(patch).where(eq(ticket.id, t.id)).run();
+		const updated = { ...t, ...patch };
+		if (Object.keys(patch).length) {
+			tx.update(ticket).set(patch).where(eq(ticket.id, t.id)).run();
+			if (t.startDate && updated.startDate) {
+				const oldEnd = toDay(t.dueDate ?? t.startDate);
+				const newEnd = toDay(updated.dueDate ?? updated.startDate);
+				const days = toDay(updated.startDate) - toDay(t.startDate);
+				if (days && newEnd - toDay(updated.startDate) === oldEnd - toDay(t.startDate)) shiftDescendants(tx, t, days);
+			}
+		}
+		if (t.kind === 'main' && t.parentId && t.parentId !== updated.parentId) syncVersion(tx, t.parentId, true);
+		if (updated.kind === 'main' && updated.parentId) syncVersion(tx, updated.parentId, true);
+		if (updated.kind === 'version') syncVersion(tx, updated.id, false);
+		sequenceVersions(tx, t.projectId);
 		if (input.tags !== undefined) {
 			setTicketTags(tx, t.id, t.projectId, input.tags);
 			if (!Object.keys(patch).length) tx.update(ticket).set({ updatedAt: new Date() }).where(eq(ticket.id, t.id)).run();
 		}
-		const people = assigneeInput(input);
+		const people =
+			assigneeInput(input) ??
+			(input.parentId !== undefined || input.parent !== undefined
+				? inheritedAssignees(tx, updated.kind, updated.parentId)
+				: undefined);
 		const added =
 			people !== undefined ? setAssignees(tx, t.id, t.projectId, people, input.assignees !== undefined) : [];
 
@@ -565,7 +809,10 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 
 /** Benachrichtigung, wenn ein Ticket erledigt wurde (Vergleich vorher/nachher) */
 function notifyChanges(before: Ticket, after: Ticket) {
-	if (before.closedAt === null && after.closedAt !== null) notifyTicket('closed', after.projectId, after.id);
+	if (before.closedAt === null && after.closedAt !== null) {
+		notifyTicket('closed', after.projectId, after.id);
+		notifyEmail('closed', after.projectId, after.id);
+	}
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */
@@ -609,7 +856,7 @@ export function reorderTickets(projectRef: string | number, rawInput: unknown) {
 			.map((r) => r.id);
 		const inColumn = new Set(current);
 		const foreign = input.tickets.find((id) => !inColumn.has(id));
-		if (foreign !== undefined) throw new ApiError(400, `Ticket ${foreign} liegt nicht in dieser Spalte.`);
+		if (foreign !== undefined) throw new ApiError(400, `Aufgabe ${foreign} liegt nicht in dieser Spalte.`);
 		const listed = new Set(input.tickets);
 		const next = [...input.tickets, ...current.filter((id) => !listed.has(id))];
 		next.forEach((id, i) => tx.update(ticket).set({ position: i }).where(eq(ticket.id, id)).run());
@@ -671,7 +918,7 @@ function dependsTransitively(tx: Tx, from: number, to: number) {
 function insertLink(tx: Tx, source: Ticket, targetRef: string, type: LinkType, actorId?: string | null) {
 	const target = resolveTicket(targetRef, tx);
 	if (actorId) requireProjectAccess(actorId, target.projectId, 'member');
-	if (target.id === source.id) throw new ApiError(400, 'Ein Ticket kann nicht mit sich selbst verknüpft werden.');
+	if (target.id === source.id) throw new ApiError(400, 'Eine Aufgabe kann nicht mit sich selbst verknüpft werden.');
 	if (type === 'depends_on' && dependsTransitively(tx, target.id, source.id))
 		throw new ApiError(400, 'Diese Abhängigkeit würde einen Zyklus erzeugen.');
 	const existing = tx

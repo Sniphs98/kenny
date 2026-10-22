@@ -35,10 +35,7 @@
 		aria-label={m.choose_ticket()}
 	>
 		{#if current}
-			<span class="flex min-w-0 items-center gap-2">
-				<span class="text-muted-foreground font-mono text-xs">{current.key}</span>
-				<span class="truncate">{current.title}</span>
-			</span>
+			<span class="truncate">{current.title}</span>
 		{:else}
 			<span class="text-muted-foreground truncate">{placeholder}</span>
 		{/if}
@@ -59,7 +56,6 @@
 								open = false;
 							}}
 						>
-							<span class="text-muted-foreground w-16 shrink-0 font-mono text-xs">{o.key}</span>
 							<span class="grow truncate">{o.title}</span>
 							{#if o.key === value}<Check />{/if}
 						</Command.Item>

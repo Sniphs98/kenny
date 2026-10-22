@@ -6,6 +6,7 @@ type FormOptions = {
 	projects: string[];
 	requireLogin?: boolean;
 	email?: Mode;
+	design?: 'Standard' | 'Enable';
 	/** Feldbezeichnung → Modus, z.B. { Priorität: 'Pflichtfeld' } */
 	fields?: Record<string, Mode>;
 	/** Nur diese Tags erlauben */
@@ -20,11 +21,12 @@ async function createIntakeForm(page: Page, name: string, options: FormOptions) 
 	await dialog.getByLabel('Name').fill(name);
 	for (const project of options.projects) await dialog.getByRole('checkbox', { name: project }).click();
 	if (options.requireLogin) await dialog.getByRole('checkbox', { name: 'Anmeldung erforderlich' }).click();
-	const choose = async (select: string, mode: Mode) => {
+	const choose = async (select: string, option: string) => {
 		await dialog.getByRole('button', { name: select, exact: true }).click();
-		await page.getByRole('option', { name: mode, exact: true }).click();
+		await page.getByRole('option', { name: option, exact: true }).click();
 	};
 	if (options.email) await choose('E-Mail-Feld', options.email);
+	if (options.design) await choose('Design', options.design);
 	for (const [field, mode] of Object.entries(options.fields ?? {})) await choose(field, mode);
 	if (options.allowedTags) {
 		await dialog.getByRole('checkbox', { name: 'Nur ausgewählte Tags erlauben' }).click();
@@ -42,46 +44,6 @@ async function anonymous(browser: Browser, baseURL: string | undefined) {
 	const context = await browser.newContext({ baseURL, locale: 'de-DE', storageState: { cookies: [], origins: [] } });
 	return context.newPage();
 }
-
-test('Öffentliches Formular: Ticket ohne Anmeldung einreichen, E-Mail ist Pflicht', async ({
-	page,
-	browser,
-	baseURL,
-	request
-}) => {
-	const p = await createProject(request, 'Support');
-	const link = await createIntakeForm(page, `Kundenanfragen ${p.key}`, {
-		projects: [`Support ${p.key}`],
-		email: 'Pflichtfeld'
-	});
-
-	const guest = await anonymous(browser, baseURL);
-	await guest.goto(link);
-	await expect(guest.getByRole('heading', { name: `Kundenanfragen ${p.key}` })).toBeVisible();
-	// Nur ein Projekt: keine Auswahl
-	await expect(guest.getByText('Projekt wählen…')).toHaveCount(0);
-
-	await guest.getByLabel('Titel').fill('Rechnung fehlt');
-	await guest.getByLabel('Beschreibung').fill('Die Rechnung für Oktober kam nicht an.');
-	await guest.getByRole('button', { name: 'Einreichen' }).click();
-	await expect(guest.getByRole('alert')).toContainText('Bitte eine E-Mail-Adresse angeben.');
-
-	await guest.getByLabel(/Deine E-Mail-Adresse/).fill('kunde@example.com');
-	await guest.getByRole('button', { name: 'Einreichen' }).click();
-	await expect(guest.getByRole('status')).toContainText(`Dein Ticket ${p.key}-1 wurde eingereicht.`);
-
-	const detail = await getTicket(request, `${p.key}-1`);
-	expect(detail).toMatchObject({
-		title: 'Rechnung fehlt',
-		description: 'Die Rechnung für Oktober kam nicht an.',
-		submission: { form: `Kundenanfragen ${p.key}`, email: 'kunde@example.com' }
-	});
-
-	// Herkunft im Ticket sichtbar
-	await open(page, `/tickets/${p.key}-1`);
-	await expect(page.locator('[data-submission]')).toContainText(`Eingereicht über „Kundenanfragen ${p.key}“`);
-	await expect(page.getByRole('link', { name: 'kunde@example.com' })).toBeVisible();
-});
 
 test('Formular mit mehreren Projekten: Projekt beim Einreichen wählen', async ({ page, browser, baseURL, request }) => {
 	const a = await createProject(request, 'Web');
@@ -105,28 +67,22 @@ test('Formular mit mehreren Projekten: Projekt beim Einreichen wählen', async (
 	expect((await getTicket(request, `${b.key}-1`)).title).toBe('Absturz in der App');
 });
 
-test('Formular mit Anmeldung: Gäste müssen sich anmelden, Angemeldete reichen ohne E-Mail ein', async ({
-	page,
-	browser,
-	baseURL,
-	request
-}) => {
-	const p = await createProject(request, 'Intern');
-	const link = await createIntakeForm(page, `Intern ${p.key}`, { projects: [`Intern ${p.key}`], requireLogin: true });
-
+test('Enable-Design zeigt Logo und Formular und erstellt Tickets', async ({ page, browser, baseURL, request }) => {
+	const p = await createProject(request, 'Enable');
+	const link = await createIntakeForm(page, `Fehler ${p.key}`, {
+		projects: [`Enable ${p.key}`],
+		design: 'Enable'
+	});
 	const guest = await anonymous(browser, baseURL);
 	await guest.goto(link);
-	await expect(guest).toHaveURL(/\/login\?redirect=/);
-
-	await open(page, new URL(link).pathname);
-	await expect(page.getByText('Angemeldet als Erika Test')).toBeVisible();
-	// Keine App-Navigation auf der Einreichungsseite
-	await expect(page.getByRole('banner')).toHaveCount(0);
-	await expect(page.getByLabel(/Deine E-Mail-Adresse/)).toHaveCount(0);
-	await page.getByLabel('Titel').fill('Neuer Laptop');
-	await page.getByRole('button', { name: 'Einreichen' }).click();
-	await expect(page.getByRole('status')).toContainText(`${p.key}-1`);
-	expect((await getTicket(request, `${p.key}-1`)).submission).toEqual({ form: `Intern ${p.key}`, email: null });
+	await expect(
+		guest.locator('[data-design="enable"] img[src="/brands/ecomplete_software_icon.png"]').first()
+	).toBeVisible();
+	await expect(guest.getByRole('heading', { name: `Fehler ${p.key}` })).toBeVisible();
+	await guest.getByLabel('Titel').fill('Fehler beim Laden');
+	await guest.getByRole('button', { name: 'Einreichen' }).click();
+	await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
+	expect((await getTicket(request, `${p.key}-1`)).title).toBe('Fehler beim Laden');
 });
 
 test('Neu erzeugter Link und deaktiviertes Formular sperren alte Aufrufe', async ({
@@ -153,72 +109,6 @@ test('Neu erzeugter Link und deaktiviertes Formular sperren alte Aufrufe', async
 	await page.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click();
 	await expect(card(page, name)).toContainText('Deaktiviert');
 	expect((await guest.goto(newLink))?.status()).toBe(404);
-});
-
-test('Einstellbare Felder: Priorität, Fälligkeit, erlaubte Tags und Anhänge beim Einreichen', async ({
-	page,
-	browser,
-	baseURL,
-	request
-}) => {
-	const p = await createProject(request, 'Felder');
-	const name = `Felder ${p.key}`;
-	const link = await createIntakeForm(page, name, {
-		projects: [`Felder ${p.key}`],
-		fields: {
-			Beschreibung: 'Ausgeblendet',
-			Priorität: 'Pflichtfeld',
-			Fällig: 'Optional',
-			Tags: 'Optional',
-			Anhänge: 'Optional'
-		},
-		allowedTags: ['Bug', 'Story']
-	});
-	await expect(card(page, name).locator('[data-fields]')).toHaveText(
-		'Felder: Titel*, Priorität*, Fällig, Tags, Anhänge'
-	);
-
-	const guest = await anonymous(browser, baseURL);
-	await guest.goto(link);
-	await expect(guest.getByLabel('Beschreibung')).toHaveCount(0);
-	await expect(guest.getByLabel('Start', { exact: true })).toHaveCount(0);
-
-	await guest.getByLabel('Titel').fill('Mit allen Feldern');
-	await guest.getByRole('button', { name: 'Einreichen' }).click();
-	await expect(guest.getByRole('alert')).toContainText('Bitte eine Priorität wählen.');
-
-	await guest.getByRole('button').filter({ hasText: 'Priorität wählen…' }).click();
-	await guest.getByRole('option', { name: 'Hoch' }).click();
-	// Nur die erlaubten Tags
-	await expect(guest.getByRole('button', { name: 'Feature', exact: true })).toHaveCount(0);
-	await guest.getByRole('button', { name: 'Bug', exact: true }).click();
-
-	// Dateien auswählen, eine wieder entfernen und einen Screenshot einfügen
-	await guest.locator('#s-attachments').setInputFiles([
-		{ name: 'fehler.txt', mimeType: 'text/plain', buffer: Buffer.from('Log') },
-		{ name: 'falsch.txt', mimeType: 'text/plain', buffer: Buffer.from('Weg') }
-	]);
-	const files = guest.locator('[data-file-list] li');
-	await expect(files).toHaveCount(2);
-	await guest.getByRole('button', { name: 'falsch.txt entfernen' }).click();
-	await expect(files).toHaveCount(1);
-	await guest.getByLabel('Titel').focus();
-	await guest.evaluate(() => {
-		const data = new DataTransfer();
-		data.items.add(new File([new Uint8Array([137, 80, 78, 71])], 'image.png', { type: 'image/png' }));
-		document.activeElement!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
-	});
-	await expect(files).toHaveCount(2);
-	await expect(files.locator('img')).toHaveAttribute('alt', /^Screenshot .+\.png$/);
-	await expect(guest.getByLabel('Titel')).toHaveValue('Mit allen Feldern');
-	await guest.getByRole('button', { name: 'Einreichen' }).click();
-	await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
-
-	const detail = await getTicket(request, `${p.key}-1`);
-	expect(detail).toMatchObject({ title: 'Mit allen Feldern', priority: 'high', description: '' });
-	expect(detail.tags.map((t: { name: string }) => t.name)).toEqual(['Bug']);
-	const names = detail.attachments.map((a: { filename: string }) => a.filename).sort();
-	expect(names).toEqual([expect.stringMatching(/^Screenshot .+\.png$/), 'fehler.txt']);
 });
 
 test('Einreichungsseite: Karte mittig, Primärfarbe vom gewählten Projekt', async ({

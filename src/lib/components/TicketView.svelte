@@ -8,10 +8,13 @@
 	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import Attachments from '#lib/components/Attachments.svelte';
+	import TicketComments from '#lib/components/TicketComments.svelte';
+	import MarkdownEditor from '#lib/components/MarkdownEditor.svelte';
+	import MarkdownViewer from '#lib/components/MarkdownViewer.svelte';
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import TicketPicker from '#lib/components/TicketPicker.svelte';
+	import TagBadge from '#lib/components/TagBadge.svelte';
 	import TagPicker from '#lib/components/TagPicker.svelte';
-	import BucketPicker from '#lib/components/BucketPicker.svelte';
 	import * as Alert from '#lib/components/ui/alert/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -35,9 +38,11 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import Link2 from '@lucide/svelte/icons/link-2';
+	import List from '@lucide/svelte/icons/list';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import Plus from '@lucide/svelte/icons/plus';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import SquareKanban from '@lucide/svelte/icons/square-kanban';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
 
@@ -60,7 +65,7 @@
 	// Lokale Kopien; Live-Updates überschreiben keine ungespeicherten Eingaben
 	const title = new Synced(untrack(() => data.ticket.title));
 	const description = new Synced(untrack(() => data.ticket.description));
-	let editingDesc = $state(false);
+	let descriptionUploads = $state(0);
 	$effect(() => title.update(data.ticket.title));
 	$effect(() => description.update(data.ticket.description));
 
@@ -74,6 +79,7 @@
 	let linkType = $state<'depends_on' | 'blocks' | 'relates'>('depends_on');
 	let linkTarget = $state('');
 	let confirmDelete = $state(false);
+	let taskView = $state<'list' | 'board'>('list');
 
 	const LINK_TYPES = { depends_on: m.depends_on(), blocks: m.blocks(), relates: m.related_to() };
 
@@ -96,9 +102,11 @@
 		if (value.trim() && value !== t.title) await patch({ title: value });
 	}
 
-	async function saveDescription() {
-		editingDesc = false;
-		if (description.dirty) await patch({ description: description.value });
+	let descriptionSave = Promise.resolve();
+	function saveDescription() {
+		if (!description.dirty) return;
+		const value = description.value;
+		descriptionSave = descriptionSave.then(() => run(() => updateTicket(t.id, { description: value })));
 	}
 
 	/** Unteraufgaben nacheinander anlegen, auch wenn schnell hintereinander Enter gedrückt wird */
@@ -132,7 +140,9 @@
 
 	async function remove() {
 		await api('DELETE', base);
-		toast.success(m.deleted_ticket({ value1: t.key }));
+		toast.success(
+			data.submission ? m.deleted_submitted_ticket({ value1: t.title }) : m.deleted_ticket({ value1: t.title })
+		);
 		if (onDeleted) onDeleted();
 		else await goto(`/projects/${data.project.key}/board`, { refreshAll: true });
 	}
@@ -148,13 +158,52 @@
 		data.projectTickets.filter((o) => o.id !== t.id && !data.links.some((l) => l.ticket.key === o.key))
 	);
 	const parentCandidates = $derived(
-		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id))
+		data.projectTickets.filter(
+			(o) =>
+				o.id !== t.id &&
+				!data.subtasks.some((s) => s.id === o.id) &&
+				o.kind === (t.kind === 'task' ? 'main' : 'version')
+		)
 	);
+	const activeColumnId = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]?.id);
+	const parentState = (o: (typeof data.projectTickets)[number]) =>
+		o.closed ? 'done' : o.columnId === activeColumnId ? 'active' : 'open';
+	const parentGroups = $derived.by(() => {
+		if (t.kind !== 'task') return [];
+		const versions = data.projectTickets
+			.filter((o) => o.kind === 'version')
+			.sort(
+				(a, b) =>
+					(a.startDate ?? a.dueDate ?? '9999-12-31').localeCompare(b.startDate ?? b.dueDate ?? '9999-12-31') ||
+					(a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
+					a.position - b.position ||
+					a.number - b.number
+			);
+		const mainTasks = parentCandidates.filter((o) => o.kind === 'main');
+		const groups = versions
+			.map((version) => ({
+				key: String(version.id),
+				label: version.title,
+				state: parentState(version),
+				tasks: mainTasks.filter((o) => o.parentId === version.id)
+			}))
+			.filter((group) => group.tasks.length);
+		const withoutVersion = mainTasks.filter((o) => !versions.some((version) => version.id === o.parentId));
+		if (withoutVersion.length)
+			groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
+		return groups;
+	});
 	const subDone = $derived(data.subtasks.filter((s) => s.closed).length);
 	const columnName = $derived(data.columns.find((c) => c.id === t.columnId)?.name ?? '');
+	const inTicketSystem = $derived(
+		t.kind === 'task' &&
+			t.parentId === null &&
+			(t.boardGroup === 'tickets' || (t.boardGroup === null && data.submission !== null))
+	);
+	const parentValue = $derived(t.parentId ? String(t.parentId) : inTicketSystem ? 'tickets' : '');
 	const parentLabel = $derived.by(() => {
 		const p = parentCandidates.find((o) => o.id === t.parentId);
-		return p ? `${p.key} ${p.title}` : m.no_parent_ticket();
+		return p ? p.title : t.kind === 'main' ? m.no_version() : inTicketSystem ? m.ticket_system() : m.no_main_task();
 	});
 </script>
 
@@ -174,6 +223,22 @@
 			e.currentTarget.blur();
 		}}
 		aria-label={m.title()}></textarea>
+	{#if data.submission}
+		<div
+			class="text-muted-foreground -mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs"
+			data-submission-header
+		>
+			{#if data.submission.email}
+				<span
+					>{m.submitted_by()}
+					<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
+					></span
+				>
+			{/if}
+			{#if data.submission.system}<span>{m.system()}: {data.submission.system}</span>{/if}
+			<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
+		</div>
+	{/if}
 
 	{#if t.closed}
 		<Alert.Root class="text-success border-success/30 bg-success/5">
@@ -187,7 +252,7 @@
 				{openBlockers.length === 1
 					? m.waiting_for_one_ticket()
 					: m.waiting_for_many_tickets({ count: openBlockers.length })}
-				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.key}</a>{i <
+				{#each openBlockers as b, i (b.id)}<a class="underline" href="/tickets/{b.ticket.key}">{b.ticket.title}</a>{i <
 					openBlockers.length - 1
 						? ', '
 						: ''}{/each}
@@ -197,53 +262,95 @@
 
 	<div class="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
 		<div class="flex min-w-0 flex-col gap-4">
-			<Card.Root class="gap-4">
-				<Card.Header class="flex items-center gap-2">
+			<Card.Root class="relative z-10 gap-0 overflow-visible py-0">
+				<Card.Header class="flex items-center gap-2 rounded-t-xl border-b pt-4 pb-1.5!">
 					<AlignLeft class="text-muted-foreground size-4" />
 					<Card.Title class="grow">{m.description()}</Card.Title>
-					{#if editingDesc && data.canEdit}
-						<span class="text-muted-foreground text-xs">{m.description_save_hint()}</span>
-					{/if}
+					{#if descriptionUploads}<span class="text-muted-foreground text-xs">{m.uploading()}</span>{/if}
 				</Card.Header>
-				<Card.Content>
-					<!-- Direkt beschreibbar: Verlassen des Felds oder Strg+Enter speichert, Esc verwirft -->
-					<textarea
-						class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 placeholder:text-muted-foreground -mx-2 -my-1 block min-h-16 w-[calc(100%+1rem)] resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 break-words [overflow-wrap:anywhere] outline-none focus-visible:ring-3"
-						rows="2"
-						readonly={!data.canEdit}
-						placeholder={data.canEdit ? m.add_description() : m.no_description()}
-						aria-label={m.description()}
-						bind:value={description.value}
-						{@attach autosize(() => description.value)}
-						onfocus={() => (editingDesc = true)}
-						onblur={saveDescription}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-								e.preventDefault();
-								e.currentTarget.blur();
-							} else if (e.key === 'Escape' && description.dirty) {
-								// Erst den Entwurf verwerfen; ein weiteres Esc schließt dann das Modal
-								e.preventDefault();
-								e.stopPropagation();
-								description.reset();
-								e.currentTarget.blur();
-							}
-						}}></textarea>
+				<Card.Content class={data.canEdit ? 'px-0' : 'py-4'}>
+					{#if data.canEdit}
+						<MarkdownEditor
+							bind:value={description.value}
+							bind:uploadCount={descriptionUploads}
+							ticketId={t.id}
+							{refresh}
+							onSave={saveDescription}
+						/>
+					{:else if description.value}
+						<MarkdownViewer value={description.value} />
+					{:else}
+						<p class="text-muted-foreground">{m.no_description()}</p>
+					{/if}
 				</Card.Content>
 			</Card.Root>
 
 			<Card.Root class="gap-4">
 				<Card.Header class="flex items-center gap-2">
 					<ListChecks class="text-muted-foreground size-4" />
-					<Card.Title class="grow">{m.subtasks()}</Card.Title>
+					<Card.Title class="grow"
+						>{t.kind === 'version' ? m.main_tasks() : t.kind === 'main' ? m.tasks() : m.subtasks()}</Card.Title
+					>
 					{#if data.subtasks.length}
 						<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
 							>{subDone}/{data.subtasks.length}</Badge
 						>
 					{/if}
+					{#if t.kind === 'main'}
+						<div class="flex rounded-md border p-0.5" aria-label={m.appearance()}>
+							<Button
+								variant={taskView === 'list' ? 'secondary' : 'ghost'}
+								size="icon-xs"
+								aria-label={m.list()}
+								aria-pressed={taskView === 'list'}
+								onclick={() => (taskView = 'list')}><List /></Button
+							>
+							<Button
+								variant={taskView === 'board' ? 'secondary' : 'ghost'}
+								size="icon-xs"
+								aria-label={m.board()}
+								aria-pressed={taskView === 'board'}
+								onclick={() => (taskView = 'board')}><SquareKanban /></Button
+							>
+						</div>
+					{/if}
 				</Card.Header>
 				<Card.Content>
-					{#if data.subtasks.length}
+					{#if taskView === 'board' && t.kind === 'main'}
+						<div class="-mx-2 mb-3 flex gap-3 overflow-x-auto px-2 pb-1">
+							{#each data.columns as column (column.id)}
+								{@const tasks = data.subtasks.filter((s) => s.columnId === column.id)}
+								<div class="bg-muted/40 flex w-60 shrink-0 flex-col rounded-md p-2">
+									<div class="mb-2 flex items-center justify-between gap-2 px-1 text-sm font-medium">
+										<span class="truncate">{column.name}</span>
+										<Badge variant="secondary">{tasks.length}</Badge>
+									</div>
+									<div class="flex flex-col gap-2">
+										{#each tasks as s (s.id)}
+											<div class="bg-card flex items-start gap-2 rounded-md border p-2 shadow-xs">
+												<Checkbox
+													disabled={!data.canEdit}
+													checked={s.closed}
+													onCheckedChange={() =>
+														run(async () =>
+															playIfCompleted(s.closed, await (s.closed ? reopenTicket(s.id) : closeTicket(s.id)))
+														)}
+													aria-label={m.done()}
+												/>
+												<a
+													href="/tickets/{s.key}"
+													class={cn(
+														'min-w-0 grow break-words text-sm hover:underline',
+														s.closed && 'text-muted-foreground line-through'
+													)}>{s.title}</a
+												>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else if data.subtasks.length}
 						<ul class="-mx-2 mb-3 flex flex-col">
 							{#each data.subtasks as s (s.id)}
 								<li class="hover:bg-muted flex items-center gap-2.5 rounded-md px-2 py-1.5">
@@ -260,9 +367,13 @@
 										href="/tickets/{s.key}"
 										class={cn('min-w-0 grow truncate', s.closed && 'text-muted-foreground line-through')}
 									>
-										<span class="text-muted-foreground mr-1 font-mono text-xs">{s.key}</span>
 										{s.title}
 									</a>
+									{#if s.tags.length}
+										<div class="flex shrink-0 flex-wrap justify-end gap-1">
+											{#each s.tags as tag (tag.id)}<TagBadge name={tag.name} color={tag.color} />{/each}
+										</div>
+									{/if}
 									{#if s.openBlockers > 0 && !s.closed}
 										<Hint text={m.waiting_for_open_ticket_s({ value1: s.openBlockers })}>
 											{#snippet children(props)}
@@ -279,19 +390,42 @@
 						</ul>
 					{/if}
 					<form class="flex gap-2" onsubmit={addSubtask}>
-						<Input disabled={!data.canEdit} placeholder={m.new_subtask()} bind:value={newSubtask} />
+						<Input
+							disabled={!data.canEdit}
+							placeholder={t.kind === 'version' ? m.new_main_task() : m.new_subtask()}
+							bind:value={newSubtask}
+						/>
 						<Button disabled={!data.canEdit} type="submit" variant="outline"><Plus /> {m.add()}</Button>
 					</form>
 				</Card.Content>
 			</Card.Root>
 
 			<Attachments readOnly={!data.canEdit} ticketId={t.id} attachments={data.attachments} {refresh} />
+			<TicketComments ticketId={t.id} comments={data.comments} canEdit={data.canEdit} {refresh} />
 		</div>
 
 		<!-- Seitenleiste: Eigenschaften und Verknüpfungen -->
 		<div class="flex min-w-0 flex-col gap-4">
 			<Card.Root class="gap-4 py-5">
 				<Card.Content class="flex flex-col gap-4 px-5">
+					<div class="grid gap-2">
+						<Label>{m.element_type()}</Label>
+						<Select.Root
+							disabled={!data.canEdit || data.subtasks.length > 0}
+							type="single"
+							value={t.kind}
+							onValueChange={(v) => patch({ kind: v as typeof t.kind, parentId: null })}
+						>
+							<Select.Trigger class="w-full"
+								>{t.kind === 'version' ? m.version() : t.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger
+							>
+							<Select.Content>
+								<Select.Item value="version">{m.version()}</Select.Item>
+								<Select.Item value="main">{m.main_task()}</Select.Item>
+								<Select.Item value="task">{m.task()}</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
 					{#if t.closed}
 						<Button disabled={!data.canEdit} variant="outline" onclick={() => run(() => api('POST', `${base}/reopen`))}
 							><RotateCcw /> {m.reopen()}</Button
@@ -343,16 +477,6 @@
 						</Select.Root>
 					</div>
 					<div class="grid gap-2">
-						<Label>{m.bucket()}</Label>
-						<BucketPicker
-							project={data.project.key}
-							buckets={data.buckets}
-							value={t.bucketId}
-							canManage={data.canManage}
-							disabled={!data.canEdit}
-							{refresh}
-							onchange={(id) => patch({ bucketId: id })}
-						/>
 						<Label>{m.tags()}</Label>
 						<TagPicker
 							disabled={!data.canEdit}
@@ -412,22 +536,61 @@
 							{#if t.dueDate < today()}<p class="text-muted-foreground text-xs">{m.plan_from_today_overdue()}</p>{/if}
 						{/if}
 					</div>
-					<div class="grid gap-2">
-						<Label>{m.subtask_of_2()}</Label>
-						<Select.Root
-							disabled={!data.canEdit}
-							type="single"
-							value={t.parentId ? String(t.parentId) : ''}
-							onValueChange={(v) => patch({ parentId: v ? Number(v) : null })}
-						>
-							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-							<Select.Content class="max-h-72">
-								<Select.Item value="">{m.no_parent_ticket()}</Select.Item>
-								{#each parentCandidates as o (o.id)}<Select.Item value={String(o.id)}>{o.key} {o.title}</Select.Item
-									>{/each}
-							</Select.Content>
-						</Select.Root>
-					</div>
+					{#if t.kind !== 'version'}<div class="grid gap-2">
+							<Label>{t.kind === 'main' ? m.version() : m.main_task()}</Label>
+							<Select.Root
+								disabled={!data.canEdit}
+								type="single"
+								value={parentValue}
+								onValueChange={(v) =>
+									patch(
+										v === 'tickets'
+											? { parentId: null, boardGroup: 'tickets' }
+											: { parentId: v ? Number(v) : null, ...(v ? {} : { boardGroup: 'general' }) }
+									)}
+							>
+								<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+								<Select.Content class="max-h-72">
+									{#if t.kind === 'task'}
+										<Select.Item value="tickets">{m.ticket_system()}</Select.Item>
+									{/if}
+									<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
+									{#if t.kind === 'task'}
+										{#each parentGroups as group (group.key)}
+											<Select.Group>
+												<Select.GroupHeading
+													class={cn(
+														group.state === 'active' && 'text-primary font-semibold',
+														group.state === 'done' && 'line-through'
+													)}>{group.label}</Select.GroupHeading
+												>
+												{#each group.tasks as o (o.id)}
+													<Select.Item value={String(o.id)}>
+														<span
+															class={cn(
+																parentState(o) === 'active' && 'text-primary font-semibold',
+																parentState(o) === 'done' && 'text-muted-foreground line-through'
+															)}>{o.title}</span
+														>
+													</Select.Item>
+												{/each}
+											</Select.Group>
+										{/each}
+									{:else}
+										{#each parentCandidates as o (o.id)}
+											<Select.Item value={String(o.id)}>
+												<span
+													class={cn(
+														parentState(o) === 'active' && 'text-primary font-semibold',
+														parentState(o) === 'done' && 'text-muted-foreground line-through'
+													)}>{o.title}</span
+												>
+											</Select.Item>
+										{/each}
+									{/if}
+								</Select.Content>
+							</Select.Root>
+						</div>{/if}
 
 					<Separator />
 					<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
@@ -437,6 +600,7 @@
 								{data.submission.form ? m.submitted_via({ form: data.submission.form }) : m.submitted_via_form()}
 							</span>
 							{#if data.submission.email}
+								<span>{m.submitted_by()}</span>
 								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
 								>
 							{/if}
@@ -445,7 +609,7 @@
 						<span>{m.updated({ value1: new Date(t.updatedAt).toLocaleString(intlLocale()) })}</span>
 					</div>
 					<Button disabled={!data.canEdit} variant="destructive" onclick={() => (confirmDelete = true)}
-						><Trash2 /> {m.delete_ticket()}</Button
+						><Trash2 /> {data.submission ? m.delete_submitted_ticket() : m.delete_ticket()}</Button
 					>
 				</Card.Content>
 			</Card.Root>
@@ -465,7 +629,6 @@
 											href="/tickets/{l.ticket.key}"
 											class={cn('min-w-0 grow truncate', l.ticket.closed && 'text-muted-foreground line-through')}
 										>
-											<span class="text-muted-foreground mr-1 font-mono text-xs">{l.ticket.key}</span>
 											{l.ticket.title}
 										</a>
 										{#if l.ticket.closed}<Badge variant="secondary" class="text-success">{m.done_2()}</Badge>{/if}
@@ -508,12 +671,20 @@
 <AlertDialog.Root bind:open={confirmDelete}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>{m.delete_ticket_2({ value1: t.key })}</AlertDialog.Title>
+			<AlertDialog.Title
+				>{data.submission
+					? m.delete_submitted_ticket_2({ value1: t.title })
+					: m.delete_ticket_2({ value1: t.title })}</AlertDialog.Title
+			>
 			<AlertDialog.Description>
 				{#if data.subtasks.length}
-					{m.the_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })}
+					{data.submission
+						? m.the_submitted_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })
+						: m.the_ticket_and_its_subtask_s_will_be_permanently_deleted({ value1: data.subtasks.length })}
 				{:else}
-					{m.the_ticket_will_be_permanently_deleted()}
+					{data.submission
+						? m.the_submitted_ticket_will_be_permanently_deleted()
+						: m.the_ticket_will_be_permanently_deleted()}
 				{/if}
 			</AlertDialog.Description>
 		</AlertDialog.Header>

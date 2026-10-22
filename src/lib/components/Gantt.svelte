@@ -7,6 +7,7 @@
 	import { createTicket, updateTicket } from '#lib/api.js';
 	import { openTicket } from '#lib/ticket-modal.js';
 	import Hint, { chain, cursorAnchor } from '#lib/components/Hint.svelte';
+	import UserAvatar from '#lib/components/UserAvatar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import { Label } from '#lib/components/ui/label/index.js';
@@ -18,6 +19,9 @@
 	import type { BoardColumnDto, DependencyDto, TicketListItem } from '#lib/contracts/index.js';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Circle from '@lucide/svelte/icons/circle';
+	import CircleDot from '@lucide/svelte/icons/circle-dot';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import ChevronsDownUp from '@lucide/svelte/icons/chevrons-down-up';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Info from '@lucide/svelte/icons/info';
@@ -41,6 +45,7 @@
 		maxHeight = 'calc(100vh - 210px)',
 		resizable = false,
 		height = $bindable(360),
+		onAddMain,
 		actions
 	}: {
 		readOnly?: boolean;
@@ -57,13 +62,15 @@
 		resizable?: boolean;
 		/** Eingestellte Höhe in px (nur mit resizable) */
 		height?: number;
+		/** Hauptaufgabe direkt unter einer Version anlegen */
+		onAddMain?: (version: Item) => void;
 		/** Zusätzliche Buttons rechts in der Werkzeugleiste */
 		actions?: Snippet;
 	} = $props();
 
 	const DAY = 86_400_000;
 	let width = $state(1000);
-	const labelWidth = $derived(width < 600 ? 176 : 280);
+	const labelWidth = $derived(width < 600 ? 190 : 280);
 	const ROW = $derived(width < 600 ? 44 : 34);
 	const ZOOMS = { day: 36, week: 16, month: 6 } as const;
 
@@ -74,7 +81,23 @@
 	let showUndated = $state(false);
 
 	const backlogColumns = $derived(new Set(columns.filter((c) => c.isBacklog).map((c) => c.id)));
-	const backlogCount = $derived(source.filter((t) => backlogColumns.has(t.columnId)).length);
+	const backlogCount = $derived(source.filter((t) => t.kind === 'version' && backlogColumns.has(t.columnId)).length);
+	const statusColumns = $derived([
+		...columns.filter((column) => !column.isBacklog && !column.isDone).slice(0, 2),
+		...columns.filter((column) => column.isDone).slice(0, 1)
+	]);
+	$effect(() => {
+		const open = statusColumns[0];
+		const nextStart = source
+			.filter((item) => item.kind === 'version' && item.columnId === open?.id && item.startDate)
+			.map((item) => item.startDate!)
+			.filter((date) => date > new Date().toISOString().slice(0, 10))
+			.sort()[0];
+		if (!nextStart) return;
+		const delay = Date.parse(`${nextStart}T00:00:00Z`) - Date.now() + 100;
+		const timer = setTimeout(() => refreshAll(), Math.min(delay, 2_147_000_000));
+		return () => clearTimeout(timer);
+	});
 
 	const px = $derived(ZOOMS[zoom]);
 
@@ -91,9 +114,9 @@
 		tickets = next.map((t) => ({ ...t }));
 	});
 
-	/** Tickets mit aufgeklappten Unteraufgaben; standardmäßig sind alle zugeklappt, gemerkt pro Projekt im Browser */
+	/** Aufgeklappte Elemente; Versionen sind standardmäßig offen, Zustand pro Projekt im Browser gemerkt */
 	const expanded = new SvelteSet<number>();
-	const expandedKey = $derived(`gantt-expanded:${projectKey}`);
+	const expandedKey = $derived(`gantt-expanded-v2:${projectKey}`);
 	let expandedLoaded = $state(false);
 	$effect(() => {
 		const key = expandedKey;
@@ -102,9 +125,14 @@
 			expandedLoaded = false;
 			expanded.clear();
 			try {
-				const ids: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
-				for (const id of Array.isArray(ids) ? ids : []) {
-					if (Number.isSafeInteger(id) && id > 0) expanded.add(id);
+				const saved = localStorage.getItem(key);
+				if (saved === null) {
+					for (const t of source) if (t.kind === 'version') expanded.add(t.id);
+				} else {
+					const ids: unknown = JSON.parse(saved);
+					for (const id of Array.isArray(ids) ? ids : []) {
+						if (Number.isSafeInteger(id) && id > 0) expanded.add(id);
+					}
 				}
 			} catch {
 				/* Storage may be unavailable in private browsing. */
@@ -129,13 +157,19 @@
 
 	/** Tickets hierarchisch sortieren: Eltern, darunter ihre (aufgeklappten) Unteraufgaben */
 	const tree = $derived.by(() => {
-		let list = tickets.filter((t) => (!hideClosed || !t.closed) && (showBacklog || !backlogColumns.has(t.columnId)));
+		const mainParentIds = new Set(tickets.filter((t) => t.kind === 'main').map((t) => t.parentId));
+		let list = tickets.filter(
+			(t) =>
+				t.kind !== 'task' &&
+				(!hideClosed || !t.closed) &&
+				(t.kind === 'main' || mainParentIds.has(t.id) || showBacklog || !backlogColumns.has(t.columnId))
+		);
 		if (!showUndated) {
-			// Nur Tickets mit Termin, dazu ihre Elterntickets, damit die Hierarchie erhalten bleibt
+			// Hauptaufgaben und Tickets mit Termin, dazu ihre Elterntickets für die Hierarchie
 			const byId = new Map(list.map((t) => [t.id, t]));
 			const keep = new Set<number>();
 			for (const t of list) {
-				if (!t.startDate) continue;
+				if (!t.startDate && t.kind !== 'main') continue;
 				for (
 					let cur: Item | undefined = t;
 					cur && !keep.has(cur.id);
@@ -192,6 +226,33 @@
 	});
 
 	const x = (day: number) => (day - range.start) * px;
+	const groupBands = $derived.by(() => {
+		const bands: { id: number; left: number; top: number; width: number; height: number }[] = [];
+		for (let i = 0; i < rows.length; i++) {
+			const { t, depth } = rows[i];
+			if (t.kind !== 'version') continue;
+			let end = i + 1;
+			let first = Infinity;
+			let last = -Infinity;
+			while (end < rows.length && rows[end].depth > depth) end++;
+			if (end === i + 1) continue;
+			for (let j = i; j < end; j++) {
+				const dates = span(rows[j].t);
+				if (!dates) continue;
+				first = Math.min(first, dates.start);
+				last = Math.max(last, dates.end);
+			}
+			if (first === Infinity) continue;
+			bands.push({
+				id: t.id,
+				left: x(first) - 3,
+				top: i * ROW + 4,
+				width: x(last + 1) - x(first) + 6,
+				height: (end - i) * ROW - 8
+			});
+		}
+		return bands;
+	});
 
 	const months = $derived.by(() => {
 		const out: { label: string; left: number; width: number }[] = [];
@@ -341,7 +402,7 @@
 	/** Noch nicht eingeplante offene Tickets: ohne Termin oder im Backlog; Backlog zuerst */
 	const planCandidates = $derived(
 		source
-			.filter((t) => !t.closed)
+			.filter((t) => t.kind === 'main' && !t.closed)
 			.map((t) => ({ t, backlog: backlogColumns.has(t.columnId), dated: !!t.startDate }))
 			.filter(({ backlog, dated }) => backlog || !dated)
 			.sort((a, b) => Number(b.backlog) - Number(a.backlog) || a.t.number - b.t.number)
@@ -361,7 +422,7 @@
 	}
 
 	const backlogColumn = $derived(columns.find((c) => c.isBacklog));
-	const undatedCount = $derived(source.filter((t) => !t.closed && !t.startDate).length);
+	const undatedCount = $derived(source.filter((t) => t.kind === 'version' && !t.closed && !t.startDate).length);
 
 	/** Termin entfernen; optional zurück in die Backlog-Spalte */
 	async function unschedule(t: Item, toBacklog: boolean) {
@@ -371,8 +432,18 @@
 		try {
 			await updateTicket(t.id, body);
 			toast.success(
-				toBacklog ? m.moved_back_to_backlog({ value1: t.key }) : m.removed_from_schedule({ value1: t.key })
+				toBacklog ? m.moved_back_to_backlog({ value1: t.title }) : m.removed_from_schedule({ value1: t.title })
 			);
+		} catch (err) {
+			toast.error((err as Error).message);
+		}
+		await refreshAll();
+	}
+
+	async function setStatus(t: Item, columnId: number) {
+		if (readOnly || columnId === t.columnId) return;
+		try {
+			await updateTicket(t.id, { columnId });
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -400,7 +471,7 @@
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
 			await updateTicket(t.id, update);
-			toast.success(m.scheduled_from({ value1: t.key, value2: fmtDay(start) }));
+			toast.success(m.scheduled_from({ value1: t.title, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -434,11 +505,12 @@
 		try {
 			const t = await createTicket(projectKey, {
 				title,
+				kind: 'main',
 				startDate: fromDay(start),
 				dueDate: fromDay(start + 2)
 			});
 			id = t.id;
-			toast.success(m.created_and_scheduled_from({ value1: t.key, value2: fmtDay(start) }));
+			toast.success(m.created_and_scheduled_from({ value1: t.title, value2: fmtDay(start) }));
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -560,6 +632,9 @@
 		<!-- Ticketliste links -->
 		<div class="labels">
 			{#each rows as { t, depth, childCount } (t.id)}
+				{@const assigneeLabel = t.assignees.length
+					? m.assignee_2({ value1: t.assignees.map((a) => a.name).join(', ') })
+					: m.unassigned_3()}
 				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
 						<Hint text="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})">
@@ -580,15 +655,64 @@
 					{:else}
 						<span class="toggle"></span>
 					{/if}
+					<DropdownMenu.Root>
+						<Hint text="{m.status()}: {t.status}">
+							{#snippet children(props)}
+								<DropdownMenu.Trigger
+									{...props}
+									disabled={readOnly}
+									class={[
+										'status',
+										t.closed && 'done',
+										!t.closed && t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone && 'active'
+									]}
+									aria-label="{m.status()}: {t.status}"
+								>
+									{#if t.closed}<CircleCheck
+											class="size-4"
+										/>{:else if t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone}<CircleDot
+											class="size-4"
+										/>{:else}<Circle class="size-4" />{/if}
+								</DropdownMenu.Trigger>
+							{/snippet}
+						</Hint>
+						<DropdownMenu.Content align="start">
+							{#each statusColumns as column (column.id)}
+								<DropdownMenu.Item onSelect={() => setStatus(t, column.id)}>{column.name}</DropdownMenu.Item>
+							{/each}
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
 					<Hint text={t.title} side="right">
 						{#snippet children(props)}
 							<a {...props} class="link" href="/tickets/{t.key}" onclick={(e) => openTicket(t.key, e)}>
-								<span class="prio prio-{t.priority}"></span>
-								<span class="ticket-key text-muted-foreground font-mono text-xs">{t.key}</span>
 								<span class={['ttl', t.closed && 'text-muted-foreground line-through']}>{t.title}</span>
 							</a>
 						{/snippet}
 					</Hint>
+					<Hint text={assigneeLabel}>
+						{#snippet children(props)}
+							<span {...props} class="assignees" aria-label={assigneeLabel}>
+								<UserAvatar name={t.assignees[0]?.name} size="sm" tooltip={false} />
+								{#if t.assignees.length > 1}<span class="assignee-count">+{t.assignees.length - 1}</span>{/if}
+							</span>
+						{/snippet}
+					</Hint>
+					{#if t.kind === 'version' && onAddMain}
+						<Hint text={m.add_main_task()}>
+							{#snippet children(props)}
+								<button
+									{...props}
+									type="button"
+									class="rowaction addmain"
+									disabled={readOnly}
+									aria-label={m.add_main_task_to({ value1: t.title })}
+									onclick={() => onAddMain(t)}
+								>
+									<Plus class="size-3.5" />
+								</button>
+							{/snippet}
+						</Hint>
+					{/if}
 					{#if t.startDate || t.dueDate || (backlogColumn && t.columnId !== backlogColumn.id)}
 						<DropdownMenu.Root>
 							<Hint text={m.unschedule()}>
@@ -597,14 +721,14 @@
 										disabled={readOnly}
 										{...props}
 										class="rowaction"
-										aria-label={m.unschedule_2({ value1: t.key })}
+										aria-label={m.unschedule_2({ value1: t.title })}
 									>
 										<X class="size-3.5" />
 									</DropdownMenu.Trigger>
 								{/snippet}
 							</Hint>
 							<DropdownMenu.Content align="end" class="w-56">
-								<DropdownMenu.Label class="truncate">{t.key} {t.title}</DropdownMenu.Label>
+								<DropdownMenu.Label class="truncate">{t.title}</DropdownMenu.Label>
 								<DropdownMenu.Item disabled={!t.startDate && !t.dueDate} onSelect={() => unschedule(t, false)}>
 									<CalendarX />
 									{m.remove_from_schedule()}
@@ -628,7 +752,7 @@
 				onclick={() => openPlan(null)}
 			>
 				<span class="toggle"><Plus class="size-3.5" /></span>
-				{m.schedule_ticket()}
+				{m.schedule_main_task()}
 			</button>
 			<Popover.Root bind:open={planOpen}>
 				<Popover.Content
@@ -638,7 +762,7 @@
 					customAnchor={planDay !== null && planCell ? planCell : planAnchor}
 				>
 					<Command.Root>
-						<Command.Input placeholder={m.search_or_create_a_ticket()} bind:value={planQuery} />
+						<Command.Input placeholder={m.search_or_create_main_task()} bind:value={planQuery} />
 						<div class="text-muted-foreground border-b px-3 py-1.5 text-xs">
 							{m.schedule_from({ value1: fmtDay(planDay ?? today), value2: planDay === null ? m.today_suffix() : '' })}
 						</div>
@@ -647,8 +771,6 @@
 							<Command.Group>
 								{#each planCandidates as { t, backlog, dated } (t.id)}
 									<Command.Item value={String(t.id)} keywords={[t.key, t.title]} onSelect={() => plan(t)}>
-										<span class="prio prio-{t.priority}"></span>
-										<span class="text-muted-foreground shrink-0 font-mono text-xs">{t.key}</span>
 										<span class="min-w-0 grow truncate">{t.title}</span>
 										{#if backlog}
 											<span class="bg-muted text-muted-foreground shrink-0 rounded px-1.5 text-[11px]"
@@ -664,7 +786,7 @@
 							{#if canCreatePlan}
 								<Command.Item value="__create" keywords={[planQuery]} forceMount onSelect={createPlanned}>
 									<Plus />
-									<span class="truncate">{m.create_as_a_new_ticket({ value1: planQuery.trim() })}</span>
+									<span class="truncate">{m.create_as_new_main_task({ value1: planQuery.trim() })}</span>
 								</Command.Item>
 							{/if}
 						</Command.List>
@@ -680,6 +802,12 @@
 					<div class="bgday" class:weekend={isWeekend(d)}></div>
 				{/each}
 			</div>
+			{#each groupBands as band (band.id)}
+				<div
+					class="group-band"
+					style="left: {band.left}px; top: {band.top}px; width: {band.width}px; height: {band.height}px"
+				></div>
+			{/each}
 			<div class="todayline" style="left: {x(today) + px / 2}px"></div>
 
 			{#each rows as { t }, i (t.id)}
@@ -700,8 +828,7 @@
 							{#if s}
 								<Hint
 									text={m.to({
-										value1: t.key,
-										value2: t.title,
+										value1: t.title,
 										value3: t.startDate ?? '?',
 										value4: t.dueDate ?? '?'
 									})}
@@ -714,6 +841,7 @@
 											class:closed={t.closed}
 											class:blocked={t.openBlockers > 0 && !t.closed}
 											class:parent={t.subtaskCount > 0}
+											class:version={t.kind === 'version'}
 											style="left: {x(s.start)}px; width: {(s.end - s.start + 1) * px}px"
 											onpointerdown={chain<PointerEvent>(props.onpointerdown, (e) => pointerDown(e, t, 'move'))}
 											role="button"
@@ -971,31 +1099,43 @@
 	.toggle.open :global(svg) {
 		transform: rotate(90deg);
 	}
-	.compact .link {
-		position: relative;
-		flex-direction: column;
-		align-items: stretch;
-		justify-content: center;
-		gap: 1px;
-		padding-left: 10px;
-	}
-	.compact .link .prio {
-		position: absolute;
-		left: 0;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	.compact .ticket-key {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-size: 10px;
-	}
 	.compact .ttl {
 		font-size: 12px;
 	}
 	.ttl {
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	.status {
+		flex: 0 0 22px;
+		height: 22px;
+		display: grid;
+		place-items: center;
+		border-radius: 50%;
+		color: var(--muted-foreground);
+	}
+	.status:hover,
+	.status:focus-visible {
+		background: var(--muted);
+	}
+	.status.active {
+		color: var(--primary);
+	}
+	.status.done {
+		color: var(--success);
+	}
+	.assignees {
+		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+	}
+	.assignee-count {
+		color: var(--muted-foreground);
+		font-size: 0.65rem;
+		margin-left: 2px;
+	}
+	.status:disabled {
+		opacity: 1;
 	}
 	.body {
 		position: relative;
@@ -1011,6 +1151,13 @@
 	.bgday.weekend {
 		background: var(--muted);
 		opacity: 0.6;
+	}
+	.group-band {
+		position: absolute;
+		border: 1px solid color-mix(in srgb, var(--c) 28%, var(--border));
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--c) 5%, transparent);
+		pointer-events: none;
 	}
 	.todayline {
 		position: absolute;
@@ -1062,6 +1209,14 @@
 		background: color-mix(in srgb, var(--c) 26%, var(--card));
 		border-color: color-mix(in srgb, var(--c) 55%, var(--card));
 	}
+	.bar.version {
+		top: 6px;
+		height: calc(var(--row) - 12px);
+		background: color-mix(in srgb, var(--c) 38%, var(--card));
+		border: 2px solid color-mix(in srgb, var(--c) 70%, var(--card));
+		border-radius: 6px;
+		font-weight: 600;
+	}
 	.bar.closed {
 		background: var(--muted);
 		border-color: var(--border);
@@ -1111,6 +1266,10 @@
 	.label :global(.rowaction:hover) {
 		background: color-mix(in srgb, var(--destructive) 12%, transparent);
 		color: var(--destructive);
+	}
+	.label :global(.rowaction.addmain:hover) {
+		background: color-mix(in srgb, var(--primary) 12%, transparent);
+		color: var(--primary);
 	}
 	.planlabel {
 		width: 100%;

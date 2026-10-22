@@ -134,6 +134,8 @@ export function updateProject(id: number, rawInput: unknown) {
 	if (input.name !== undefined) patch.name = str(input.name, 'name', { max: 120 });
 	if (input.description !== undefined) patch.description = optStr(input.description, 'description') ?? '';
 	if (input.color !== undefined) patch.color = str(input.color, 'color');
+	if (input.systems !== undefined)
+		patch.systems = [...new Set(input.systems.map((name) => name.trim()).filter(Boolean))];
 	if (Object.keys(patch).length) db.update(project).set(patch).where(eq(project.id, id)).run();
 	publish(id);
 	return getProject(id);
@@ -209,7 +211,7 @@ export function deleteColumn(projectId: number, columnId: number) {
 		.from(ticket)
 		.where(eq(ticket.columnId, columnId))
 		.get();
-	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Tickets. Bitte zuerst verschieben.');
+	if (used && used.n > 0) throw new ApiError(409, 'Die Spalte enthält noch Aufgaben. Bitte zuerst verschieben.');
 	db.delete(boardColumn).where(eq(boardColumn.id, columnId)).run();
 	publish(projectId);
 }

@@ -17,7 +17,8 @@ export function apiHandler(
 			const user = await requireApiUser(event);
 			const route = event.route.id ?? '';
 			const settingsResource =
-				route === '/api/v1/projects/[project]' || /\/(columns|tags|buckets|members|notifications)(\/|$)/.test(route);
+				route === '/api/v1/projects/[project]' ||
+				/\/(columns|tags|members|notifications|email-notifications)(\/|$)/.test(route);
 			authorizeResource(user.id, event.request.method, event.params, settingsResource);
 			const result = await fn(event, user);
 			if (result instanceof Response) return result;

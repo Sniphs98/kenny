@@ -345,7 +345,7 @@ test('membership UI adds readers and exposes a read-only board and ticket view',
 		await expect(
 			viewer.getByRole('paragraph').filter({ hasText: 'You have read-only access to this project.' })
 		).toBeVisible();
-		await expect(viewer.getByRole('button', { name: 'Ticket', exact: true })).toBeDisabled();
+		await expect(viewer.getByRole('button', { name: 'Task', exact: true })).toBeDisabled();
 		await expect(viewer.locator('[data-card]')).toHaveAttribute('draggable', 'false');
 		await expect(viewer.getByRole('link', { name: 'Settings', exact: true })).toHaveCount(0);
 		await open(viewer, `/tickets/${t.key}`);
@@ -357,7 +357,7 @@ test('membership UI adds readers and exposes a read-only board and ticket view',
 		await row.getByRole('combobox').selectOption('member');
 		await expect(row.getByRole('combobox')).toHaveValue('member');
 		await open(viewer, `/projects/${p.key}/board`);
-		await expect(viewer.getByRole('button', { name: 'Ticket', exact: true })).toBeEnabled();
+		await expect(viewer.getByRole('button', { name: 'Task', exact: true })).toBeEnabled();
 		await row.getByRole('button', { name: 'Remove', exact: true }).click();
 		await page.getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true }).click();
 		await expect(row).toHaveCount(0);

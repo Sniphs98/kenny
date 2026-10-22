@@ -11,7 +11,7 @@ import {
 	submitForm,
 	updateForm
 } from '#lib/server/services/intake.js';
-import { createProject } from '#lib/server/services/projects.js';
+import { addColumn, createProject, updateProject } from '#lib/server/services/projects.js';
 import { createTag, deleteTag, listTags } from '#lib/server/services/tags.js';
 import { getTicketDetail, listTickets } from '#lib/server/services/tickets.js';
 
@@ -47,8 +47,15 @@ const update = (form: { id: number; name: string; projects: { id: number }[] }, 
 describe('intake forms: management', () => {
 	it('creates forms with projects, default fields and a random token', () => {
 		const { web, app, form } = setup();
-		expect(form).toMatchObject({ name: 'Support', requireLogin: false, emailMode: 'optional', active: true });
+		expect(form).toMatchObject({
+			name: 'Support',
+			requireLogin: false,
+			emailMode: 'optional',
+			design: 'default',
+			active: true
+		});
 		expect(form.fields).toEqual({
+			system: 'optional',
 			description: 'optional',
 			priority: 'hidden',
 			startDate: 'hidden',
@@ -87,6 +94,14 @@ describe('intake forms: management', () => {
 		expect(createForm({ name: 'Eigenes', projectIds: [own.id] }, 'outsider').projects).toHaveLength(1);
 	});
 
+	it('stores and updates the optional Enable design', () => {
+		const { form } = setup({ design: 'enable' });
+		expect(form.design).toBe('enable');
+		expect(getPublicForm(form.token).design).toBe('enable');
+		expect(update(form, { design: 'default' }).design).toBe('default');
+		expect(getPublicForm(form.token).design).toBe('default');
+	});
+
 	it('rejects inactive forms and old links after regenerating', () => {
 		const { form } = setup();
 		const fresh = regenerateToken(form.id, 'owner');
@@ -100,23 +115,31 @@ describe('intake forms: management', () => {
 	});
 
 	it('keeps submitted tickets when the form is deleted', async () => {
-		const { form } = setup();
+		const { web, form } = setup();
 		await submitForm(form.token, { title: 'Bleibt', email: 'kunde@example.com' }, anonymous);
+		await submitForm(form.token, { title: 'Angemeldet' }, outsider);
 		deleteForm(form.id, 'owner');
 		expect(listForms('owner')).toEqual([]);
-		expect(getTicketDetail('WEB-1').submission).toEqual({ form: null, email: 'kunde@example.com' });
+		expect(getTicketDetail('WEB-1').submission).toEqual({ form: null, email: 'kunde@example.com', system: null });
+		expect(getTicketDetail('WEB-2').submission).toEqual({ form: null, email: 'outsider@example.com', system: null });
+		expect(listTickets(web.id).map((ticket) => ticket.submitted)).toEqual([true, true]);
 	});
 });
 
 describe('intake forms: submitting', () => {
 	it('submits to the only project and records the origin', async () => {
 		const { web, form } = setup();
-		const { key } = await submitForm(form.token, { title: 'Login kaputt', email: 'kunde@example.com' }, anonymous);
-		expect(key).toBe('WEB-1');
+		const backlog = addColumn(web.id, { name: 'Backlog', isBacklog: true });
+		const submitted = await submitForm(form.token, { title: 'Login kaputt', email: 'kunde@example.com' }, anonymous);
+		expect(submitted.key).toBe('WEB-1');
+		expect('statusPath' in submitted && submitted.statusPath).toMatch(/^\/status\/WEB-1\/[A-Za-z0-9_-]{43}$/);
 		const detail = getTicketDetail('WEB-1');
 		expect(detail.ticket.title).toBe('Login kaputt');
-		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com' });
-		expect(listTickets(web.id)[0].status).toBe('Offen');
+		expect(detail.ticket.boardGroup).toBe('tickets');
+		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com', system: null });
+		expect(detail.ticket.createdAt).toBeInstanceOf(Date);
+		expect(listTickets(web.id)[0]).toMatchObject({ submitted: true, boardGroup: 'tickets', status: 'Offen' });
+		expect(listTickets(web.id)[0].columnId).not.toBe(backlog.id);
 	});
 
 	it('lets the submitter choose among several projects', async () => {
@@ -138,10 +161,15 @@ describe('intake forms: submitting', () => {
 		);
 		// Angemeldet: keine E-Mail nötig, Ersteller ist der Benutzer
 		await submitForm(form.token, { title: 'Angemeldet' }, outsider);
+		expect(getTicketDetail('WEB-1').submission).toEqual({
+			form: 'Support',
+			email: 'outsider@example.com',
+			system: null
+		});
 
 		const hidden = update(form, { emailMode: 'hidden' });
 		await submitForm(hidden.token, { title: 'Versteckt', email: 'ignoriert@example.com' }, anonymous);
-		expect(getTicketDetail('WEB-2').submission).toEqual({ form: 'Support', email: null });
+		expect(getTicketDetail('WEB-2').submission).toEqual({ form: 'Support', email: null, system: null });
 	});
 
 	it('requires a login, but no project membership, when configured', async () => {
@@ -168,6 +196,22 @@ describe('intake forms: submitting', () => {
 });
 
 describe('intake forms: configurable fields', () => {
+	it('offers project systems and stores the selected system on submitted tickets', async () => {
+		const { web, app, form } = setup();
+		updateProject(web.id, { systems: ['ERP', 'CRM'] });
+		updateProject(app.id, { systems: ['Mobile'] });
+		const both = update(form, { projectIds: [web.id, app.id] });
+		expect(getPublicForm(both.token).systems).toEqual([
+			{ key: 'APP', systems: ['Mobile'] },
+			{ key: 'WEB', systems: ['ERP', 'CRM'] }
+		]);
+		await expect(submitForm(both.token, { project: 'APP', title: 'Falsch', system: 'ERP' }, anonymous)).rejects.toThrow(
+			/System gibt es nicht/
+		);
+		await submitForm(both.token, { project: 'WEB', title: 'Richtig', system: 'ERP' }, anonymous);
+		expect(getTicketDetail('WEB-1').submission?.system).toBe('ERP');
+	});
+
 	it('stores offered fields and ignores values of hidden fields', async () => {
 		const { form } = setup({ fields: { description: 'hidden' } });
 		await submitForm(
@@ -248,6 +292,20 @@ describe('intake forms: configurable fields', () => {
 
 		await submitForm(withFiles.token, { title: 'Mit Datei' }, { ...anonymous, files: [file('log.txt')] });
 		expect(getTicketDetail('WEB-2').attachments.map((a) => a.filename)).toEqual(['log.txt']);
+	});
+
+	it('stores images pasted into the Markdown description as attachments', async () => {
+		const { form } = setup();
+		const url = 'blob:http://localhost/pasted-image';
+		const image = new File(['image'], 'image.png', { type: 'image/png' });
+		await submitForm(
+			form.token,
+			{ title: 'Mit Bild', description: `Siehe ![Screenshot](${url})` },
+			{ ...anonymous, inlineImages: [image], inlineImageUrls: [url] }
+		);
+		const detail = getTicketDetail('WEB-1');
+		expect(detail.attachments.map((a) => a.filename)).toEqual(['image.png']);
+		expect(detail.ticket.description).toBe(`Siehe ![Screenshot](${detail.attachments[0].url})`);
 	});
 });
 

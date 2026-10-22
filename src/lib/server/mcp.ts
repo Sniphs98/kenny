@@ -35,8 +35,9 @@ export function createMcpServer(userId: string) {
 		{ name: 'kenny', version: '1.0.0' },
 		{
 			instructions:
-				'Kenny is a project and ticket tracker. Tickets have keys like WEB-12 (project key + number). ' +
-				'Use list_projects to discover projects, search_tickets to find tickets and get_ticket for details. ' +
+				'Kenny is a project and task tracker. Tasks have keys like WEB-12 (project key + number). ' +
+				'Use list_projects to discover projects, search_tickets to find tasks and get_ticket for details. ' +
+				'The tool names retain “ticket” for API compatibility; only tasks submitted through forms are called tickets in the UI. ' +
 				'All tools are read-only and only return data the connected user is allowed to see.'
 		}
 	);
@@ -45,7 +46,7 @@ export function createMcpServer(userId: string) {
 		'list_projects',
 		{
 			title: 'List projects',
-			description: 'Lists all projects the user can access, with their key and open/total ticket counts.',
+			description: 'Lists all projects the user can access, with their key and open/total task counts.',
 			annotations: readOnly
 		},
 		() => run(() => projectListItemSchema.array().parse(listProjects(userId)))
@@ -54,18 +55,18 @@ export function createMcpServer(userId: string) {
 	server.registerTool(
 		'search_tickets',
 		{
-			title: 'Search tickets',
+			title: 'Search tasks',
 			description:
-				'Finds tickets across all accessible projects (or one project). Returns at most `limit` tickets ' +
+				'Finds tasks across all accessible projects (or one project). Returns at most `limit` tasks ' +
 				'(default 50) ordered by project and board position, plus the total number of matches.',
 			inputSchema: {
 				project: search.project.describe('Project key (e.g. "WEB") or numeric id. Omit to search all projects.'),
-				query: search.query.describe('Case-insensitive text matched against ticket key, title and description.'),
+				query: search.query.describe('Case-insensitive text matched against task key, title and description.'),
 				assignee: search.assignee.describe(
-					'"me" for the user\'s own tickets, "none" for unassigned, or a user id/email.'
+					'"me" for the user\'s own tasks, "none" for unassigned, or a user id/email.'
 				),
-				closed: search.closed.describe('true for completed tickets only, false for open tickets only. Omit for both.'),
-				limit: search.limit.describe('Maximum number of tickets to return (1–200, default 50).')
+				closed: search.closed.describe('true for completed tasks only, false for open tasks only. Omit for both.'),
+				limit: search.limit.describe('Maximum number of tasks to return (1–200, default 50).')
 			},
 			annotations: readOnly
 		},
@@ -75,10 +76,10 @@ export function createMcpServer(userId: string) {
 	server.registerTool(
 		'get_ticket',
 		{
-			title: 'Get ticket',
+			title: 'Get task',
 			description:
-				'Returns one ticket with description, status, assignee, tags, parent, subtasks, links and attachment metadata.',
-			inputSchema: { ticket: z.string().trim().min(1).max(120).describe('Ticket key (e.g. "WEB-12") or numeric id.') },
+				'Returns one task with description, status, assignee, tags, parent, subtasks, links and attachment metadata.',
+			inputSchema: { ticket: z.string().trim().min(1).max(120).describe('Task key (e.g. "WEB-12") or numeric id.') },
 			annotations: readOnly
 		},
 		({ ticket }) => run(() => ticketDetailSchema.parse(viewTicket(ticket, userId)))

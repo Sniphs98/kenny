@@ -8,11 +8,13 @@
 
 	let {
 		name,
+		image,
 		size = 'default',
 		tooltip = true,
 		class: className
 	}: {
 		name: string | null | undefined;
+		image?: string | null;
 		size?: 'sm' | 'default' | 'lg';
 		/** Namen als Tooltip zeigen; aus, wenn das Umfeld schon einen eigenen Tooltip hat */
 		tooltip?: boolean;
@@ -23,6 +25,7 @@
 <Hint text={tooltip ? (name ?? m.nobody()) : null}>
 	{#snippet children(props)}
 		<Avatar.Root {...props} {size} class={className}>
+			{#if image}<Avatar.Image src={image} alt="" />{/if}
 			<Avatar.Fallback
 				class={cn(name ? 'bg-primary-soft text-primary font-semibold' : 'border border-dashed bg-transparent')}
 			>

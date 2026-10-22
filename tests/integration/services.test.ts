@@ -41,10 +41,158 @@ describe('services with real SQLite and migrations', () => {
 	});
 	it('rejects parent cycles and parents from another project', () => {
 		const { p, t } = fixture();
-		const child = createTicket(p.key, { title: 'Child', parentId: t.id }, null);
-		expect(() => updateTicket(t.id, { parentId: child.id })).toThrow(/sich selbst/);
+		const main = createTicket(p.key, { title: 'Main', kind: 'main' }, null);
+		const child = createTicket(p.key, { title: 'Child', parentId: main.id }, null);
+		expect(() => updateTicket(main.id, { parentId: child.id })).toThrow(/sich selbst/);
+		expect(() => updateTicket(t.id, { parentId: t.id })).toThrow(/sich selbst/);
 		const other = createProject({ name: 'Other', key: 'OTHER' }, null);
-		expect(() => createTicket(other.key, { title: 'Wrong parent', parentId: t.id }, null)).toThrow(/selben Projekt/);
+		expect(() => createTicket(other.key, { title: 'Wrong parent', parentId: main.id }, null)).toThrow(/selben Projekt/);
+	});
+	it('keeps versions, main tasks and tasks in a two-step hierarchy', () => {
+		const { p, t } = fixture();
+		const version = createTicket(p.key, { title: '1.0', kind: 'version' }, null);
+		const main = createTicket(p.key, { title: 'Release', kind: 'main', parentId: version.id }, null);
+		const task = createTicket(p.key, { title: 'Notes', parentId: main.id }, null);
+		expect(listTickets(p.id).map(({ kind, parentId }) => ({ kind, parentId }))).toEqual(
+			expect.arrayContaining([
+				{ kind: 'version', parentId: null },
+				{ kind: 'main', parentId: version.id },
+				{ kind: 'task', parentId: main.id }
+			])
+		);
+		expect(() => createTicket(p.key, { title: 'Wrong', parentId: version.id }, null)).toThrow(/Hauptaufgaben/);
+		expect(() => updateTicket(t.id, { parentId: version.id })).toThrow(/Hauptaufgaben/);
+		expect(() => updateTicket(main.id, { kind: 'task' })).toThrow(/Unterelementen/);
+		expect(getTicket(task.id).kind).toBe('task');
+	});
+	it('extends a version to contain its main tasks', () => {
+		const { p } = fixture();
+		const version = createTicket(
+			p.key,
+			{ title: '1.0', kind: 'version', startDate: '2026-10-10', dueDate: '2026-10-20' },
+			null
+		);
+		const main = createTicket(
+			p.key,
+			{
+				title: 'Release',
+				kind: 'main',
+				parentId: version.id,
+				startDate: '2026-10-05',
+				dueDate: '2026-10-25'
+			},
+			null
+		);
+		expect(getTicket(version.id)).toMatchObject({ startDate: '2026-10-05', dueDate: '2026-10-25' });
+		updateTicket(main.id, { startDate: '2026-10-01', dueDate: '2026-10-31' });
+		expect(getTicket(version.id)).toMatchObject({ startDate: '2026-10-01', dueDate: '2026-10-31' });
+	});
+	it('keeps versions sequential and moves their tasks with them', () => {
+		const { p } = fixture();
+		const first = createTicket(
+			p.key,
+			{ title: '1.0', kind: 'version', startDate: '2026-10-01', dueDate: '2026-10-05' },
+			null
+		);
+		const main = createTicket(
+			p.key,
+			{
+				title: 'Release',
+				kind: 'main',
+				parentId: first.id,
+				startDate: '2026-10-01',
+				dueDate: '2026-10-05'
+			},
+			null
+		);
+		const task = createTicket(
+			p.key,
+			{ title: 'Notes', parentId: main.id, startDate: '2026-10-02', dueDate: '2026-10-03' },
+			null
+		);
+		const second = createTicket(
+			p.key,
+			{ title: '2.0', kind: 'version', startDate: '2026-10-04', dueDate: '2026-10-08' },
+			null
+		);
+
+		expect(getTicket(second.id)).toMatchObject({ startDate: '2026-10-06', dueDate: '2026-10-10' });
+		updateTicket(first.id, { startDate: '2026-10-04', dueDate: '2026-10-08' });
+		expect(getTicket(main.id)).toMatchObject({ startDate: '2026-10-04', dueDate: '2026-10-08' });
+		expect(getTicket(task.id)).toMatchObject({ startDate: '2026-10-05', dueDate: '2026-10-06' });
+		expect(getTicket(second.id)).toMatchObject({ startDate: '2026-10-09', dueDate: '2026-10-13' });
+
+		updateTicket(second.id, { startDate: '2026-10-01', dueDate: '2026-10-05' });
+		expect(getTicket(second.id)).toMatchObject({ startDate: '2026-10-01', dueDate: '2026-10-05' });
+		expect(getTicket(first.id)).toMatchObject({ startDate: '2026-10-06', dueDate: '2026-10-10' });
+		expect(getTicket(main.id)).toMatchObject({ startDate: '2026-10-06', dueDate: '2026-10-10' });
+		expect(getTicket(task.id)).toMatchObject({ startDate: '2026-10-07', dueDate: '2026-10-08' });
+	});
+	it('updates a version span when one of its main tasks moves', () => {
+		const { p } = fixture();
+		const version = createTicket(
+			p.key,
+			{ title: '1.0', kind: 'version', startDate: '2026-10-01', dueDate: '2026-10-10' },
+			null
+		);
+		const first = createTicket(
+			p.key,
+			{
+				title: 'First',
+				kind: 'main',
+				parentId: version.id,
+				startDate: '2026-10-02',
+				dueDate: '2026-10-04'
+			},
+			null
+		);
+		createTicket(
+			p.key,
+			{
+				title: 'Second',
+				kind: 'main',
+				parentId: version.id,
+				startDate: '2026-10-06',
+				dueDate: '2026-10-08'
+			},
+			null
+		);
+
+		updateTicket(first.id, { startDate: '2026-10-05', dueDate: '2026-10-05' });
+		expect(getTicket(version.id)).toMatchObject({ startDate: '2026-10-05', dueDate: '2026-10-08' });
+	});
+	it('moves started open versions to in progress without completing versions or main tasks', () => {
+		const { p } = fixture();
+		const columns = getColumns(p.id);
+		const open = columns[0];
+		const inProgress = columns[1];
+		const done = columns.find((column) => column.isDone)!;
+		const started = createTicket(
+			p.key,
+			{ title: 'Started', kind: 'version', startDate: '2020-01-01', dueDate: '2020-01-02' },
+			null
+		);
+		const main = createTicket(
+			p.key,
+			{ title: 'Main', kind: 'main', startDate: '2020-02-01', dueDate: '2020-02-02' },
+			null
+		);
+		const completed = createTicket(
+			p.key,
+			{
+				title: 'Completed',
+				kind: 'version',
+				columnId: done.id,
+				startDate: '2020-03-01',
+				dueDate: '2020-03-02'
+			},
+			null
+		);
+
+		const tickets = listTickets(p.id);
+		expect(tickets.find((item) => item.id === started.id)).toMatchObject({ columnId: inProgress.id, closed: false });
+		expect(tickets.find((item) => item.id === main.id)).toMatchObject({ columnId: open.id, closed: false });
+		expect(tickets.find((item) => item.id === completed.id)).toMatchObject({ columnId: done.id, closed: true });
 	});
 	it('rejects dependency cycles across several tickets', () => {
 		const { p, t } = fixture();
@@ -104,7 +252,8 @@ describe('services with real SQLite and migrations', () => {
 		expect(getTicket(elsewhere.id).position).toBe(0);
 	});
 	it('reports open prerequisites of subtasks in the ticket detail', () => {
-		const { p, t } = fixture();
+		const { p } = fixture();
+		const t = createTicket(p.key, { title: 'Main', kind: 'main' }, null);
 		const blocker = createTicket(p.key, { title: 'Blocker' }, null);
 		const waiting = createTicket(p.key, { title: 'Waiting', parentId: t.id, dependsOn: [blocker.id] }, null);
 		const free = createTicket(p.key, { title: 'Free', parentId: t.id }, null);

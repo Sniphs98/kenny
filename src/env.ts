@@ -14,6 +14,12 @@ export const variables = defineEnvVars({
 	TEAMS_DEVELOPER_NAME: { schema: (input) => input ?? '' },
 	ATTACHMENTS_DIR: { schema: (input) => input ?? '' },
 	ATTACHMENT_MAX_MB: { schema: (input) => input ?? '' },
+	SMTP_HOST: { schema: (input) => input ?? '' },
+	SMTP_PORT: { schema: (input) => input ?? '' },
+	SMTP_SECURE: { schema: (input) => input ?? '' },
+	SMTP_USER: { schema: (input) => input ?? '' },
+	SMTP_PASSWORD: { schema: (input) => input ?? '' },
+	SMTP_FROM: { schema: (input) => input ?? '' },
 	DATABASE_URL: { schema: (input) => input ?? '' },
 	MIGRATIONS_DIR: { schema: (input) => input ?? '' }
 });

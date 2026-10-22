@@ -6,9 +6,6 @@ import {
 	userProjectSchema,
 	assignUserProjectSchema,
 	type AssignUserProjectInput,
-	bucketSchema,
-	createBucketSchema,
-	updateBucketSchema,
 	managedUserSchema,
 	updateUserSchema,
 	memberSchema,
@@ -19,14 +16,19 @@ import {
 	type ProjectRole,
 	createProjectSchema,
 	updateProjectSchema,
+	createColumnSchema,
 	createTicketSchema,
 	updateTicketSchema,
 	reorderTicketsSchema,
 	ticketOrderSchema,
 	type ReorderTicketsInput,
 	projectSchema,
+	columnSchema,
 	ticketDtoSchema,
 	ticketDetailSchema,
+	commentSchema,
+	createCommentSchema,
+	type CreateCommentInput,
 	ticketSearchResultSchema,
 	type CreateProjectInput,
 	type UpdateProjectInput,
@@ -34,7 +36,10 @@ import {
 	type UpdateTicketInput,
 	notificationsDtoSchema,
 	updateNotificationsSchema,
-	type UpdateNotificationsInput
+	type UpdateNotificationsInput,
+	emailNotificationsDtoSchema,
+	updateEmailNotificationsSchema,
+	type UpdateEmailNotificationsInput
 } from '#lib/contracts/index.js';
 
 const errorSchema = z.object({ error: z.string() });
@@ -75,26 +80,14 @@ export async function changeUserProject(user: string, project: number, role: Pro
 			)
 		);
 }
-export async function createBucket(project: string | number, input: z.input<typeof createBucketSchema>) {
-	return bucketSchema.parse(await api('POST', `/projects/${ref(project)}/buckets`, createBucketSchema.parse(input)));
-}
-export async function updateBucket(
-	project: string | number,
-	bucket: number,
-	input: z.input<typeof updateBucketSchema>
-) {
-	return bucketSchema.parse(
-		await api('PATCH', `/projects/${ref(project)}/buckets/${bucket}`, updateBucketSchema.parse(input))
-	);
-}
-export async function deleteBucket(project: string | number, bucket: number) {
-	await api('DELETE', `/projects/${ref(project)}/buckets/${bucket}`);
-}
 export async function createProject(input: CreateProjectInput) {
 	return projectSchema.parse(await api('POST', '/projects', createProjectSchema.parse(input)));
 }
 export async function updateProject(project: string | number, input: UpdateProjectInput) {
 	return projectSchema.parse(await api('PATCH', `/projects/${ref(project)}`, updateProjectSchema.parse(input)));
+}
+export async function createColumn(project: string | number, input: { name: string; isBacklog?: boolean }) {
+	return columnSchema.parse(await api('POST', `/projects/${ref(project)}/columns`, createColumnSchema.parse(input)));
 }
 export async function createTicket(project: string | number, input: CreateTicketInput) {
 	return ticketDtoSchema.parse(await api('POST', `/projects/${ref(project)}/tickets`, createTicketSchema.parse(input)));
@@ -116,6 +109,12 @@ export async function reopenTicket(ticket: string | number) {
 }
 export async function getTicket(ticket: string | number) {
 	return ticketDetailSchema.parse(await api('GET', `/tickets/${ref(ticket)}`));
+}
+export async function addComment(ticket: string | number, input: CreateCommentInput) {
+	return commentSchema.parse(await api('POST', `/tickets/${ref(ticket)}/comments`, createCommentSchema.parse(input)));
+}
+export async function deleteComment(ticket: string | number, commentId: number) {
+	return z.object({ ok: z.literal(true) }).parse(await api('DELETE', `/tickets/${ref(ticket)}/comments/${commentId}`));
 }
 
 /** Dateien als multipart/form-data hochladen (Feld "file") */
@@ -199,6 +198,16 @@ export async function updateNotifications(project: string | number, input: Updat
 }
 export async function sendTestNotification(project: string | number) {
 	return notificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/notifications/test`));
+}
+
+/** E-Mail-Benachrichtigungen eines Projekts (nur Projektadministratoren) */
+export async function updateEmailNotifications(project: string | number, input: UpdateEmailNotificationsInput) {
+	return emailNotificationsDtoSchema.parse(
+		await api('PUT', `/projects/${ref(project)}/email-notifications`, updateEmailNotificationsSchema.parse(input))
+	);
+}
+export async function sendTestEmailNotification(project: string | number) {
+	return emailNotificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/email-notifications/test`));
 }
 
 /** Tickets aller sichtbaren Projekte, nach Treffergüte sortiert */

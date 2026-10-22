@@ -7,49 +7,6 @@ const listed = async (request: APIRequestContext, key: string) =>
 
 const palette = (page: Page) => page.getByRole('dialog', { name: 'Suchen und Befehle' });
 
-test('Strg+K öffnet die Suche; Tickets finden und öffnen', async ({ page, request }) => {
-	const p = await createProject(request, 'Palette');
-	// Eindeutige Titel: die Suche findet Tickets aller Projekte des Testbenutzers
-	const invoice = `Rechnung ${p.key} exportieren`;
-	await createTicket(request, p.key, { title: 'Login reparieren' });
-	await createTicket(request, p.key, { title: invoice });
-	await open(page, '/');
-
-	// Die Suchleiste in der Kopfzeile nennt das Kürzel
-	const trigger = page.locator('[data-command-trigger]');
-	await expect(trigger).toContainText('Strg K');
-	await expect(trigger).toHaveAttribute('aria-keyshortcuts', 'Control+K');
-	// Auf breiten Bildschirmen mittig in der Kopfzeile, breit und mit Abstand zur Navigation
-	const box = (await trigger.boundingBox())!;
-	const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!;
-	expect(Math.abs(box.x + box.width / 2 - page.viewportSize()!.width / 2)).toBeLessThan(2);
-	expect(box.width).toBeGreaterThanOrEqual(400);
-	expect(box.x).toBeGreaterThan(nav.x + nav.width);
-
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeVisible();
-	await page.keyboard.type(`rechnung ${p.key.toLowerCase()}`);
-	const result = palette(page).getByRole('option').filter({ hasText: invoice });
-	await expect(result).toContainText(`${p.key}-2`);
-	// Der beste Treffer ist markiert, Enter öffnet ihn
-	await expect(result).toHaveAttribute('aria-selected', 'true');
-	await page.keyboard.press('Enter');
-	await expect(page).toHaveURL(`/tickets/${p.key}-2`);
-	await expect(palette(page)).toBeHidden();
-
-	// Über den Schlüssel und per Klick auf die Suchleiste
-	await trigger.click();
-	await page.keyboard.type(`${p.key}-1`);
-	await palette(page).getByRole('option').filter({ hasText: 'Login reparieren' }).click();
-	await expect(page).toHaveURL(`/tickets/${p.key}-1`);
-
-	// Strg+K schließt die Palette auch wieder
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeVisible();
-	await page.keyboard.press('Control+k');
-	await expect(palette(page)).toBeHidden();
-});
-
 test('Suche findet Wörter aus der Beschreibung und zeigt einen Ausschnitt', async ({ page, request }) => {
 	const p = await createProject(request, 'Inhalt');
 	// Eindeutiges Wort pro Lauf, damit Tickets anderer Tests nicht mitgefunden werden

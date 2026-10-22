@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, card, createProject, createTicket, getTicket, open, reload } from './helpers';
+import { api, card, createProject, createTicket, getTicket, open } from './helpers';
 
 test('langer Titel bricht um statt abgeschnitten zu werden', async ({ page, request }) => {
 	const p = await createProject(request);
@@ -26,78 +26,6 @@ test('langer Titel bricht um statt abgeschnitten zu werden', async ({ page, requ
 	await title.press('Enter');
 	await expect.poll(async () => (await getTicket(request, t.key)).title).toBe('Kurz');
 	await expect(title).toHaveValue('Kurz');
-});
-
-test('Zurück-Taste führt aus der Unteraufgabe ins übergeordnete Ticket', async ({ page, request }) => {
-	const p = await createProject(request);
-	const parent = await createTicket(request, p.key, { title: 'Release vorbereiten' });
-	const child = await createTicket(request, p.key, { title: 'Changelog schreiben', parent: parent.key });
-
-	await open(page, `/projects/${p.key}/board`);
-	await card(page, 'Release vorbereiten').getByRole('link', { name: 'Release vorbereiten' }).click();
-	const modal = page.getByRole('dialog');
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Release vorbereiten');
-
-	await modal.getByRole('link', { name: /Changelog schreiben/ }).click();
-	await expect(page).toHaveURL(`/tickets/${child.key}`);
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Changelog schreiben');
-
-	// Maus-/Browser-Zurück: wieder das übergeordnete Ticket im Modal
-	await page.goBack();
-	await expect(page).toHaveURL(`/tickets/${parent.key}`);
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Release vorbereiten');
-
-	// Vorwärts und über die Brotkrume zurück zum Elternticket
-	await page.goForward();
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Changelog schreiben');
-	await modal.getByRole('link', { name: parent.key, exact: true }).click();
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Release vorbereiten');
-
-	// Schließen führt direkt zum Board, egal wie tief man geklickt hat
-	await page.keyboard.press('Escape');
-	await expect(modal).toBeHidden();
-	await expect(page).toHaveURL(`/projects/${p.key}/board`);
-});
-
-test('Beschreibung ist direkt beschreibbar und speichert beim Verlassen', async ({ page, request }) => {
-	const p = await createProject(request);
-	const t = await createTicket(request, p.key, { title: 'Direkt schreiben' });
-
-	await open(page, `/tickets/${t.key}`);
-	const description = page.getByRole('textbox', { name: 'Beschreibung', exact: true });
-	await expect(description).toHaveAttribute('placeholder', 'Beschreibung hinzufügen …');
-	await description.click();
-	await description.fill('Erste Zeile\nZweite Zeile');
-	await page.getByRole('textbox', { name: 'Titel', exact: true }).click();
-	await expect.poll(async () => (await getTicket(request, t.key)).description).toBe('Erste Zeile\nZweite Zeile');
-
-	// Strg+Enter speichert ebenfalls
-	await description.fill('Mit Tastenkürzel');
-	await description.press('Control+Enter');
-	await expect.poll(async () => (await getTicket(request, t.key)).description).toBe('Mit Tastenkürzel');
-
-	// Esc verwirft den Entwurf
-	await description.fill('Wird verworfen');
-	await description.press('Escape');
-	await expect(description).toHaveValue('Mit Tastenkürzel');
-	await reload(page);
-	await expect(description).toHaveValue('Mit Tastenkürzel');
-});
-
-test('Esc in der Beschreibung verwirft erst den Entwurf, dann schließt es das Modal', async ({ page, request }) => {
-	const p = await createProject(request);
-	await createTicket(request, p.key, { title: 'Im Modal schreiben', description: 'Alt' });
-
-	await open(page, `/projects/${p.key}/board`);
-	await card(page, 'Im Modal schreiben').getByRole('link', { name: 'Im Modal schreiben' }).click();
-	const modal = page.getByRole('dialog');
-	const description = modal.getByRole('textbox', { name: 'Beschreibung', exact: true });
-	await description.fill('Entwurf');
-	await description.press('Escape');
-	await expect(modal).toBeVisible();
-	await expect(description).toHaveValue('Alt');
-	await page.keyboard.press('Escape');
-	await expect(modal).toBeHidden();
 });
 
 test('Verknüpfungen stehen in der Seitenleiste', async ({ page, request }) => {

@@ -114,7 +114,7 @@ describe('notification delivery', () => {
 		expect(sent[0].init).toMatchObject({ method: 'POST', redirect: 'error' });
 		expect(sent[0].card.attachments[0].contentType).toBe('application/vnd.microsoft.card.adaptive');
 		expect(lines(sent[0].card)).toEqual([
-			'Neues Ticket WEB-1',
+			'Neue Aufgabe WEB-1',
 			'Login klemmt',
 			'Projekt: Web',
 			'Priorität: Hoch',
@@ -126,7 +126,7 @@ describe('notification delivery', () => {
 		updateTicket(t.key, { assignee: 'member' });
 		updateTicket(t.key, { assignee: 'member', title: 'Login klemmt immer noch' });
 		await settleNotifications();
-		expect(sent.map((s) => lines(s.card)[0])).toEqual(['Neues Ticket WEB-1', 'WEB-1 zugewiesen an Max Member']);
+		expect(sent.map((s) => lines(s.card)[0])).toEqual(['Neue Aufgabe WEB-1', 'WEB-1 zugewiesen an Max Member']);
 
 		// Eine weitere Person meldet alle Zuständigen; nur umsortieren oder entfernen meldet nichts
 		updateTicket(t.key, { assignees: ['member', 'owner'] });
@@ -140,13 +140,13 @@ describe('notification delivery', () => {
 		closeTicket(t.key);
 		reopenTicket(t.key);
 		await settleNotifications();
-		expect(sent.map((s) => lines(s.card)[0]).slice(2)).toEqual(['Ticket WEB-1 erledigt']);
+		expect(sent.map((s) => lines(s.card)[0]).slice(2)).toEqual(['Aufgabe WEB-1 erledigt']);
 
 		// Ein neues Ticket mit Zuständigem meldet beides
 		createTicket(p.key, { title: 'Direkt zugewiesen', assignee: 'member' }, 'owner');
 		await settleNotifications();
 		expect(sent.map((s) => lines(s.card)[0]).slice(3)).toEqual([
-			'Neues Ticket WEB-2',
+			'Neue Aufgabe WEB-2',
 			'WEB-2 zugewiesen an Max Member'
 		]);
 	});
@@ -157,7 +157,7 @@ describe('notification delivery', () => {
 		updateTicket(t.key, { assignee: 'member' });
 		closeTicket(t.key);
 		await settleNotifications();
-		expect(sent.map((s) => lines(s.card)[0])).toEqual(['Ticket WEB-1 completed']);
+		expect(sent.map((s) => lines(s.card)[0])).toEqual(['Task WEB-1 completed']);
 		expect(lines(sent[0].card)).toContain('Assignee: Max Member');
 
 		updateNotifications(p.key, { webhookUrl: null }, 'owner');
@@ -182,7 +182,7 @@ describe('notification delivery', () => {
 		await settleNotifications();
 		const body = sent[0].card.attachments[0].content.body;
 		expect(lines(sent[0].card).slice(0, 3)).toEqual([
-			'Neues Ticket WEB-1',
+			'Neue Aufgabe WEB-1',
 			'[Hier klicken](https://evil.example) **dringend**',
 			'Eingereicht über „Support“'
 		]);

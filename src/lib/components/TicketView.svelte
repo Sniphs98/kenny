@@ -141,9 +141,7 @@
 	async function remove() {
 		await api('DELETE', base);
 		toast.success(
-			data.submission
-				? m.deleted_submitted_ticket({ value1: t.title })
-				: m.deleted_ticket({ value1: t.title })
+			data.submission ? m.deleted_submitted_ticket({ value1: t.title }) : m.deleted_ticket({ value1: t.title })
 		);
 		if (onDeleted) onDeleted();
 		else await goto(`/projects/${data.project.key}/board`, { refreshAll: true });
@@ -160,25 +158,39 @@
 		data.projectTickets.filter((o) => o.id !== t.id && !data.links.some((l) => l.ticket.key === o.key))
 	);
 	const parentCandidates = $derived(
-		data.projectTickets.filter((o) => o.id !== t.id && !data.subtasks.some((s) => s.id === o.id) && o.kind === (t.kind === 'task' ? 'main' : 'version'))
+		data.projectTickets.filter(
+			(o) =>
+				o.id !== t.id &&
+				!data.subtasks.some((s) => s.id === o.id) &&
+				o.kind === (t.kind === 'task' ? 'main' : 'version')
+		)
 	);
 	const activeColumnId = $derived(data.columns.filter((column) => !column.isBacklog && !column.isDone)[1]?.id);
-	const parentState = (o: (typeof data.projectTickets)[number]) => o.closed ? 'done' : o.columnId === activeColumnId ? 'active' : 'open';
+	const parentState = (o: (typeof data.projectTickets)[number]) =>
+		o.closed ? 'done' : o.columnId === activeColumnId ? 'active' : 'open';
 	const parentGroups = $derived.by(() => {
 		if (t.kind !== 'task') return [];
 		const versions = data.projectTickets
 			.filter((o) => o.kind === 'version')
-			.sort((a, b) =>
-				(a.startDate ?? a.dueDate ?? '9999-12-31').localeCompare(b.startDate ?? b.dueDate ?? '9999-12-31') ||
-				(a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
-				a.position - b.position || a.number - b.number
+			.sort(
+				(a, b) =>
+					(a.startDate ?? a.dueDate ?? '9999-12-31').localeCompare(b.startDate ?? b.dueDate ?? '9999-12-31') ||
+					(a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') ||
+					a.position - b.position ||
+					a.number - b.number
 			);
 		const mainTasks = parentCandidates.filter((o) => o.kind === 'main');
 		const groups = versions
-			.map((version) => ({ key: String(version.id), label: version.title, state: parentState(version), tasks: mainTasks.filter((o) => o.parentId === version.id) }))
+			.map((version) => ({
+				key: String(version.id),
+				label: version.title,
+				state: parentState(version),
+				tasks: mainTasks.filter((o) => o.parentId === version.id)
+			}))
 			.filter((group) => group.tasks.length);
 		const withoutVersion = mainTasks.filter((o) => !versions.some((version) => version.id === o.parentId));
-		if (withoutVersion.length) groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
+		if (withoutVersion.length)
+			groups.push({ key: 'none', label: m.no_version(), state: 'open', tasks: withoutVersion });
 		return groups;
 	});
 	const subDone = $derived(data.subtasks.filter((s) => s.closed).length);
@@ -191,13 +203,7 @@
 	const parentValue = $derived(t.parentId ? String(t.parentId) : inTicketSystem ? 'tickets' : '');
 	const parentLabel = $derived.by(() => {
 		const p = parentCandidates.find((o) => o.id === t.parentId);
-		return p
-			? p.title
-			: t.kind === 'main'
-				? m.no_version()
-				: inTicketSystem
-					? m.ticket_system()
-					: m.no_main_task();
+		return p ? p.title : t.kind === 'main' ? m.no_version() : inTicketSystem ? m.ticket_system() : m.no_main_task();
 	});
 </script>
 
@@ -218,9 +224,16 @@
 		}}
 		aria-label={m.title()}></textarea>
 	{#if data.submission}
-		<div class="text-muted-foreground -mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs" data-submission-header>
+		<div
+			class="text-muted-foreground -mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs"
+			data-submission-header
+		>
 			{#if data.submission.email}
-				<span>{m.submitted_by()} <a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a></span>
+				<span
+					>{m.submitted_by()}
+					<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
+					></span
+				>
 			{/if}
 			{#if data.submission.system}<span>{m.system()}: {data.submission.system}</span>{/if}
 			<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>
@@ -257,7 +270,13 @@
 				</Card.Header>
 				<Card.Content class={data.canEdit ? 'px-0' : 'py-4'}>
 					{#if data.canEdit}
-						<MarkdownEditor bind:value={description.value} bind:uploadCount={descriptionUploads} ticketId={t.id} {refresh} onSave={saveDescription} />
+						<MarkdownEditor
+							bind:value={description.value}
+							bind:uploadCount={descriptionUploads}
+							ticketId={t.id}
+							{refresh}
+							onSave={saveDescription}
+						/>
 					{:else if description.value}
 						<MarkdownViewer value={description.value} />
 					{:else}
@@ -269,7 +288,9 @@
 			<Card.Root class="gap-4">
 				<Card.Header class="flex items-center gap-2">
 					<ListChecks class="text-muted-foreground size-4" />
-					<Card.Title class="grow">{t.kind === 'version' ? m.main_tasks() : t.kind === 'main' ? m.tasks() : m.subtasks()}</Card.Title>
+					<Card.Title class="grow"
+						>{t.kind === 'version' ? m.main_tasks() : t.kind === 'main' ? m.tasks() : m.subtasks()}</Card.Title
+					>
 					{#if data.subtasks.length}
 						<Badge variant="secondary" class={cn(subDone === data.subtasks.length && 'text-success')}
 							>{subDone}/{data.subtasks.length}</Badge
@@ -318,8 +339,10 @@
 												/>
 												<a
 													href="/tickets/{s.key}"
-													class={cn('min-w-0 grow break-words text-sm hover:underline', s.closed && 'text-muted-foreground line-through')}
-												>{s.title}</a
+													class={cn(
+														'min-w-0 grow break-words text-sm hover:underline',
+														s.closed && 'text-muted-foreground line-through'
+													)}>{s.title}</a
 												>
 											</div>
 										{/each}
@@ -367,7 +390,11 @@
 						</ul>
 					{/if}
 					<form class="flex gap-2" onsubmit={addSubtask}>
-						<Input disabled={!data.canEdit} placeholder={t.kind === 'version' ? m.new_main_task() : m.new_subtask()} bind:value={newSubtask} />
+						<Input
+							disabled={!data.canEdit}
+							placeholder={t.kind === 'version' ? m.new_main_task() : m.new_subtask()}
+							bind:value={newSubtask}
+						/>
 						<Button disabled={!data.canEdit} type="submit" variant="outline"><Plus /> {m.add()}</Button>
 					</form>
 				</Card.Content>
@@ -383,8 +410,15 @@
 				<Card.Content class="flex flex-col gap-4 px-5">
 					<div class="grid gap-2">
 						<Label>{m.element_type()}</Label>
-						<Select.Root disabled={!data.canEdit || data.subtasks.length > 0} type="single" value={t.kind} onValueChange={(v) => patch({ kind: v as typeof t.kind, parentId: null })}>
-							<Select.Trigger class="w-full">{t.kind === 'version' ? m.version() : t.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger>
+						<Select.Root
+							disabled={!data.canEdit || data.subtasks.length > 0}
+							type="single"
+							value={t.kind}
+							onValueChange={(v) => patch({ kind: v as typeof t.kind, parentId: null })}
+						>
+							<Select.Trigger class="w-full"
+								>{t.kind === 'version' ? m.version() : t.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger
+							>
 							<Select.Content>
 								<Select.Item value="version">{m.version()}</Select.Item>
 								<Select.Item value="main">{m.main_task()}</Select.Item>
@@ -503,46 +537,60 @@
 						{/if}
 					</div>
 					{#if t.kind !== 'version'}<div class="grid gap-2">
-						<Label>{t.kind === 'main' ? m.version() : m.main_task()}</Label>
-						<Select.Root
-							disabled={!data.canEdit}
-							type="single"
-							value={parentValue}
-							onValueChange={(v) =>
-								patch(
-									v === 'tickets'
-										? { parentId: null, boardGroup: 'tickets' }
-										: { parentId: v ? Number(v) : null, ...(v ? {} : { boardGroup: 'general' }) }
-								)
-							}
-						>
-							<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-							<Select.Content class="max-h-72">
-								{#if t.kind === 'task'}
-									<Select.Item value="tickets">{m.ticket_system()}</Select.Item>
-								{/if}
-								<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
-								{#if t.kind === 'task'}
-									{#each parentGroups as group (group.key)}
-										<Select.Group>
-											<Select.GroupHeading class={cn(group.state === 'active' && 'text-primary font-semibold', group.state === 'done' && 'line-through')}>{group.label}</Select.GroupHeading>
-											{#each group.tasks as o (o.id)}
-												<Select.Item value={String(o.id)}>
-													<span class={cn(parentState(o) === 'active' && 'text-primary font-semibold', parentState(o) === 'done' && 'text-muted-foreground line-through')}>{o.title}</span>
-												</Select.Item>
-											{/each}
-										</Select.Group>
-									{/each}
-								{:else}
-									{#each parentCandidates as o (o.id)}
-										<Select.Item value={String(o.id)}>
-											<span class={cn(parentState(o) === 'active' && 'text-primary font-semibold', parentState(o) === 'done' && 'text-muted-foreground line-through')}>{o.title}</span>
-										</Select.Item>
-									{/each}
-								{/if}
-							</Select.Content>
-						</Select.Root>
-					</div>{/if}
+							<Label>{t.kind === 'main' ? m.version() : m.main_task()}</Label>
+							<Select.Root
+								disabled={!data.canEdit}
+								type="single"
+								value={parentValue}
+								onValueChange={(v) =>
+									patch(
+										v === 'tickets'
+											? { parentId: null, boardGroup: 'tickets' }
+											: { parentId: v ? Number(v) : null, ...(v ? {} : { boardGroup: 'general' }) }
+									)}
+							>
+								<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+								<Select.Content class="max-h-72">
+									{#if t.kind === 'task'}
+										<Select.Item value="tickets">{m.ticket_system()}</Select.Item>
+									{/if}
+									<Select.Item value="">{t.kind === 'main' ? m.no_version() : m.no_main_task()}</Select.Item>
+									{#if t.kind === 'task'}
+										{#each parentGroups as group (group.key)}
+											<Select.Group>
+												<Select.GroupHeading
+													class={cn(
+														group.state === 'active' && 'text-primary font-semibold',
+														group.state === 'done' && 'line-through'
+													)}>{group.label}</Select.GroupHeading
+												>
+												{#each group.tasks as o (o.id)}
+													<Select.Item value={String(o.id)}>
+														<span
+															class={cn(
+																parentState(o) === 'active' && 'text-primary font-semibold',
+																parentState(o) === 'done' && 'text-muted-foreground line-through'
+															)}>{o.title}</span
+														>
+													</Select.Item>
+												{/each}
+											</Select.Group>
+										{/each}
+									{:else}
+										{#each parentCandidates as o (o.id)}
+											<Select.Item value={String(o.id)}>
+												<span
+													class={cn(
+														parentState(o) === 'active' && 'text-primary font-semibold',
+														parentState(o) === 'done' && 'text-muted-foreground line-through'
+													)}>{o.title}</span
+												>
+											</Select.Item>
+										{/each}
+									{/if}
+								</Select.Content>
+							</Select.Root>
+						</div>{/if}
 
 					<Separator />
 					<div class="text-muted-foreground flex flex-col gap-0.5 text-xs">
@@ -553,7 +601,8 @@
 							</span>
 							{#if data.submission.email}
 								<span>{m.submitted_by()}</span>
-								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a>
+								<a class="text-primary hover:underline" href="mailto:{data.submission.email}">{data.submission.email}</a
+								>
 							{/if}
 						{/if}
 						<span>{m.created({ value1: new Date(t.createdAt).toLocaleString(intlLocale()) })}</span>

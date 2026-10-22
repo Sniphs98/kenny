@@ -780,7 +780,7 @@
 			: dimensionItems(columnBy)
 	);
 	const statusColumns = $derived(
-		data.columns.map((column) => ({
+		data.columns.map((column): AxisItem & { status: (typeof data.columns)[number] } => ({
 			key: `status:${column.id}`,
 			label: column.name,
 			kind: 'status' as const,

@@ -695,5 +695,12 @@
 	"loading_ticket_statuses": "Aktuelle Ticketinformationen werden geladen…",
 	"ticket_statuses_load_failed": "Ticketinformationen konnten nicht geladen werden",
 	"ticket_statuses_load_failed_description": "Bitte prüfe deine Verbindung und versuche es erneut.",
-	"try_again": "Erneut versuchen"
+	"try_again": "Erneut versuchen",
+	"intake_system_not_found": "Das ausgewählte System gibt es nicht.",
+	"intake_at_most_images": "Höchstens {count} Bilder in der Beschreibung.",
+	"intake_invalid_image": "Ungültiges Bild in der Beschreibung.",
+	"intake_choose_system": "Bitte ein System wählen.",
+	"comment_not_found": "Kommentar nicht gefunden.",
+	"board_group_tasks_only": "Board-Gruppen gelten nur für Aufgaben.",
+	"intake_field_duplicate": "Jedes Feld darf nur einmal vorkommen."
 }

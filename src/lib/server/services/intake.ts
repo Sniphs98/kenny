@@ -32,7 +32,7 @@ const fieldsOf = (form: typeof intakeForm.$inferSelect): IntakeFields => {
 	const { design: _, fieldOrder: __, ...fields } = form.fields ?? {};
 	return intakeFieldsSchema.parse(fields);
 };
-const designOf = (form: typeof intakeForm.$inferSelect) => form.fields?.design === 'enable' ? 'enable' : 'default';
+const designOf = (form: typeof intakeForm.$inferSelect) => (form.fields?.design === 'enable' ? 'enable' : 'default');
 const fieldOrderOf = (form: typeof intakeForm.$inferSelect) =>
 	intakeFormSchema.shape.fieldOrder.parse(form.fields?.fieldOrder);
 
@@ -326,7 +326,13 @@ const MISSING: Record<keyof IntakeFields, string> = {
 export async function submitForm(
 	token: string,
 	rawInput: unknown,
-	context: { user: { id: string } | null; ip: string; files?: File[]; inlineImages?: File[]; inlineImageUrls?: string[] }
+	context: {
+		user: { id: string } | null;
+		ip: string;
+		files?: File[];
+		inlineImages?: File[];
+		inlineImageUrls?: string[];
+	}
 ): Promise<
 	| { key: null }
 	| {
@@ -337,7 +343,7 @@ export async function submitForm(
 			updatedAt: number;
 			projectName: string;
 			projectColor: string;
-	}
+	  }
 > {
 	const { form, fields, projects } = activeFormByToken(token);
 	if (form.requireLogin && !context.user) throw new ApiError(401, 'Für dieses Formular ist eine Anmeldung nötig.');
@@ -361,7 +367,8 @@ export async function submitForm(
 	const dueDate = value('dueDate', input.dueDate, input.dueDate !== '');
 	const tagNames = value('tags', input.tags, input.tags.length > 0) ?? [];
 	const systemName = value('system', input.system, input.system !== '');
-	if (systemName && !(target.systems ?? []).includes(systemName)) throw new ApiError(400, 'Das ausgewählte System gibt es nicht.');
+	if (systemName && !(target.systems ?? []).includes(systemName))
+		throw new ApiError(400, 'Das ausgewählte System gibt es nicht.');
 	const files = value('attachments', context.files ?? [], (context.files ?? []).length > 0) ?? [];
 	const inlineImages = context.inlineImages ?? [];
 	const inlineImageUrls = context.inlineImageUrls ?? [];
@@ -371,7 +378,10 @@ export async function submitForm(
 		.map((file, index) => ({ file, url: inlineImageUrls[index] }))
 		.filter((image) => description?.includes(image.url));
 	for (const image of usedInlineImages) {
-		if (!/^blob:\S{1,500}$/.test(image.url) || !['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(image.file.type))
+		if (
+			!/^blob:\S{1,500}$/.test(image.url) ||
+			!['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(image.file.type)
+		)
 			throw new ApiError(400, 'Ungültiges Bild in der Beschreibung.');
 	}
 
@@ -403,9 +413,14 @@ export async function submitForm(
 	);
 	if (files.length) await addAttachments(ticket.key, files, context.user?.id ?? null);
 	if (usedInlineImages.length) {
-		const uploaded = await addAttachments(ticket.key, usedInlineImages.map((image) => image.file), context.user?.id ?? null);
+		const uploaded = await addAttachments(
+			ticket.key,
+			usedInlineImages.map((image) => image.file),
+			context.user?.id ?? null
+		);
 		let markdown = description ?? '';
-		for (const [index, image] of usedInlineImages.entries()) markdown = markdown.replaceAll(image.url, uploaded[index].url);
+		for (const [index, image] of usedInlineImages.entries())
+			markdown = markdown.replaceAll(image.url, uploaded[index].url);
 		updateTicket(ticket.key, { description: markdown });
 	}
 	notifyEmail('created', target.id, ticket.id);

@@ -21,7 +21,10 @@ export const project = sqliteTable('project', {
 	name: text('name').notNull(),
 	description: text('description').notNull().default(''),
 	color: text('color').notNull().default('#6366f1'),
-	systems: text('systems', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+	systems: text('systems', { mode: 'json' })
+		.$type<string[]>()
+		.notNull()
+		.default(sql`'[]'`),
 	/** Zähler für fortlaufende Ticketnummern pro Projekt */
 	ticketCounter: integer('ticket_counter').notNull().default(0),
 	ownerId: text('owner_id').references(() => user.id, { onDelete: 'set null' }),
@@ -110,7 +113,9 @@ export const ticketComment = sqliteTable(
 	'ticket_comment',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		ticketId: integer('ticket_id').notNull().references(() => ticket.id, { onDelete: 'cascade' }),
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
 		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
 		body: text('body').notNull(),
 		internal: integer('internal', { mode: 'boolean' }).notNull().default(false),

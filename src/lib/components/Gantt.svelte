@@ -158,9 +158,11 @@
 	/** Tickets hierarchisch sortieren: Eltern, darunter ihre (aufgeklappten) Unteraufgaben */
 	const tree = $derived.by(() => {
 		const mainParentIds = new Set(tickets.filter((t) => t.kind === 'main').map((t) => t.parentId));
-		let list = tickets.filter((t) =>
-			t.kind !== 'task' && (!hideClosed || !t.closed) &&
-			(t.kind === 'main' || mainParentIds.has(t.id) || showBacklog || !backlogColumns.has(t.columnId))
+		let list = tickets.filter(
+			(t) =>
+				t.kind !== 'task' &&
+				(!hideClosed || !t.closed) &&
+				(t.kind === 'main' || mainParentIds.has(t.id) || showBacklog || !backlogColumns.has(t.columnId))
 		);
 		if (!showUndated) {
 			// Hauptaufgaben und Tickets mit Termin, dazu ihre Elterntickets für die Hierarchie
@@ -241,7 +243,13 @@
 				last = Math.max(last, dates.end);
 			}
 			if (first === Infinity) continue;
-			bands.push({ id: t.id, left: x(first) - 3, top: i * ROW + 4, width: x(last + 1) - x(first) + 6, height: (end - i) * ROW - 8 });
+			bands.push({
+				id: t.id,
+				left: x(first) - 3,
+				top: i * ROW + 4,
+				width: x(last + 1) - x(first) + 6,
+				height: (end - i) * ROW - 8
+			});
 		}
 		return bands;
 	});
@@ -624,7 +632,9 @@
 		<!-- Ticketliste links -->
 		<div class="labels">
 			{#each rows as { t, depth, childCount } (t.id)}
-				{@const assigneeLabel = t.assignees.length ? m.assignee_2({ value1: t.assignees.map((a) => a.name).join(', ') }) : m.unassigned_3()}
+				{@const assigneeLabel = t.assignees.length
+					? m.assignee_2({ value1: t.assignees.map((a) => a.name).join(', ') })
+					: m.unassigned_3()}
 				<div class="label" class:highlight={highlighted === t.id} style="padding-left: {0.3 + depth * 1.1}rem">
 					{#if childCount}
 						<Hint text="{expanded.has(t.id) ? m.collapse_subtasks() : m.expand_subtasks()} ({childCount})">
@@ -651,10 +661,18 @@
 								<DropdownMenu.Trigger
 									{...props}
 									disabled={readOnly}
-									class={['status', t.closed && 'done', !t.closed && t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone && 'active']}
+									class={[
+										'status',
+										t.closed && 'done',
+										!t.closed && t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone && 'active'
+									]}
 									aria-label="{m.status()}: {t.status}"
 								>
-									{#if t.closed}<CircleCheck class="size-4" />{:else if t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone}<CircleDot class="size-4" />{:else}<Circle class="size-4" />{/if}
+									{#if t.closed}<CircleCheck
+											class="size-4"
+										/>{:else if t.columnId === statusColumns[1]?.id && !statusColumns[1]?.isDone}<CircleDot
+											class="size-4"
+										/>{:else}<Circle class="size-4" />{/if}
 								</DropdownMenu.Trigger>
 							{/snippet}
 						</Hint>
@@ -734,7 +752,7 @@
 				onclick={() => openPlan(null)}
 			>
 				<span class="toggle"><Plus class="size-3.5" /></span>
-			{m.schedule_main_task()}
+				{m.schedule_main_task()}
 			</button>
 			<Popover.Root bind:open={planOpen}>
 				<Popover.Content
@@ -785,7 +803,10 @@
 				{/each}
 			</div>
 			{#each groupBands as band (band.id)}
-				<div class="group-band" style="left: {band.left}px; top: {band.top}px; width: {band.width}px; height: {band.height}px"></div>
+				<div
+					class="group-band"
+					style="left: {band.left}px; top: {band.top}px; width: {band.width}px; height: {band.height}px"
+				></div>
 			{/each}
 			<div class="todayline" style="left: {x(today) + px / 2}px"></div>
 
@@ -808,7 +829,6 @@
 								<Hint
 									text={m.to({
 										value1: t.title,
-										value2: '',
 										value3: t.startDate ?? '?',
 										value4: t.dueDate ?? '?'
 									})}

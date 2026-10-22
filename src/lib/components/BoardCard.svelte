@@ -57,7 +57,18 @@
 		onToggleStatus: () => void;
 		onAssign: (ids: string[]) => void;
 		columns: BoardColumnDto[];
-		fields: ('status' | 'statusCheckbox' | 'parent' | 'tags' | 'priority' | 'dueDate' | 'blockers' | 'attachments' | 'assignees' | 'subtasks')[];
+		fields: (
+			| 'status'
+			| 'statusCheckbox'
+			| 'parent'
+			| 'tags'
+			| 'priority'
+			| 'dueDate'
+			| 'blockers'
+			| 'attachments'
+			| 'assignees'
+			| 'subtasks'
+		)[];
 		showMove?: boolean;
 		onMove: (id: number) => void;
 		ondragstart: (e: DragEvent) => void;
@@ -159,88 +170,88 @@
 		>
 		{#if !(parent && fields.includes('parent')) && !inTicketSystem}{@render tagList()}{/if}
 	</div>
-	{#if fields.some((field) => ['status', 'priority', 'dueDate', 'blockers', 'attachments', 'assignees'].includes(field))}
-	<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
-		{#if fields.includes('status')}
-			{#if readOnly}
-				<span class="truncate">{columns.find((column) => column.id === t.columnId)?.name}</span>
-			{:else}
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger
-						class="hover:bg-muted text-foreground -ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium"
-						onclick={(event) => event.stopPropagation()}
-					>
-						{columns.find((column) => column.id === t.columnId)?.name}
-						<ChevronRight class="size-3 rotate-90" />
-					</DropdownMenu.Trigger>
-					<DropdownMenu.Content align="start">
-						{#each columns as column (column.id)}
-							<DropdownMenu.Item disabled={column.id === t.columnId} onSelect={() => onMove(column.id)}>
-								{column.name}
-							</DropdownMenu.Item>
-						{/each}
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
+	{#if fields.some( (field) => ['status', 'priority', 'dueDate', 'blockers', 'attachments', 'assignees'].includes(field) )}
+		<div class="text-muted-foreground flex items-center gap-2.5 text-xs [&_svg]:size-3.5">
+			{#if fields.includes('status')}
+				{#if readOnly}
+					<span class="truncate">{columns.find((column) => column.id === t.columnId)?.name}</span>
+				{:else}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger
+							class="hover:bg-muted text-foreground -ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium"
+							onclick={(event) => event.stopPropagation()}
+						>
+							{columns.find((column) => column.id === t.columnId)?.name}
+							<ChevronRight class="size-3 rotate-90" />
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content align="start">
+							{#each columns as column (column.id)}
+								<DropdownMenu.Item disabled={column.id === t.columnId} onSelect={() => onMove(column.id)}>
+									{column.name}
+								</DropdownMenu.Item>
+							{/each}
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				{/if}
 			{/if}
-		{/if}
-		{#if fields.includes('priority')}
-		<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
-			{#snippet children(props)}
-				<span {...props} class="flex items-center gap-1.5">
-					<span class="prio prio-{t.priority}"></span>
+			{#if fields.includes('priority')}
+				<Hint text={m.priority({ value1: PRIORITY_LABELS[t.priority] })}>
+					{#snippet children(props)}
+						<span {...props} class="flex items-center gap-1.5">
+							<span class="prio prio-{t.priority}"></span>
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('dueDate') && t.dueDate}
+				<Hint
+					text={m.due_on({
+						value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
+						value2: overdue ? m.overdue_suffix() : ''
+					})}
+				>
+					{#snippet children(props)}
+						<span {...props} class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}>
+							<Calendar />
+							{shortDate(t.dueDate!)}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('blockers') && blocked}
+				<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
+					{#snippet children(props)}
+						<span {...props} class="text-warning flex items-center gap-1">
+							<Ban />
+							{t.openBlockers}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('attachments') && t.attachmentCount > 0}
+				<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
+					{#snippet children(props)}
+						<span {...props} class="flex items-center gap-1" data-attachments>
+							<Paperclip />
+							{t.attachmentCount}
+						</span>
+					{/snippet}
+				</Hint>
+			{/if}
+			{#if fields.includes('assignees')}
+				<span class="ml-auto">
+					<AssigneePicker
+						assigned={t.assignees}
+						disabled={readOnly}
+						compact
+						{users}
+						{me}
+						value={t.assigneeIds}
+						onchange={onAssign}
+					/>
 				</span>
-			{/snippet}
-		</Hint>
-		{/if}
-		{#if fields.includes('dueDate') && t.dueDate}
-			<Hint
-				text={m.due_on({
-					value1: new Date(t.dueDate).toLocaleDateString(intlLocale()),
-					value2: overdue ? m.overdue_suffix() : ''
-				})}
-			>
-				{#snippet children(props)}
-					<span {...props} class={cn('flex items-center gap-1', overdue && 'text-destructive font-medium')}>
-						<Calendar />
-						{shortDate(t.dueDate!)}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		{#if fields.includes('blockers') && blocked}
-			<Hint text={m.waiting_for_open_ticket_s({ value1: t.openBlockers })}>
-				{#snippet children(props)}
-					<span {...props} class="text-warning flex items-center gap-1">
-						<Ban />
-						{t.openBlockers}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		{#if fields.includes('attachments') && t.attachmentCount > 0}
-			<Hint text={m.attachment_s({ value1: t.attachmentCount })}>
-				{#snippet children(props)}
-					<span {...props} class="flex items-center gap-1" data-attachments>
-						<Paperclip />
-						{t.attachmentCount}
-					</span>
-				{/snippet}
-			</Hint>
-		{/if}
-		{#if fields.includes('assignees')}
-		<span class="ml-auto">
-			<AssigneePicker
-				assigned={t.assignees}
-				disabled={readOnly}
-				compact
-				{users}
-				{me}
-				value={t.assigneeIds}
-				onchange={onAssign}
-			/>
-		</span>
-		{/if}
-	</div>
+			{/if}
+		</div>
 	{/if}
 	{#if !readOnly && showMove}
 		<div class="sm:hidden">

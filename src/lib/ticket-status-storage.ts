@@ -30,7 +30,8 @@ function valid(value: unknown): value is StoredTicketStatus {
 		(item.status === undefined || (typeof item.status === 'string' && item.status.length <= 60)) &&
 		(item.closed === undefined || typeof item.closed === 'boolean') &&
 		(item.projectName === undefined || (typeof item.projectName === 'string' && item.projectName.length <= 120)) &&
-		(item.projectColor === undefined || (typeof item.projectColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(item.projectColor)))
+		(item.projectColor === undefined ||
+			(typeof item.projectColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(item.projectColor)))
 	);
 }
 
@@ -56,7 +57,7 @@ export function rememberTicketStatus(ticket: Omit<StoredTicketStatus, 'lastViewe
 export async function refreshStoredTicketStatuses() {
 	const items = storedTicketStatuses();
 	const refreshed = await Promise.all(
-		items.map(async (item) => {
+		items.map(async (item): Promise<StoredTicketStatus | null> => {
 			const response = await fetch(`/api/v1${item.path}`);
 			if (response.status === 404) return null;
 			if (!response.ok) throw new Error('Ticketstatus konnte nicht geladen werden.');

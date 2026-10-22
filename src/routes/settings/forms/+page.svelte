@@ -4,7 +4,14 @@
 	import { page } from '$app/state';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
-	import { INTAKE_FIELDS, INTAKE_FIELD_ORDER, intakeFieldsSchema, intakeFormSchema, type IntakeFormDto } from '#lib/contracts/index.js';
+	import {
+		INTAKE_FIELDS,
+		INTAKE_FIELD_ORDER,
+		intakeFieldsSchema,
+		intakeFormSchema,
+		type IntakeFieldOrder,
+		type IntakeFormDto
+	} from '#lib/contracts/index.js';
 	import { embedCode } from '#lib/embed.js';
 	import { localizeError } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -131,7 +138,7 @@
 		$form.tagIds = on ? [...$form.tagIds, id] : $form.tagIds.filter((t) => t !== id);
 	}
 	let armedField = $state<string | null>(null);
-	let draggedField = $state<string | null>(null);
+	let draggedField = $state<IntakeFieldOrder | null>(null);
 	function moveField(from: number, to: number) {
 		if (from < 0 || to < 0 || to >= $form.fieldOrder.length || from === to) return;
 		const next = [...$form.fieldOrder];
@@ -139,12 +146,12 @@
 		next.splice(to, 0, moved);
 		$form.fieldOrder = next;
 	}
-	function onFieldDragOver(event: DragEvent, target: string) {
+	function onFieldDragOver(event: DragEvent, target: IntakeFieldOrder) {
 		if (!draggedField || draggedField === target) return;
 		event.preventDefault();
 		moveField($form.fieldOrder.indexOf(draggedField), $form.fieldOrder.indexOf(target));
 	}
-	function onFieldKeydown(event: KeyboardEvent, field: string) {
+	function onFieldKeydown(event: KeyboardEvent, field: IntakeFieldOrder) {
 		const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
 		if (!direction) return;
 		event.preventDefault();
@@ -201,7 +208,7 @@
 				{#if !f.active}<Badge variant="outline">{m.form_inactive()}</Badge>{/if}
 				<Badge variant="secondary">{f.requireLogin ? m.require_login() : m.public_form()}</Badge>
 				{#if !f.requireLogin}<Badge variant="secondary">{m.email()}: {EMAIL_MODES[f.emailMode]}</Badge>{/if}
-						{#if f.design === 'enable'}<Badge variant="outline">{DESIGNS[f.design]}</Badge>{/if}
+				{#if f.design === 'enable'}<Badge variant="outline">{DESIGNS[f.design]}</Badge>{/if}
 			</Card.Header>
 			<Card.Content class="gap-3">
 				<div class="flex flex-wrap gap-1.5">
@@ -294,7 +301,7 @@
 				<Select.Root type="single" bind:value={$form.design}>
 					<Select.Trigger class="w-full" aria-labelledby="form-design-label">{DESIGNS[$form.design]}</Select.Trigger>
 					<Select.Content>
-						{#each Object.entries(DESIGNS) as [value, label] (value)}<Select.Item value={value}>{label}</Select.Item>{/each}
+						{#each Object.entries(DESIGNS) as [value, label] (value)}<Select.Item {value}>{label}</Select.Item>{/each}
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -318,12 +325,29 @@
 							class="flex items-center gap-2 rounded-md px-1 py-1"
 							class:bg-muted={draggedField === field}
 							draggable={armedField === field}
-							ondragstart={(event) => { draggedField = field; event.dataTransfer!.effectAllowed = 'move'; event.dataTransfer!.setData('text/plain', field); }}
+							ondragstart={(event) => {
+								draggedField = field;
+								event.dataTransfer!.effectAllowed = 'move';
+								event.dataTransfer!.setData('text/plain', field);
+							}}
 							ondragover={(event) => onFieldDragOver(event, field)}
 							ondrop={(event) => event.preventDefault()}
-							ondragend={() => { draggedField = null; armedField = null; }}
+							ondragend={() => {
+								draggedField = null;
+								armedField = null;
+							}}
 						>
-							<button type="button" class="text-muted-foreground cursor-grab touch-none rounded p-1 focus-visible:ring-2 focus-visible:ring-ring" aria-label={m.move_form_field({ field: ORDER_LABELS[field] })} title={m.drag_to_reorder_or_use_arrow_keys()} onpointerdown={() => (armedField = field)} onpointerup={() => { if (!draggedField) armedField = null; }} onkeydown={(event) => onFieldKeydown(event, field)}><GripVertical class="size-4" /></button>
+							<button
+								type="button"
+								class="text-muted-foreground cursor-grab touch-none rounded p-1 focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label={m.move_form_field({ field: ORDER_LABELS[field] })}
+								title={m.drag_to_reorder_or_use_arrow_keys()}
+								onpointerdown={() => (armedField = field)}
+								onpointerup={() => {
+									if (!draggedField) armedField = null;
+								}}
+								onkeydown={(event) => onFieldKeydown(event, field)}><GripVertical class="size-4" /></button
+							>
 							<span class="grow text-sm" id="field-{field}">{ORDER_LABELS[field]}</span>
 							{#if field === 'project' || field === 'title'}
 								<span class="text-muted-foreground text-xs">{m.email_mode_required()}</span>
@@ -331,8 +355,14 @@
 								<span class="text-muted-foreground text-xs">{EMAIL_MODES[$form.emailMode]}</span>
 							{:else}
 								<Select.Root type="single" bind:value={$form.fields[field]}>
-									<Select.Trigger class="w-36" size="sm" aria-labelledby="field-{field}">{EMAIL_MODES[$form.fields[field]]}</Select.Trigger>
-									<Select.Content>{#each Object.entries(EMAIL_MODES) as [value, label] (value)}<Select.Item value={value}>{label}</Select.Item>{/each}</Select.Content>
+									<Select.Trigger class="w-36" size="sm" aria-labelledby="field-{field}"
+										>{EMAIL_MODES[$form.fields[field]]}</Select.Trigger
+									>
+									<Select.Content
+										>{#each Object.entries(EMAIL_MODES) as [value, label] (value)}<Select.Item {value}
+												>{label}</Select.Item
+											>{/each}</Select.Content
+									>
 								</Select.Root>
 							{/if}
 						</div>

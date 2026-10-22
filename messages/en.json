@@ -695,5 +695,12 @@
 	"loading_ticket_statuses": "Loading current ticket information…",
 	"ticket_statuses_load_failed": "Ticket information could not be loaded",
 	"ticket_statuses_load_failed_description": "Check your connection and try again.",
-	"try_again": "Try again"
+	"try_again": "Try again",
+	"intake_system_not_found": "The selected system does not exist.",
+	"intake_at_most_images": "At most {count} images in the description.",
+	"intake_invalid_image": "Invalid image in the description.",
+	"intake_choose_system": "Please choose a system.",
+	"comment_not_found": "Comment not found.",
+	"board_group_tasks_only": "Board groups only apply to tasks.",
+	"intake_field_duplicate": "Each field may only appear once."
 }

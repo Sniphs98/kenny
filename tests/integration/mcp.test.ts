@@ -100,7 +100,7 @@ describe('MCP server', () => {
 		expect(await call(reader, 'get_ticket', { ticket: String(hidden.id) })).toMatchObject({ isError: true });
 		expect(await call(reader, 'get_ticket', { ticket: 'WEB-99' })).toMatchObject({
 			isError: true,
-			text: 'Ticket “WEB-99” not found.'
+			text: 'Task “WEB-99” not found.'
 		});
 	});
 

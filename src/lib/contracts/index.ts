@@ -60,7 +60,10 @@ export const createTicketSchema = z
 		relatesTo: z.array(reference).max(100).optional()
 	})
 	.refine(validDateRange, rangeError);
-export const updateTicketSchema = z.strictObject({ ...ticketFields, boardGroup: z.enum(['general', 'tickets']).nullable().optional() }).partial().refine(validDateRange, rangeError);
+export const updateTicketSchema = z
+	.strictObject({ ...ticketFields, boardGroup: z.enum(['general', 'tickets']).nullable().optional() })
+	.partial()
+	.refine(validDateRange, rangeError);
 
 /** Manuelle Reihenfolge einer Spalte: die genannten Tickets zuerst, übrige Tickets der Spalte danach */
 export const reorderTicketsSchema = z.strictObject({
@@ -233,7 +236,9 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 	assignee: userSchema.nullable(),
 	assignees: z.array(userSchema),
 	/** Herkunft, wenn das Ticket über ein Formular eingereicht wurde */
-	submission: z.object({ form: z.string().nullable(), email: z.string().nullable(), system: z.string().nullable() }).nullable()
+	submission: z
+		.object({ form: z.string().nullable(), email: z.string().nullable(), system: z.string().nullable() })
+		.nullable()
 });
 
 export type CreateProjectInput = z.input<typeof createProjectSchema>;
@@ -288,7 +293,15 @@ export const INTAKE_DESIGNS = ['default', 'enable'] as const;
 export type IntakeDesign = (typeof INTAKE_DESIGNS)[number];
 
 /** Ticketfelder, die ein Formular anbieten kann; der Titel ist immer Pflicht */
-export const INTAKE_FIELDS = ['system', 'description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments'] as const;
+export const INTAKE_FIELDS = [
+	'system',
+	'description',
+	'priority',
+	'startDate',
+	'dueDate',
+	'tags',
+	'attachments'
+] as const;
 export type IntakeField = (typeof INTAKE_FIELDS)[number];
 const fieldMode = z.enum(INTAKE_FIELD_MODES);
 export const intakeFieldsSchema = z.strictObject({
@@ -301,7 +314,18 @@ export const intakeFieldsSchema = z.strictObject({
 	attachments: fieldMode.default('hidden')
 });
 export type IntakeFields = z.output<typeof intakeFieldsSchema>;
-export const INTAKE_FIELD_ORDER = ['project', 'title', 'system', 'description', 'priority', 'startDate', 'dueDate', 'tags', 'attachments', 'email'] as const;
+export const INTAKE_FIELD_ORDER = [
+	'project',
+	'title',
+	'system',
+	'description',
+	'priority',
+	'startDate',
+	'dueDate',
+	'tags',
+	'attachments',
+	'email'
+] as const;
 export type IntakeFieldOrder = (typeof INTAKE_FIELD_ORDER)[number];
 export const intakeFieldOrderSchema = z
 	.array(z.enum(INTAKE_FIELD_ORDER))
@@ -336,7 +360,7 @@ export const intakeSubmissionSchema = z
 		startDate: z.union([dateSchema, z.literal('')]).default(''),
 		dueDate: z.union([dateSchema, z.literal('')]).default(''),
 		tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
-	system: z.string().trim().max(120).default(''),
+		system: z.string().trim().max(120).default(''),
 		email: z
 			.union([z.literal(''), z.email({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' }).max(320)])
 			.default(''),
@@ -487,7 +511,13 @@ export const updateEmailNotificationsSchema = z.strictObject({
 	enabled: z.boolean().optional(),
 	events: z.array(z.enum(EMAIL_NOTIFICATION_EVENTS)).max(EMAIL_NOTIFICATION_EVENTS.length).optional(),
 	locale: z.enum(NOTIFICATION_LOCALES).optional(),
-	senderName: z.string().trim().min(1).max(100).regex(/^[^\r\n]+$/).optional()
+	senderName: z
+		.string()
+		.trim()
+		.min(1)
+		.max(100)
+		.regex(/^[^\r\n]+$/)
+		.optional()
 });
 
 export const emailNotificationsDtoSchema = z.object({

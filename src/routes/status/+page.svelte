@@ -55,8 +55,15 @@
 		></span>
 		<div class="flex items-start justify-between gap-3">
 			<div class="min-w-0">
-				<p class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{ticket.projectName ?? m.ticket()}</p>
-				<p class={completed ? 'text-muted-foreground mt-1 text-xs font-semibold' : 'mt-1 text-xs font-semibold'} style={completed ? undefined : 'color: var(--ticket-color)'}>{ticket.key}</p>
+				<p class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+					{ticket.projectName ?? m.ticket()}
+				</p>
+				<p
+					class={completed ? 'text-muted-foreground mt-1 text-xs font-semibold' : 'mt-1 text-xs font-semibold'}
+					style={completed ? undefined : 'color: var(--ticket-color)'}
+				>
+					{ticket.key}
+				</p>
 			</div>
 			<span
 				class={completed
@@ -70,18 +77,30 @@
 				{ticket.status}
 			</span>
 		</div>
-		<h2 class={completed ? 'text-muted-foreground mt-4 line-clamp-2 min-h-12 text-base font-semibold leading-6' : 'mt-4 line-clamp-2 min-h-12 text-base font-semibold leading-6'}>{ticket.title}</h2>
+		<h2
+			class={completed
+				? 'text-muted-foreground mt-4 line-clamp-2 min-h-12 text-base font-semibold leading-6'
+				: 'mt-4 line-clamp-2 min-h-12 text-base font-semibold leading-6'}
+		>
+			{ticket.title}
+		</h2>
 		<div class="text-muted-foreground mt-5 flex items-center justify-between gap-3 border-t pt-4 text-xs">
 			<span class="flex min-w-0 items-center gap-1.5">
 				<Clock3 class="size-3.5 shrink-0" />
-				<span class="truncate">{m.ticket_updated_at({ date: new Date(ticket.updatedAt!).toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' }) })}</span>
+				<span class="truncate"
+					>{m.ticket_updated_at({
+						date: new Date(ticket.updatedAt!).toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' })
+					})}</span
+				>
 			</span>
 			<ArrowRight class="size-4 shrink-0 transition-transform group-hover:translate-x-1" />
 		</div>
 	</a>
 {/snippet}
 
-<div class="min-h-screen bg-background bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_52%)] px-4 py-12">
+<div
+	class="min-h-screen bg-background bg-[radial-gradient(circle_at_50%_0%,var(--primary-soft),transparent_52%)] px-4 py-12"
+>
 	<div class="mx-auto grid w-full max-w-3xl gap-7">
 		<header class="flex flex-col items-center text-center">
 			<span class="bg-primary text-primary-foreground grid size-12 place-items-center rounded-2xl shadow-lg">
@@ -94,7 +113,8 @@
 		{#if loading}
 			<Card.Root>
 				<Card.Content class="flex items-center justify-center gap-3 py-10 text-sm">
-					<LoaderCircle class="text-primary size-5 animate-spin" /> {m.loading_ticket_statuses()}
+					<LoaderCircle class="text-primary size-5 animate-spin" />
+					{m.loading_ticket_statuses()}
 				</Card.Content>
 			</Card.Root>
 		{:else if loadError}
@@ -110,7 +130,8 @@
 			{#if openTickets.length}
 				<section class="grid gap-3">
 					<h2 class="flex items-center gap-2 text-sm font-semibold">
-						{m.open_tickets()} <span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">{openTickets.length}</span>
+						{m.open_tickets()}
+						<span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">{openTickets.length}</span>
 					</h2>
 					<div class="grid gap-4 sm:grid-cols-2">
 						{#each openTickets as ticket (ticket.key)}{@render ticketCard(ticket, false)}{/each}
@@ -121,7 +142,8 @@
 			{#if completedTickets.length}
 				<section class="mt-3 grid gap-3 border-t pt-7">
 					<h2 class="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
-						<CircleCheck class="text-success size-4" /> {m.completed_tickets()}
+						<CircleCheck class="text-success size-4" />
+						{m.completed_tickets()}
 						<span class="bg-muted rounded-full px-2 py-0.5 text-xs">{completedTickets.length}</span>
 					</h2>
 					<div class="grid gap-4 sm:grid-cols-2">

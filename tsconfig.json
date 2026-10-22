@@ -2,7 +2,11 @@
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"sourceMap": true,
-		"strict": true
+		"strict": true,
+		// @toast-ui/editor ships types but does not expose them through its package exports.
+		"paths": {
+			"@toast-ui/editor": ["./node_modules/@toast-ui/editor/types/index.d.ts"]
+		}
 	},
 	"include": [
 		"src",

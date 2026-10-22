@@ -144,23 +144,23 @@ docker compose start
 
 ## Configuration
 
-| Variable                                                    | Default                        | Description                                                                                                          |
-| ----------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`                                        | – (required)                   | Long random secret for sessions, e.g. `openssl rand -base64 32`. Changing it signs everyone out.                     |
-| `KENNY_ORIGIN`                                              | – (required in `compose.yaml`) | Public URL of Kenny. Compose passes it on as `ORIGIN` and `BETTER_AUTH_URL`; set those two directly without Compose. |
-| `KENNY_VERSION`                                             | `latest`                       | Image version used by `compose.yaml`.                                                                                |
-| `ATTACHMENT_MAX_MB`                                         | `25`                           | Maximum size of one attachment in MB.                                                                                |
-| `BODY_SIZE_LIMIT`                                           | `30M`                          | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                               |
-| `DATABASE_URL`                                              | `/app/data/kenny.db`           | SQLite database file.                                                                                                |
-| `ATTACHMENTS_DIR`                                           | `/app/data/attachments`        | Storage directory for attachments.                                                                                   |
+| Variable                                                    | Default                         | Description                                                                                                          |
+| ----------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`                                        | – (required)                    | Long random secret for sessions, e.g. `openssl rand -base64 32`. Changing it signs everyone out.                     |
+| `KENNY_ORIGIN`                                              | – (required in `compose.yaml`)  | Public URL of Kenny. Compose passes it on as `ORIGIN` and `BETTER_AUTH_URL`; set those two directly without Compose. |
+| `KENNY_VERSION`                                             | `latest`                        | Image version used by `compose.yaml`.                                                                                |
+| `ATTACHMENT_MAX_MB`                                         | `25`                            | Maximum size of one attachment in MB.                                                                                |
+| `BODY_SIZE_LIMIT`                                           | `30M`                           | Maximum request size; must exceed `ATTACHMENT_MAX_MB`.                                                               |
+| `DATABASE_URL`                                              | `/app/data/kenny.db`            | SQLite database file.                                                                                                |
+| `ATTACHMENTS_DIR`                                           | `/app/data/attachments`         | Storage directory for attachments.                                                                                   |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`                     | `smtp.gmail.com`, `465`, `true` | SMTP server for project e-mail notifications.                                                                        |
-| `SMTP_USER`, `SMTP_PASSWORD`                                | –                              | SMTP login. For Gmail, use the Gmail address and a Google app password.                                              |
-| `SMTP_FROM`                                                 | `SMTP_USER`                    | Sender address; Gmail normally requires the authenticated Gmail address.                                             |
-| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                              | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.             |
-| `MICROSOFT_TENANT_ID`                                       | `common`                       | Entra tenant; use your tenant ID for a company installation.                                                         |
-| `MICROSOFT_AUTHORITY`                                       | Microsoft default              | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                   |
-| `TEAMS_ENABLED`                                             | `false`                        | Run Kenny as a Microsoft Teams app; see [Microsoft Teams](docs/microsoft-teams.md).                                  |
-| `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`      | Details of the Teams app package.                                                                                    |
+| `SMTP_USER`, `SMTP_PASSWORD`                                | –                               | SMTP login. For Gmail, use the Gmail address and a Google app password.                                              |
+| `SMTP_FROM`                                                 | `SMTP_USER`                     | Sender address; Gmail normally requires the authenticated Gmail address.                                             |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`            | –                               | Enable **Sign in with Microsoft** (Entra ID); redirect URI `<KENNY_ORIGIN>/api/auth/callback/microsoft`.             |
+| `MICROSOFT_TENANT_ID`                                       | `common`                        | Entra tenant; use your tenant ID for a company installation.                                                         |
+| `MICROSOFT_AUTHORITY`                                       | Microsoft default               | Only for national clouds, e.g. `https://login.microsoftonline.us`.                                                   |
+| `TEAMS_ENABLED`                                             | `false`                         | Run Kenny as a Microsoft Teams app; see [Microsoft Teams](docs/microsoft-teams.md).                                  |
+| `TEAMS_APP_VERSION`, `TEAMS_APP_ID`, `TEAMS_DEVELOPER_NAME` | `1.0.0`, derived, `Kenny`       | Details of the Teams app package.                                                                                    |
 
 Variables that are not listed in `compose.yaml` (such as `MICROSOFT_AUTHORITY` or `TEAMS_APP_ID`) need an extra line under `environment`.
 
@@ -203,9 +203,9 @@ npm run dev:scenario -- demo --reset   # Recreate the scenario from scratch
 npm run dev:scenario -- demo --port 5180
 ```
 
-| Scenario | Contents                                                                                      |
-| -------- | --------------------------------------------------------------------------------------------- |
-| `leer`   | One user, no projects (the scenario identifier means "empty" in German)                       |
+| Scenario | Contents                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------- |
+| `leer`   | One user, no projects (the scenario identifier means "empty" in German)                     |
 | `demo`   | Two projects, three users, and ~30 tasks with tags, subtasks, dependencies, and attachments |
 | `gantt`  | A schedule with dependency chains, a scheduling conflict, and unscheduled tasks             |
 
@@ -305,7 +305,6 @@ Tasks can be addressed by ID (`42`) or key (`WEB-12`); projects by ID or key. Ex
 | GET              | `/attachments/:id`                            | Download an attachment (`?download` forces download)                              |
 | DELETE           | `/attachments/:id`                            | Delete an attachment                                                              |
 
-
 Fields for creating or updating a task (all optional except `title` when creating):
 
 ```json
@@ -344,11 +343,11 @@ Kenny includes a [Model Context Protocol](https://modelcontextprotocol.io) serve
 
 All tools are read-only:
 
-| Tool             | Description                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `list_projects`  | Accessible projects with key and task counts                                                                              |
-| `search_tickets` | Tasks across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit`   |
-| `get_ticket`     | One task by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                  |
+| Tool             | Description                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `list_projects`  | Accessible projects with key and task counts                                                                            |
+| `search_tickets` | Tasks across accessible projects; filters `project`, `query`, `assignee` (`me`, `none`, id or email), `closed`, `limit` |
+| `get_ticket`     | One task by key or ID with description, tags, assignee, parent, subtasks, links, and attachment metadata                |
 
 The **API** page in the app shows the endpoint URL and configuration examples. For example, with Claude Code:
 

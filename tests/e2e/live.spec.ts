@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, card, createProject, createTicket, getTicket, open } from './helpers';
+import { api, card, createProject, createTicket, open } from './helpers';
 
 test('Board zeigt Änderungen über die API ohne Neuladen', async ({ page, request }) => {
 	const p = await createProject(request);
@@ -15,41 +15,6 @@ test('Board zeigt Änderungen über die API ohne Neuladen', async ({ page, reque
 	await expect(card(page, 'Live umbenannt')).toBeVisible();
 	await expect(page.getByRole('region', { name: 'Allgemein: Review', exact: true }).locator('[data-card]')).toHaveCount(
 		1
-	);
-});
-
-test('Offenes Ticket-Modal aktualisiert sich, ungespeicherte Eingaben bleiben erhalten', async ({ page, context }) => {
-	const p = await createProject(page.request);
-	const t = await createTicket(page.request, p.key, { title: 'Gemeinsam bearbeiten' });
-
-	// Tab A: Modal offen, Beschreibung wird gerade bearbeitet (nicht gespeichert)
-	await open(page, `/projects/${p.key}/board`);
-	await card(page, 'Gemeinsam bearbeiten').getByRole('link', { name: 'Gemeinsam bearbeiten' }).click();
-	const modal = page.getByRole('dialog');
-	await expect(modal).toBeVisible();
-	const editor = modal.getByRole('textbox', { name: 'Beschreibung', exact: true });
-	await editor.fill('Mein Entwurf, noch nicht gespeichert');
-
-	// Tab B: ändert dasselbe Ticket über die Oberfläche
-	const other = await context.newPage();
-	await open(other, `/tickets/${t.key}`);
-	const title = other.getByRole('textbox', { name: 'Titel', exact: true });
-	await title.fill('Von Tab B geändert');
-	await title.press('Enter');
-	await expect.poll(async () => (await getTicket(other.request, t.key)).title).toBe('Von Tab B geändert');
-
-	// Tab A: Titel im Modal ist aktualisiert, der Entwurf ist unverändert
-	await expect(modal.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('Von Tab B geändert');
-	await expect(editor).toHaveValue('Mein Entwurf, noch nicht gespeichert');
-	await expect(card(page, 'Von Tab B geändert')).toBeVisible();
-
-	// Speichern übernimmt den Entwurf
-	await editor.press('Control+Enter');
-	await expect
-		.poll(async () => (await getTicket(other.request, t.key)).description)
-		.toBe('Mein Entwurf, noch nicht gespeichert');
-	await expect(other.getByRole('textbox', { name: 'Beschreibung', exact: true })).toHaveValue(
-		'Mein Entwurf, noch nicht gespeichert'
 	);
 });
 

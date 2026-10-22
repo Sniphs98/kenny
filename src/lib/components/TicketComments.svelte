@@ -13,7 +13,12 @@
 	import { toast } from 'svelte-sonner';
 	import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
 
-	let { ticketId, comments, canEdit, refresh }: {
+	let {
+		ticketId,
+		comments,
+		canEdit,
+		refresh
+	}: {
 		ticketId: number;
 		comments: CommentDto[];
 		canEdit: boolean;
@@ -77,7 +82,10 @@
 									<time class="text-muted-foreground text-xs" datetime={comment.createdAt.toISOString()}>
 										{comment.createdAt.toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
 									</time>
-									<Badge variant={comment.internal ? 'secondary' : 'outline'} class={comment.internal ? '' : 'border-primary/60 bg-background/40'}>
+									<Badge
+										variant={comment.internal ? 'secondary' : 'outline'}
+										class={comment.internal ? '' : 'border-primary/60 bg-background/40'}
+									>
 										{comment.internal ? m.internal() : m.public()}
 									</Badge>
 									{#if canEdit}
@@ -89,7 +97,10 @@
 												<MoreHorizontal class="size-4" />
 											</DropdownMenu.Trigger>
 											<DropdownMenu.Content align="end">
-												<DropdownMenu.Item class="text-destructive focus:text-destructive" onSelect={() => remove(comment.id)}>
+												<DropdownMenu.Item
+													class="text-destructive focus:text-destructive"
+													onSelect={() => remove(comment.id)}
+												>
 													{m.delete()}
 												</DropdownMenu.Item>
 											</DropdownMenu.Content>
@@ -107,13 +118,31 @@
 		{/if}
 		{#if canEdit}
 			<div class="overflow-hidden rounded-lg border">
-				<MarkdownEditor bind:value={body} bind:uploadCount ticketId={ticketId} {refresh} autoSave={false} onSave={() => {}} placeholder={m.write_comment()} />
+				<MarkdownEditor
+					bind:value={body}
+					bind:uploadCount
+					{ticketId}
+					{refresh}
+					autoSave={false}
+					onSave={() => {}}
+					placeholder={m.write_comment()}
+				/>
 			</div>
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div class="flex items-center gap-2 text-sm">
 					<span>{m.public()}</span>
-					<button type="button" role="switch" aria-label={m.comment_visibility()} aria-checked={internal} onclick={() => (internal = !internal)} class="relative h-6 w-11 rounded-full border bg-muted transition-colors aria-checked:bg-primary">
-						<span class="bg-background absolute top-0.5 left-0.5 size-4 rounded-full shadow-sm transition-transform" class:translate-x-5={internal}></span>
+					<button
+						type="button"
+						role="switch"
+						aria-label={m.comment_visibility()}
+						aria-checked={internal}
+						onclick={() => (internal = !internal)}
+						class="relative h-6 w-11 rounded-full border bg-muted transition-colors aria-checked:bg-primary"
+					>
+						<span
+							class="bg-background absolute top-0.5 left-0.5 size-4 rounded-full shadow-sm transition-transform"
+							class:translate-x-5={internal}
+						></span>
 					</button>
 					<span>{m.internal()}</span>
 				</div>

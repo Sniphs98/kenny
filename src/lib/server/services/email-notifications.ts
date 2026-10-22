@@ -200,48 +200,57 @@ function markdownHtml(
 	accent: string
 ) {
 	const replacements: string[] = [];
-	const withTokens = value.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g, (source, alt: string, url: string) => {
-		const match = url.match(/(?:^|\/)api\/v1\/attachments\/(\d+)(?:\?.*)?$/);
-		const file = match ? data.attachments.find(({ id }) => id === Number(match[1])) : undefined;
-		if (!file || !file.mimeType.startsWith('image/')) return source;
-		const cid = `kenny-attachment-${file.id}`;
-		replacements.push(
-			attachments.some((attachment) => attachment.cid === cid)
-				? `<img src="cid:${cid}" alt="${escapeHtml(alt || file.filename)}" style="display:block;max-width:100%;height:auto;margin:12px 0;border-radius:8px;" />`
-				: `<span style="color:#64748b;">📎 ${escapeHtml(alt || file.filename)}</span>`
-		);
-		return `\u0000${replacements.length - 1}\u0000`;
-	});
-	const withLinks = withTokens.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g, (source, label: string, url: string) => {
-		const match = url.match(/(?:^|\/)api\/v1\/attachments\/(\d+)(?:\?.*)?$/);
-		const file = match ? data.attachments.find(({ id }) => id === Number(match[1])) : undefined;
-		if (file) replacements.push(`<span style="color:#475569;">📎 ${escapeHtml(label || file.filename)}</span>`);
-		else {
-			let href: URL;
-			try {
-				href = new URL(url, `${baseUrl()}/`);
-			} catch {
-				return source;
-			}
-			if (!['http:', 'https:'].includes(href.protocol)) return source;
-			replacements.push(`<a href="${escapeHtml(href.href)}" style="color:${accent};font-weight:600;">${escapeHtml(label)}</a>`);
+	const withTokens = value.replace(
+		/!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g,
+		(source, alt: string, url: string) => {
+			const match = url.match(/(?:^|\/)api\/v1\/attachments\/(\d+)(?:\?.*)?$/);
+			const file = match ? data.attachments.find(({ id }) => id === Number(match[1])) : undefined;
+			if (!file || !file.mimeType.startsWith('image/')) return source;
+			const cid = `kenny-attachment-${file.id}`;
+			replacements.push(
+				attachments.some((attachment) => attachment.cid === cid)
+					? `<img src="cid:${cid}" alt="${escapeHtml(alt || file.filename)}" style="display:block;max-width:100%;height:auto;margin:12px 0;border-radius:8px;" />`
+					: `<span style="color:#64748b;">📎 ${escapeHtml(alt || file.filename)}</span>`
+			);
+			return `\uE000${replacements.length - 1}\uE000`;
 		}
-		return `\u0000${replacements.length - 1}\u0000`;
-	});
+	);
+	const withLinks = withTokens.replace(
+		/\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g,
+		(source, label: string, url: string) => {
+			const match = url.match(/(?:^|\/)api\/v1\/attachments\/(\d+)(?:\?.*)?$/);
+			const file = match ? data.attachments.find(({ id }) => id === Number(match[1])) : undefined;
+			if (file) replacements.push(`<span style="color:#475569;">📎 ${escapeHtml(label || file.filename)}</span>`);
+			else {
+				let href: URL;
+				try {
+					href = new URL(url, `${baseUrl()}/`);
+				} catch {
+					return source;
+				}
+				if (!['http:', 'https:'].includes(href.protocol)) return source;
+				replacements.push(
+					`<a href="${escapeHtml(href.href)}" style="color:${accent};font-weight:600;">${escapeHtml(label)}</a>`
+				);
+			}
+			return `\uE000${replacements.length - 1}\uE000`;
+		}
+	);
 	let html = escapeHtml(withLinks)
-		.replace(/`([^`\n]+)`/g, '<code style="padding:2px 5px;border-radius:4px;background:#e2e8f0;font-family:monospace;">$1</code>')
+		.replace(
+			/`([^`\n]+)`/g,
+			'<code style="padding:2px 5px;border-radius:4px;background:#e2e8f0;font-family:monospace;">$1</code>'
+		)
 		.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
 		.replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
 		.replace(/\n/g, '<br />');
-	html = html.replace(/\u0000(\d+)\u0000/g, (_token, index: string) => replacements[Number(index)] ?? '');
+	html = html.replace(/\uE000(\d+)\uE000/g, (_token, index: string) => replacements[Number(index)] ?? '');
 	return html;
 }
 
 async function referencedAttachments(value: string | undefined, data: NonNullable<ReturnType<typeof ticketData>>) {
 	if (!value) return [];
-	const ids = new Set(
-		[...value.matchAll(/(?:^|\/)api\/v1\/attachments\/(\d+)/g)].map((match) => Number(match[1]))
-	);
+	const ids = new Set([...value.matchAll(/(?:^|\/)api\/v1\/attachments\/(\d+)/g)].map((match) => Number(match[1])));
 	const files: MailAttachment[] = [];
 	for (const file of data.attachments) {
 		if (!ids.has(file.id)) continue;
@@ -261,8 +270,7 @@ async function referencedAttachments(value: string | undefined, data: NonNullabl
 
 function emailColors(color: string) {
 	const match = /^#([0-9a-f]{6})$/i.exec(color);
-	if (!match)
-		return { accent: '#292524', foreground: '#ffffff', soft: '#f5f5f4', border: '#d6d3d1' };
+	if (!match) return { accent: '#292524', foreground: '#ffffff', soft: '#f5f5f4', border: '#d6d3d1' };
 	const rgb = [0, 2, 4].map((index) => parseInt(match[1].slice(index, index + 2), 16));
 	const luminance = (channels: number[]) => {
 		const linear = channels.map((value) => {
@@ -349,13 +357,17 @@ function htmlFor(
 	}[event]();
 	const rows = detailRows(data, locale)
 		.map(
-			([label, value, markdown], index, values) => `<tr><td class="detail-label" style="width:31%;padding:13px 0;color:#78716c;font-size:12px;font-weight:600;line-height:1.5;vertical-align:top;${index < values.length - 1 ? 'border-bottom:1px solid #e7e5e4;' : ''}">${escapeHtml(label)}</td><td class="detail-value" style="padding:13px 0 13px 18px;color:#292524;font-size:14px;line-height:1.5;vertical-align:top;white-space:pre-wrap;${index < values.length - 1 ? 'border-bottom:1px solid #e7e5e4;' : ''}">${markdown ? markdownHtml(value, attachments, data, accent) : escapeHtml(value)}</td></tr>`
+			([label, value, markdown], index, values) =>
+				`<tr><td class="detail-label" style="width:31%;padding:13px 0;color:#78716c;font-size:12px;font-weight:600;line-height:1.5;vertical-align:top;${index < values.length - 1 ? 'border-bottom:1px solid #e7e5e4;' : ''}">${escapeHtml(label)}</td><td class="detail-value" style="padding:13px 0 13px 18px;color:#292524;font-size:14px;line-height:1.5;vertical-align:top;white-space:pre-wrap;${index < values.length - 1 ? 'border-bottom:1px solid #e7e5e4;' : ''}">${markdown ? markdownHtml(value, attachments, data, accent) : escapeHtml(value)}</td></tr>`
 		)
 		.join('');
 	const commentCard = comment
 		? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;"><tr><td style="width:3px;background:${accent};font-size:0;line-height:0;">&nbsp;</td><td style="padding:2px 0 2px 18px;"><div style="margin-bottom:8px;color:#78716c;font-size:12px;font-weight:700;">${escapeHtml(comment.authorName)}</div><div style="color:#292524;font-size:15px;line-height:1.7;">${markdownHtml(comment.body, attachments, data, accent)}</div></td></tr></table>`
 		: '';
-	const details = event === 'public_comment' ? '' : `<div style="margin-top:30px;"><h2 style="margin:0 0 6px;color:#44403c;font-size:13px;font-weight:700;letter-spacing:.02em;">${escapeHtml(m.email_notification_details({}, { locale }))}</h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-top:1px solid #e7e5e4;border-bottom:1px solid #e7e5e4;border-collapse:collapse;">${rows}</table></div>`;
+	const details =
+		event === 'public_comment'
+			? ''
+			: `<div style="margin-top:30px;"><h2 style="margin:0 0 6px;color:#44403c;font-size:13px;font-weight:700;letter-spacing:.02em;">${escapeHtml(m.email_notification_details({}, { locale }))}</h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-top:1px solid #e7e5e4;border-bottom:1px solid #e7e5e4;border-collapse:collapse;">${rows}</table></div>`;
 	const content = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;"><tr><td class="email-content" style="padding:38px;"><div style="margin:0 0 16px;color:#78716c;font-size:12px;font-weight:700;letter-spacing:.02em;"><span style="color:${accent};">${escapeHtml(key)}</span>&nbsp;&nbsp;&middot;&nbsp;&nbsp;${escapeHtml(eventLabel)}</div><h1 style="margin:0 0 12px;color:#1c1917;font-size:24px;font-weight:700;letter-spacing:-.4px;line-height:1.3;">${escapeHtml(subject)}</h1><p style="margin:0 0 28px;color:#57534e;font-size:15px;line-height:1.65;">${escapeHtml(intro)}</p>${commentCard}${details}<div style="margin-top:30px;">${actionButton(url, m.email_notification_open({}, { locale }), accent, foreground)}</div></td></tr></table>`;
 	return emailDocument({
 		locale,
@@ -395,11 +407,12 @@ async function mailFor(
 		public_comment: () => m.email_notification_comment_intro({}, { locale })
 	}[event]();
 	const lines = [subject, '', intro];
-	if (event !== 'public_comment') lines.push('', ...detailRows(data, locale).map(([label, value]) => `${label}: ${value}`));
+	if (event !== 'public_comment')
+		lines.push('', ...detailRows(data, locale).map(([label, value]) => `${label}: ${value}`));
 	if (comment) lines.push('', `${comment.authorName}:`, comment.body);
 	const accessToken = publicTicketStatusUrlToken(data.id);
 	lines.push('', `${m.email_notification_open({}, { locale })}: ${baseUrl()}/status/${key}/${accessToken}`);
-	const attachmentSource = comment?.body ?? (event === 'public_comment' ? undefined : data.description ?? undefined);
+	const attachmentSource = comment?.body ?? (event === 'public_comment' ? undefined : (data.description ?? undefined));
 	const attachments = [await brandAttachment(), ...(await referencedAttachments(attachmentSource, data))];
 	return {
 		to: data.recipient,
@@ -412,6 +425,7 @@ async function mailFor(
 }
 
 const inFlight = new Set<Promise<void>>();
+const ticketQueues = new Map<number, Promise<void>>();
 
 export async function settleEmailNotifications() {
 	await Promise.allSettled([...inFlight]);
@@ -450,12 +464,20 @@ export function notifyEmail(
 ) {
 	const row = rowOf(projectId);
 	if (!row?.events.includes(event)) return;
-	const delivery = (async () => {
-		const mail = await mailFor(event, ticketId, row.locale, row.senderName, comment);
-		if (mail) await deliver(row, mail);
-	})().catch(() => {});
+	// Mails eines Tickets nacheinander senden, damit z.B. die Antwort nicht vor der Eingangsbestätigung ankommt.
+	const previous = ticketQueues.get(ticketId) ?? Promise.resolve();
+	const delivery = previous
+		.then(async () => {
+			const mail = await mailFor(event, ticketId, row.locale, row.senderName, comment);
+			if (mail) await deliver(row, mail);
+		})
+		.catch(() => {});
+	ticketQueues.set(ticketId, delivery);
 	inFlight.add(delivery);
-	void delivery.finally(() => inFlight.delete(delivery));
+	void delivery.finally(() => {
+		inFlight.delete(delivery);
+		if (ticketQueues.get(ticketId) === delivery) ticketQueues.delete(ticketId);
+	});
 }
 
 export async function sendTestEmailNotification(projectRef: string | number, userId: string) {

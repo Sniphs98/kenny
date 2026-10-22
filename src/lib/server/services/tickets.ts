@@ -287,11 +287,8 @@ const commentFields = {
 };
 
 function commentsForTicket(ticketId: number) {
-	const hasReporter = !!db
-		.select({ email: ticket.reporterEmail })
-		.from(ticket)
-		.where(eq(ticket.id, ticketId))
-		.get()?.email;
+	const hasReporter = !!db.select({ email: ticket.reporterEmail }).from(ticket).where(eq(ticket.id, ticketId)).get()
+		?.email;
 	return db
 		.select(commentFields)
 		.from(ticketComment)
@@ -312,7 +309,11 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 	const t = resolveTicket(ref);
 	requireProjectAccess(actorId, t.projectId, 'member');
 	const input = parseInput(createCommentSchema, raw);
-	const row = db.insert(ticketComment).values({ ticketId: t.id, authorId: actorId, ...input }).returning().get();
+	const row = db
+		.insert(ticketComment)
+		.values({ ticketId: t.id, authorId: actorId, ...input })
+		.returning()
+		.get();
 	publish(t.projectId, { ticket: `${getProject(t.projectId).key}-${t.number}` });
 	const result = db
 		.select(commentFields)
@@ -471,7 +472,11 @@ function resolveColumn(projectId: number, ref: unknown) {
 	return col;
 }
 
-function checkParent(tx: Tx, t: { id?: number; projectId: number; kind: 'version' | 'main' | 'task' }, parentRef: unknown) {
+function checkParent(
+	tx: Tx,
+	t: { id?: number; projectId: number; kind: 'version' | 'main' | 'task' },
+	parentRef: unknown
+) {
 	if (parentRef === null || parentRef === undefined || parentRef === '') return null;
 	const parent = resolveTicket(String(parentRef), tx);
 	if (parent.projectId !== t.projectId)
@@ -481,8 +486,15 @@ function checkParent(tx: Tx, t: { id?: number; projectId: number; kind: 'version
 		if (cur.id === t.id) throw new ApiError(400, 'Eine Aufgabe kann nicht Unteraufgabe von sich selbst sein.');
 		cur = cur.parentId ? tx.select().from(ticket).where(eq(ticket.id, cur.parentId)).get() : undefined;
 	}
-	if (t.kind === 'version' || (t.kind === 'main' && parent.kind !== 'version') || (t.kind === 'task' && parent.kind !== 'main' && parent.kind !== 'task'))
-		throw new ApiError(400, 'Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks.');
+	if (
+		t.kind === 'version' ||
+		(t.kind === 'main' && parent.kind !== 'version') ||
+		(t.kind === 'task' && parent.kind !== 'main' && parent.kind !== 'task')
+	)
+		throw new ApiError(
+			400,
+			'Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks.'
+		);
 	return parent.id;
 }
 
@@ -545,7 +557,7 @@ function sequenceVersions(tx: Tx, projectId: number) {
 		if (!version.startDate) continue;
 		const start = toDay(version.startDate);
 		const end = toDay(version.dueDate ?? version.startDate);
-		const days = previousEnd !== null && start <= previousEnd ? previousEnd + 1 - start : 0;
+		const days: number = previousEnd !== null && start <= previousEnd ? previousEnd + 1 - start : 0;
 		if (days) {
 			tx.update(ticket)
 				.set({ startDate: shiftDate(version.startDate, days), dueDate: shiftDate(version.dueDate, days) })
@@ -644,7 +656,9 @@ export function createTicket(
 	const input = parseInput(createTicketSchema, rawInput);
 	const p = getProject(projectRef);
 	const cols = getColumns(p.id);
-	const hasParent = [input.parentId, input.parent].some((parent) => parent !== undefined && parent !== null && parent !== '');
+	const hasParent = [input.parentId, input.parent].some(
+		(parent) => parent !== undefined && parent !== null && parent !== ''
+	);
 	const col =
 		input.column !== undefined && input.column !== null
 			? resolveColumn(p.id, input.column)
@@ -737,13 +751,18 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 		}
 		if (input.kind !== undefined) {
 			const children = tx.select({ id: ticket.id }).from(ticket).where(eq(ticket.parentId, t.id)).get();
-			if (children && input.kind !== t.kind) throw new ApiError(400, 'Elemente mit Unterelementen können ihren Typ nicht ändern.');
+			if (children && input.kind !== t.kind)
+				throw new ApiError(400, 'Elemente mit Unterelementen können ihren Typ nicht ändern.');
 			patch.kind = input.kind;
 		}
 		if (input.startDate !== undefined) patch.startDate = optDate(input.startDate, 'startDate');
 		if (input.dueDate !== undefined) patch.dueDate = optDate(input.dueDate, 'dueDate');
 		if (input.parentId !== undefined || input.parent !== undefined || input.kind !== undefined)
-			patch.parentId = checkParent(tx, { ...t, kind: patch.kind ?? t.kind }, input.parentId !== undefined || input.parent !== undefined ? input.parentId ?? input.parent : t.parentId);
+			patch.parentId = checkParent(
+				tx,
+				{ ...t, kind: patch.kind ?? t.kind },
+				input.parentId !== undefined || input.parent !== undefined ? (input.parentId ?? input.parent) : t.parentId
+			);
 		checkDates(
 			patch.startDate !== undefined ? patch.startDate : t.startDate,
 			patch.dueDate !== undefined ? patch.dueDate : t.dueDate
@@ -755,8 +774,7 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 				const oldEnd = toDay(t.dueDate ?? t.startDate);
 				const newEnd = toDay(updated.dueDate ?? updated.startDate);
 				const days = toDay(updated.startDate) - toDay(t.startDate);
-				if (days && newEnd - toDay(updated.startDate) === oldEnd - toDay(t.startDate))
-					shiftDescendants(tx, t, days);
+				if (days && newEnd - toDay(updated.startDate) === oldEnd - toDay(t.startDate)) shiftDescendants(tx, t, days);
 			}
 		}
 		if (t.kind === 'main' && t.parentId && t.parentId !== updated.parentId) syncVersion(tx, t.parentId, true);

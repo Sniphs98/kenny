@@ -60,9 +60,9 @@
 	// Einreichungsformulare, öffentliche Statusseiten und Teams-Einstiegsseiten stehen für sich, ohne App-Navigation
 	const showHeader = $derived(
 		!!data.user &&
-		!page.url.pathname.startsWith('/submit/') &&
-		!/^\/status(\/|$)/.test(page.url.pathname) &&
-		!/^\/teams(\/|$)/.test(page.url.pathname)
+			!page.url.pathname.startsWith('/submit/') &&
+			!/^\/status(\/|$)/.test(page.url.pathname) &&
+			!/^\/teams(\/|$)/.test(page.url.pathname)
 	);
 
 	async function logout() {

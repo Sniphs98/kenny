@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_SECURE, SMTP_USER } from '$app/env/private';
 import { once } from 'node:events';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
@@ -30,17 +30,17 @@ type SmtpConfig = {
 };
 
 function config(): SmtpConfig | null {
-	const user = env.SMTP_USER?.trim();
-	const password = env.SMTP_PASSWORD;
+	const user = SMTP_USER.trim();
+	const password = SMTP_PASSWORD;
 	if (!user || !password) return null;
-	const port = Number(env.SMTP_PORT || 465);
+	const port = Number(SMTP_PORT || 465);
 	if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('SMTP_PORT ist ungültig.');
-	const from = env.SMTP_FROM?.trim() || user;
+	const from = SMTP_FROM.trim() || user;
 	if (!/^[^\s@<>]+@[^\s@<>]+$/.test(from)) throw new Error('SMTP_FROM ist ungültig.');
 	return {
-		host: env.SMTP_HOST?.trim() || 'smtp.gmail.com',
+		host: SMTP_HOST.trim() || 'smtp.gmail.com',
 		port,
-		secure: env.SMTP_SECURE ? env.SMTP_SECURE.toLowerCase() !== 'false' : port === 465,
+		secure: SMTP_SECURE ? SMTP_SECURE.toLowerCase() !== 'false' : port === 465,
 		user,
 		password,
 		from
@@ -121,9 +121,7 @@ function attachmentPart(boundary: string, attachment: MailAttachment) {
 function message(mail: Mail, from: string) {
 	const fromDomain = from.split('@')[1] || 'localhost';
 	const fromName = mail.fromName?.replace(/[\r\n]+/g, ' ').trim();
-	const fromHeader = fromName
-		? `=?UTF-8?B?${Buffer.from(fromName).toString('base64')}?= <${from}>`
-		: `<${from}>`;
+	const fromHeader = fromName ? `=?UTF-8?B?${Buffer.from(fromName).toString('base64')}?= <${from}>` : `<${from}>`;
 	const headers = [
 		`From: ${fromHeader}`,
 		`To: ${mail.to}`,

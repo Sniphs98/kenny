@@ -52,11 +52,7 @@ describe('email notification settings', () => {
 		addMember('owner', p.id, { user: 'member', role: 'member' });
 		expect(() => updateEmailNotifications(p.key, { enabled: true }, 'member')).toThrow(/Unzureichende/);
 		expect(
-			updateEmailNotifications(
-				p.key,
-				{ enabled: true, events: ['closed'], senderName: 'e.complete Support' },
-				'owner'
-			)
+			updateEmailNotifications(p.key, { enabled: true, events: ['closed'], senderName: 'e.complete Support' }, 'owner')
 		).toMatchObject({
 			configured: true,
 			smtpConfigured: true,
@@ -82,11 +78,7 @@ describe('email notification settings', () => {
 describe('email notification delivery', () => {
 	it('sends selected events only for form tickets to their submitter', async () => {
 		const p = createProject({ name: 'Web', key: 'WEB' }, 'owner');
-		updateEmailNotifications(
-			p.key,
-			{ enabled: true, events: ['created', 'closed', 'public_comment'] },
-			'owner'
-		);
+		updateEmailNotifications(p.key, { enabled: true, events: ['created', 'closed', 'public_comment'] }, 'owner');
 		const regular = createTicket(p.key, { title: 'Interne Aufgabe' }, 'owner');
 		addComment(regular.key, { body: 'Öffentlich, aber kein Formular-Ticket', internal: false }, 'owner');
 		closeTicket(regular.key);

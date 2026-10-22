@@ -146,8 +146,17 @@
 			</div>
 			<div class="grid gap-2">
 				<Label>{m.element_type()}</Label>
-				<Select.Root type="single" value={$form.kind} onValueChange={(v) => { $form.kind = v as TicketKind; $form.parentId = ''; }}>
-					<Select.Trigger class="w-full">{$form.kind === 'version' ? m.version() : $form.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger>
+				<Select.Root
+					type="single"
+					value={$form.kind}
+					onValueChange={(v) => {
+						$form.kind = v as TicketKind;
+						$form.parentId = '';
+					}}
+				>
+					<Select.Trigger class="w-full"
+						>{$form.kind === 'version' ? m.version() : $form.kind === 'main' ? m.main_task() : m.task()}</Select.Trigger
+					>
 					<Select.Content>
 						<Select.Item value="version">{m.version()}</Select.Item>
 						<Select.Item value="main">{m.main_task()}</Select.Item>
@@ -206,17 +215,17 @@
 				<TagPicker {tags} value={$form.tags} onchange={(refs) => ($form.tags = refs)} />
 			</div>
 			{#if $form.kind !== 'version'}<div class="grid gap-2">
-				<Label>{$form.kind === 'main' ? m.version() : m.main_task()}</Label>
-				<Select.Root type="single" bind:value={$form.parentId}>
-					<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
-					<Select.Content class="max-h-72">
-						<Select.Item value="">{emptyParentLabel}</Select.Item>
-						{#each parentOptions as p (p.id)}
-							<Select.Item value={String(p.id)}>{p.label}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>{/if}
+					<Label>{$form.kind === 'main' ? m.version() : m.main_task()}</Label>
+					<Select.Root type="single" bind:value={$form.parentId}>
+						<Select.Trigger class="w-full"><span class="truncate">{parentLabel}</span></Select.Trigger>
+						<Select.Content class="max-h-72">
+							<Select.Item value="">{emptyParentLabel}</Select.Item>
+							{#each parentOptions as p (p.id)}
+								<Select.Item value={String(p.id)}>{p.label}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>{/if}
 			{#each Object.values($errors)
 				.flat()
 				.filter((value): value is string => typeof value === 'string') as validationError, i (i)}<p

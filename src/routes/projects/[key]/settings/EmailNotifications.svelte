@@ -95,8 +95,8 @@
 					>
 					<Select.Content>
 						{#each NOTIFICATION_LOCALES as language (language)}<Select.Item value={language}
-							>{LOCALE_LABELS[language]}</Select.Item
-						>{/each}
+								>{LOCALE_LABELS[language]}</Select.Item
+							>{/each}
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -123,8 +123,7 @@
 					<Button
 						variant="outline"
 						disabled={!!busy || !notifications.smtpConfigured}
-						onclick={() =>
-							act('test', () => sendTestEmailNotification(project), m.email_notification_test_sent())}
+						onclick={() => act('test', () => sendTestEmailNotification(project), m.email_notification_test_sent())}
 					>
 						{#if busy === 'test'}<LoaderCircle class="animate-spin" />{:else}<Send />{/if}
 						{m.email_notification_send_test()}
@@ -138,8 +137,8 @@
 								'remove',
 								() => updateEmailNotifications(project, { enabled: false }),
 								m.email_notification_removed()
-							)}
-					><Trash2 /> {m.notification_remove()}</Button>
+							)}><Trash2 /> {m.notification_remove()}</Button
+					>
 				{/if}
 			</div>
 		</form>

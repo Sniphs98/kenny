@@ -41,20 +41,43 @@
 	.markdown-viewer :global(.toastui-editor-contents h6),
 	.markdown-viewer :global(.toastui-editor-contents li),
 	.markdown-viewer :global(.toastui-editor-contents td),
-	.markdown-viewer :global(.toastui-editor-contents table) { color: var(--foreground); }
+	.markdown-viewer :global(.toastui-editor-contents table) {
+		color: var(--foreground);
+	}
 	.markdown-viewer :global(.toastui-editor-contents h1),
-	.markdown-viewer :global(.toastui-editor-contents h2) { border-color: var(--border); }
+	.markdown-viewer :global(.toastui-editor-contents h2) {
+		border-color: var(--border);
+	}
 	.markdown-viewer :global(.toastui-editor-contents blockquote),
 	.markdown-viewer :global(.toastui-editor-contents blockquote p),
 	.markdown-viewer :global(.toastui-editor-contents blockquote ul),
-	.markdown-viewer :global(.toastui-editor-contents blockquote ol) { border-color: var(--border); color: var(--muted-foreground); }
+	.markdown-viewer :global(.toastui-editor-contents blockquote ol) {
+		border-color: var(--border);
+		color: var(--muted-foreground);
+	}
 	.markdown-viewer :global(.toastui-editor-contents table),
 	.markdown-viewer :global(.toastui-editor-contents table th),
-	.markdown-viewer :global(.toastui-editor-contents table td) { border-color: var(--border); }
-	.markdown-viewer :global(.toastui-editor-contents table th) { background: var(--muted); color: var(--foreground); }
-	.markdown-viewer :global(.toastui-editor-contents th p) { color: var(--foreground); }
-	.markdown-viewer :global(.toastui-editor-contents a) { color: var(--primary); }
+	.markdown-viewer :global(.toastui-editor-contents table td) {
+		border-color: var(--border);
+	}
+	.markdown-viewer :global(.toastui-editor-contents table th) {
+		background: var(--muted);
+		color: var(--foreground);
+	}
+	.markdown-viewer :global(.toastui-editor-contents th p) {
+		color: var(--foreground);
+	}
+	.markdown-viewer :global(.toastui-editor-contents a) {
+		color: var(--primary);
+	}
 	.markdown-viewer :global(.toastui-editor-contents code),
-	.markdown-viewer :global(.toastui-editor-contents pre) { background: var(--muted); color: var(--foreground); }
-	.markdown-viewer :global(.toastui-editor-contents img) { max-width: 100%; max-height: 32rem; border-radius: 0.375rem; }
+	.markdown-viewer :global(.toastui-editor-contents pre) {
+		background: var(--muted);
+		color: var(--foreground);
+	}
+	.markdown-viewer :global(.toastui-editor-contents img) {
+		max-width: 100%;
+		max-height: 32rem;
+		border-radius: 0.375rem;
+	}
 </style>

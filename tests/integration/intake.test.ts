@@ -120,8 +120,8 @@ describe('intake forms: management', () => {
 		await submitForm(form.token, { title: 'Angemeldet' }, outsider);
 		deleteForm(form.id, 'owner');
 		expect(listForms('owner')).toEqual([]);
-		expect(getTicketDetail('WEB-1').submission).toEqual({ form: null, email: 'kunde@example.com' });
-		expect(getTicketDetail('WEB-2').submission).toEqual({ form: null, email: 'outsider@example.com' });
+		expect(getTicketDetail('WEB-1').submission).toEqual({ form: null, email: 'kunde@example.com', system: null });
+		expect(getTicketDetail('WEB-2').submission).toEqual({ form: null, email: 'outsider@example.com', system: null });
 		expect(listTickets(web.id).map((ticket) => ticket.submitted)).toEqual([true, true]);
 	});
 });
@@ -136,7 +136,7 @@ describe('intake forms: submitting', () => {
 		const detail = getTicketDetail('WEB-1');
 		expect(detail.ticket.title).toBe('Login kaputt');
 		expect(detail.ticket.boardGroup).toBe('tickets');
-		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com' });
+		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com', system: null });
 		expect(detail.ticket.createdAt).toBeInstanceOf(Date);
 		expect(listTickets(web.id)[0]).toMatchObject({ submitted: true, boardGroup: 'tickets', status: 'Offen' });
 		expect(listTickets(web.id)[0].columnId).not.toBe(backlog.id);
@@ -161,11 +161,15 @@ describe('intake forms: submitting', () => {
 		);
 		// Angemeldet: keine E-Mail nötig, Ersteller ist der Benutzer
 		await submitForm(form.token, { title: 'Angemeldet' }, outsider);
-		expect(getTicketDetail('WEB-1').submission).toEqual({ form: 'Support', email: 'outsider@example.com' });
+		expect(getTicketDetail('WEB-1').submission).toEqual({
+			form: 'Support',
+			email: 'outsider@example.com',
+			system: null
+		});
 
 		const hidden = update(form, { emailMode: 'hidden' });
 		await submitForm(hidden.token, { title: 'Versteckt', email: 'ignoriert@example.com' }, anonymous);
-		expect(getTicketDetail('WEB-2').submission).toEqual({ form: 'Support', email: null });
+		expect(getTicketDetail('WEB-2').submission).toEqual({ form: 'Support', email: null, system: null });
 	});
 
 	it('requires a login, but no project membership, when configured', async () => {
@@ -201,9 +205,9 @@ describe('intake forms: configurable fields', () => {
 			{ key: 'APP', systems: ['Mobile'] },
 			{ key: 'WEB', systems: ['ERP', 'CRM'] }
 		]);
-		await expect(
-			submitForm(both.token, { project: 'APP', title: 'Falsch', system: 'ERP' }, anonymous)
-		).rejects.toThrow(/System gibt es nicht/);
+		await expect(submitForm(both.token, { project: 'APP', title: 'Falsch', system: 'ERP' }, anonymous)).rejects.toThrow(
+			/System gibt es nicht/
+		);
 		await submitForm(both.token, { project: 'WEB', title: 'Richtig', system: 'ERP' }, anonymous);
 		expect(getTicketDetail('WEB-1').submission?.system).toBe('ERP');
 	});

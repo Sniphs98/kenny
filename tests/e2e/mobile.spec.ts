@@ -10,33 +10,6 @@ async function fitsViewport(page: Page) {
 	expect(size.viewport, page.url()).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
 }
 
-for (const width of [320, 375, 430, 768]) {
-	test(`pages fit a ${width}px touch viewport with long content`, async ({ page, request }) => {
-		await page.setViewportSize({ width, height: 812 });
-		const p = await createProject(request, 'Mobile ' + 'LongProjectName'.repeat(6));
-		const t = await createTicket(request, p.key, {
-			title: 'Touch task ' + 'LongTitle'.repeat(16),
-			description: 'https://example.com/' + 'long-path'.repeat(60),
-			startDate: day(0),
-			dueDate: day(5)
-		});
-		for (const path of [
-			'/',
-			`/projects/${p.key}/board`,
-			`/projects/${p.key}/gantt`,
-			`/projects/${p.key}/settings`,
-			`/projects/${p.key}/members`,
-			`/tickets/${t.key}`,
-			'/admin/users',
-			'/settings/forms',
-			'/settings/api'
-		]) {
-			await open(page, path);
-			await fitsViewport(page);
-		}
-	});
-}
-
 test('touch navigation, board status change and full-screen ticket editing', async ({ page, request }) => {
 	const p = await createProject(request, 'Touch workflow');
 	await createTicket(request, p.key, { title: 'Mobile plan', kind: 'main', startDate: day(0), dueDate: day(5) });

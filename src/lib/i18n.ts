@@ -6,8 +6,14 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
-	{ pattern: /^Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks\.$/, translate: () => m.ticket_kind_parent_error() },
-	{ pattern: /^Elemente mit Unterelementen können ihren Typ nicht ändern\.$/, translate: () => m.ticket_kind_children_error() },
+	{
+		pattern: /^Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks\.$/,
+		translate: () => m.ticket_kind_parent_error()
+	},
+	{
+		pattern: /^Elemente mit Unterelementen können ihren Typ nicht ändern\.$/,
+		translate: () => m.ticket_kind_children_error()
+	},
 	{ pattern: /^API-Token abgelaufen\.$/, translate: () => m.token_error_expired() },
 	{ pattern: /^Dieses API-Token erlaubt nur Lesezugriff\.$/, translate: () => m.token_error_read_only() },
 	{ pattern: /^Neue Konten werden durch Administratoren angelegt\.$/, translate: () => m.um_error_registration() },
@@ -292,7 +298,17 @@ const errorTranslations = [
 	{ pattern: /^SMTP ist nicht konfiguriert\.$/, translate: () => m.email_notification_smtp_not_configured() },
 	{ pattern: /^Status-Link ist ungültig\.$/, translate: () => m.status_link_invalid() },
 	{ pattern: /^Zu viele Kommentare\. Bitte später erneut versuchen\.$/, translate: () => m.too_many_comments() },
-	{ pattern: /^Bitte einen Kommentar eingeben\.$/, translate: () => m.enter_a_comment() }
+	{ pattern: /^Bitte einen Kommentar eingeben\.$/, translate: () => m.enter_a_comment() },
+	{ pattern: /^Kommentar nicht gefunden\.$/, translate: () => m.comment_not_found() },
+	{ pattern: /^Board-Gruppen gelten nur für Aufgaben\.$/, translate: () => m.board_group_tasks_only() },
+	{ pattern: /^Das ausgewählte System gibt es nicht\.$/, translate: () => m.intake_system_not_found() },
+	{ pattern: /^Bitte ein System wählen\.$/, translate: () => m.intake_choose_system() },
+	{
+		pattern: /^Höchstens (.+?) Bilder in der Beschreibung\.$/,
+		translate: (values: string[]) => m.intake_at_most_images({ count: values[0] })
+	},
+	{ pattern: /^Ungültiges Bild in der Beschreibung\.$/, translate: () => m.intake_invalid_image() },
+	{ pattern: /^Jedes Feld darf nur einmal vorkommen\.$/, translate: () => m.intake_field_duplicate() }
 ];
 
 export function localizeError(message: string | undefined): string {

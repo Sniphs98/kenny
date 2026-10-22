@@ -207,9 +207,7 @@ export async function updateEmailNotifications(project: string | number, input: 
 	);
 }
 export async function sendTestEmailNotification(project: string | number) {
-	return emailNotificationsDtoSchema.parse(
-		await api('POST', `/projects/${ref(project)}/email-notifications/test`)
-	);
+	return emailNotificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/email-notifications/test`));
 }
 
 /** Tickets aller sichtbaren Projekte, nach Treffergüte sortiert */

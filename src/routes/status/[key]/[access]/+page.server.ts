@@ -24,12 +24,7 @@ export const actions = {
 		try {
 			return {
 				success: true,
-				ticket: addPublicTicketComment(
-					params.key,
-					params.access,
-					{ body },
-					getClientAddress()
-				)
+				ticket: addPublicTicketComment(params.key, params.access, { body }, getClientAddress())
 			};
 		} catch (reason) {
 			if (reason instanceof ApiError)

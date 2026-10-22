@@ -10,9 +10,19 @@
 	import { toast } from 'svelte-sonner';
 	import { z } from 'zod';
 
-	let { value = $bindable(), uploadCount = $bindable(0), ticketId, refresh, onSave, autoSave = true, placeholder, onImageBlob, ariaLabel }: {
+	let {
+		value = $bindable(),
+		uploadCount = $bindable(0),
+		ticketId,
+		refresh,
+		onSave,
+		autoSave = true,
+		placeholder,
+		onImageBlob,
+		ariaLabel
+	}: {
 		value: string;
-		uploadCount: number;
+		uploadCount?: number;
 		ticketId?: number;
 		refresh?: () => Promise<void>;
 		onSave: () => void;
@@ -88,7 +98,9 @@
 						uploadCount++;
 						void (async () => {
 							try {
-								const images = z.array(attachmentSchema).parse(await upload(`/tickets/${uploadTicketId}/attachments`, [file]));
+								const images = z
+									.array(attachmentSchema)
+									.parse(await upload(`/tickets/${uploadTicketId}/attachments`, [file]));
 								const image = images.find((item) => item.isImage);
 								if (image) callback(image.url, image.filename);
 								await uploadRefresh();
@@ -104,7 +116,10 @@
 				}
 			});
 			if (ariaLabel) container.querySelector('[contenteditable="true"]')?.setAttribute('aria-label', ariaLabel);
-			const updateTheme = () => container.querySelector('.toastui-editor-defaultUI')?.classList.toggle('toastui-editor-dark', document.documentElement.classList.contains('dark'));
+			const updateTheme = () =>
+				container
+					.querySelector('.toastui-editor-defaultUI')
+					?.classList.toggle('toastui-editor-dark', document.documentElement.classList.contains('dark'));
 			observer = new MutationObserver(updateTheme);
 			observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 			updateTheme();
@@ -132,7 +147,9 @@
 		border-radius: 0;
 		background: var(--card);
 	}
-	.markdown-editor :global(.toastui-editor-toolbar) { height: 30px; }
+	.markdown-editor :global(.toastui-editor-toolbar) {
+		height: 30px;
+	}
 	.markdown-editor :global(.toastui-editor-defaultUI-toolbar) {
 		height: 30px;
 		padding: 0 18px;

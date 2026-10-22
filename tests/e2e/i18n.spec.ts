@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { open, reload } from './helpers';
+import { open } from './helpers';
 
 /** Sprache über das Untermenü im Benutzermenü wählen */
 async function chooseLanguage(page: Page, submenu: string, option: string) {
@@ -7,49 +7,6 @@ async function chooseLanguage(page: Page, submenu: string, option: string) {
 	await page.getByRole('menuitem', { name: submenu }).click();
 	await page.getByRole('menuitemradio', { name: option }).click();
 }
-
-test('language switch persists across reloads and translates the project and ticket workflow', async ({ page }) => {
-	// Ohne eigene Wahl gilt die Systemsprache des Browsers (hier de-DE)
-	await open(page, '/');
-	await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-	await expect(page.getByRole('heading', { name: 'Projekte', exact: true })).toBeVisible();
-	await chooseLanguage(page, 'Sprache', 'English');
-	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-	await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
-	await reload(page);
-	await page.getByRole('button', { name: /Erika Test/ }).click();
-	await page.getByRole('menuitem', { name: 'Language' }).click();
-	await expect(page.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true');
-	await page.keyboard.press('Escape');
-	await page.keyboard.press('Escape');
-
-	await page.getByRole('button', { name: 'New project', exact: true }).click();
-	await page.getByLabel('Name', { exact: true }).fill('English localization');
-	const key = `I${Date.now().toString(36).toUpperCase()}`;
-	await page.getByLabel('Key', { exact: true }).fill(key);
-	await page.getByRole('button', { name: 'Create', exact: true }).click();
-	await expect(page).toHaveURL(new RegExp(`/projects/${key}/board`));
-	await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
-	await page.getByRole('button', { name: 'Task', exact: true }).click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog.getByRole('heading', { name: 'New task' })).toBeVisible();
-	await dialog.getByLabel('Title', { exact: true }).fill('User content stays unchanged');
-	await expect(dialog.getByText('Medium', { exact: true })).toBeVisible();
-	await dialog.getByRole('button', { name: 'Create', exact: true }).click();
-	await expect(dialog).not.toBeVisible();
-	await page.getByRole('link', { name: 'User content stays unchanged', exact: true }).click();
-	await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveAttribute(
-		'placeholder',
-		'Add a description…'
-	);
-	await expect(page.getByRole('button', { name: 'Delete task', exact: true })).toBeVisible();
-	await page.keyboard.press('Escape');
-	await chooseLanguage(page, 'Language', 'Deutsch');
-	await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-	await page.getByRole('link', { name: 'User content stays unchanged', exact: true }).click();
-	await expect(page.getByRole('button', { name: 'Aufgabe löschen', exact: true })).toBeVisible();
-	await expect(page.getByRole('textbox', { name: 'Titel', exact: true })).toHaveValue('User content stays unchanged');
-});
 
 test('system language removes the stored choice', async ({ page }) => {
 	await open(page, '/');

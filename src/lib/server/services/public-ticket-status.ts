@@ -3,22 +3,15 @@ import { BETTER_AUTH_SECRET } from '$app/env/private';
 import { and, asc, eq } from 'drizzle-orm';
 import { publicCommentInputSchema, publicTicketStatusSchema } from '#lib/contracts/index.js';
 import { db } from '../db/index.js';
-import {
-	boardColumn,
-	project,
-	tag,
-	ticket,
-	ticketAssignee,
-	ticketComment,
-	ticketTag,
-	user
-} from '../db/schema.js';
+import { boardColumn, project, tag, ticket, ticketAssignee, ticketComment, ticketTag, user } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { publish } from '../live.js';
 import { parseInput } from '../validation.js';
 
 const accessTokenFor = (row: Pick<typeof ticket.$inferSelect, 'id' | 'createdAt'>) =>
-	createHmac('sha256', BETTER_AUTH_SECRET).update(`ticket-status:v1:${row.id}:${row.createdAt.getTime()}`).digest('base64url');
+	createHmac('sha256', BETTER_AUTH_SECRET)
+		.update(`ticket-status:v1:${row.id}:${row.createdAt.getTime()}`)
+		.digest('base64url');
 
 export function publicTicketStatusUrlToken(ticketId: number) {
 	const row = db.select().from(ticket).where(eq(ticket.id, ticketId)).get();

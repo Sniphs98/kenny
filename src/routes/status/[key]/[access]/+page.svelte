@@ -44,7 +44,9 @@
 >
 	<div class="mx-auto grid w-full max-w-2xl gap-5">
 		<header class="relative text-center">
-			<Button href="/status" variant="outline" class="mb-5 sm:absolute sm:top-0 sm:left-0 sm:mb-0">{m.my_tickets()}</Button>
+			<Button href="/status" variant="outline" class="mb-5 sm:absolute sm:top-0 sm:left-0 sm:mb-0"
+				>{m.my_tickets()}</Button
+			>
 			<p class="text-primary text-sm font-semibold">{ticket.project.name} · {ticket.key}</p>
 			<h1 class="mt-2 text-2xl font-semibold tracking-tight">{ticket.title}</h1>
 		</header>
@@ -54,13 +56,17 @@
 				<div>
 					<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{m.status()}</p>
 					<div class="mt-2 flex items-center gap-2 font-medium">
-						{#if ticket.closed}<CircleCheck class="text-success size-5" />{:else}<Clock3 class="text-primary size-5" />{/if}
+						{#if ticket.closed}<CircleCheck class="text-success size-5" />{:else}<Clock3
+								class="text-primary size-5"
+							/>{/if}
 						{ticket.status}
 					</div>
 				</div>
 				<div>
 					<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{m.last_updated()}</p>
-					<p class="mt-2 font-medium"><time datetime={ticket.updatedAt.toISOString()}>{dateTime(ticket.updatedAt)}</time></p>
+					<p class="mt-2 font-medium">
+						<time datetime={ticket.updatedAt.toISOString()}>{dateTime(ticket.updatedAt)}</time>
+					</p>
 				</div>
 				<div>
 					<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{m.assignee()}</p>
@@ -90,7 +96,11 @@
 		<Card.Root class="gap-4">
 			<Card.Header><Card.Title>{m.description()}</Card.Title></Card.Header>
 			<Card.Content>
-				{#if ticket.description}<MarkdownViewer value={ticket.description} />{:else}<p class="text-muted-foreground text-sm">{m.no_description()}</p>{/if}
+				{#if ticket.description}<MarkdownViewer value={ticket.description} />{:else}<p
+						class="text-muted-foreground text-sm"
+					>
+						{m.no_description()}
+					</p>{/if}
 			</Card.Content>
 		</Card.Root>
 
@@ -108,8 +118,12 @@
 									: 'bg-primary-soft mr-6 rounded-xl border border-primary/60 p-4'}
 							>
 								<div class="mb-2 flex flex-wrap items-center gap-2">
-									<strong class="text-sm">{comment.isReporter ? m.ticket_submitter() : (comment.authorName ?? m.support_team())}</strong>
-									<time class="text-muted-foreground text-xs" datetime={comment.createdAt.toISOString()}>{dateTime(comment.createdAt)}</time>
+									<strong class="text-sm"
+										>{comment.isReporter ? m.ticket_submitter() : (comment.authorName ?? m.support_team())}</strong
+									>
+									<time class="text-muted-foreground text-xs" datetime={comment.createdAt.toISOString()}
+										>{dateTime(comment.createdAt)}</time
+									>
 								</div>
 								<MarkdownViewer value={comment.body} />
 							</article>
@@ -122,10 +136,20 @@
 				<form method="POST" class="grid gap-3">
 					<div class="grid gap-2">
 						<Label for="status-comment">{m.reply()}</Label>
-						<Textarea id="status-comment" name="body" rows={5} maxlength={100000} required value={form?.body ?? ''} placeholder={m.write_comment()} />
+						<Textarea
+							id="status-comment"
+							name="body"
+							rows={5}
+							maxlength={100000}
+							required
+							value={form?.body ?? ''}
+							placeholder={m.write_comment()}
+						/>
 					</div>
 					{#if form?.message}<p class="text-destructive text-sm" role="alert">{form.message}</p>{/if}
-					{#if form?.success}<p class="text-success flex items-center gap-2 text-sm" role="status"><Check class="size-4" />{m.reply_sent()}</p>{/if}
+					{#if form?.success}<p class="text-success flex items-center gap-2 text-sm" role="status">
+							<Check class="size-4" />{m.reply_sent()}
+						</p>{/if}
 					<Button type="submit" class="justify-self-end">{m.send_reply()}</Button>
 				</form>
 			</Card.Content>

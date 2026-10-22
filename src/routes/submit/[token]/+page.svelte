@@ -191,153 +191,185 @@
 				{:else}
 					<form class="grid gap-4" method="POST" enctype="multipart/form-data" use:enhance novalidate>
 						{#each intake.fieldOrder as field (field)}
-						{#if field === 'project' && chooseProject}
-							<div class="grid gap-2">
-								<Label for="s-project">{m.project()}<span class="text-destructive" aria-hidden="true">*</span></Label>
-								<Select.Root type="single" name="project" bind:value={$form.project}>
-									<Select.Trigger id="s-project" class="w-full">
-										<span class={project ? '' : 'text-muted-foreground'}>{project?.name ?? m.choose_project()}</span>
-									</Select.Trigger>
-									<Select.Content>
-										{#each intake.projects as p (p.key)}
-											<Select.Item value={p.key} label={p.name}>
-												<span class="size-2.5 rounded-full" style="background: {p.color}"></span>
-												{p.name}
-											</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-							</div>
-						{/if}
-						{#if field === 'title'}
-						<div class="grid gap-2">
-							<Label for="s-title">{m.title()}<span class="text-destructive" aria-hidden="true">*</span></Label>
-							<Input
-								id="s-title"
-								name="title"
-								bind:value={$form.title}
-								maxlength={300}
-								aria-invalid={$errors.title ? 'true' : undefined}
-							/>
-							{#if $errors.title}<p class="text-destructive text-sm">{localizeError($errors.title[0])}</p>{/if}
-						</div>
-						{/if}
-						{#if field === 'description' && fields.description !== 'hidden'}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.description(), fields.description)}
-								<div class="overflow-hidden rounded-md border">
-									<MarkdownEditor bind:value={$form.description} autoSave={false} onSave={() => {}} onImageBlob={addInlineImage} ariaLabel={m.description()} />
+							{#if field === 'project' && chooseProject}
+								<div class="grid gap-2">
+									<Label for="s-project">{m.project()}<span class="text-destructive" aria-hidden="true">*</span></Label>
+									<Select.Root type="single" name="project" bind:value={$form.project}>
+										<Select.Trigger id="s-project" class="w-full">
+											<span class={project ? '' : 'text-muted-foreground'}>{project?.name ?? m.choose_project()}</span>
+										</Select.Trigger>
+										<Select.Content>
+											{#each intake.projects as p (p.key)}
+												<Select.Item value={p.key} label={p.name}>
+													<span class="size-2.5 rounded-full" style="background: {p.color}"></span>
+													{p.name}
+												</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
 								</div>
-								<input type="hidden" name="description" value={$form.description} />
-								<input bind:this={inlineInput} type="file" name="inlineImages" multiple class="hidden" tabindex="-1" aria-hidden="true" />
-								{#each inlineImages as image (image.url)}<input type="hidden" name="inlineImageUrls" value={image.url} />{/each}
-							</div>
-						{/if}
-						{#if field === 'priority' && fields.priority !== 'hidden'}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.priority_2(), fields.priority, 's-priority')}
-								<Select.Root type="single" name="priority" bind:value={$form.priority}>
-									<Select.Trigger id="s-priority" class="w-full">
-										{#if $form.priority}
-											<span class="flex items-center gap-2"
-												><span class="prio prio-{$form.priority}"></span>{PRIORITY_LABELS[$form.priority]}</span
-											>
-										{:else}
-											<span class="text-muted-foreground">{m.choose_priority()}</span>
-										{/if}
-									</Select.Trigger>
-									<Select.Content>
-										{#each PRIORITIES as p (p)}
-											<Select.Item value={p} label={PRIORITY_LABELS[p]}
-												><span class="prio prio-{p}"></span>{PRIORITY_LABELS[p]}</Select.Item
-											>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-							</div>
-						{/if}
-						{#if field === 'system' && fields.system !== 'hidden'}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.system(), fields.system, 's-system')}
-								<Select.Root type="single" name="system" bind:value={$form.system} disabled={!project || !systems.length}>
-									<Select.Trigger id="s-system" class="w-full"><span class={$form.system ? '' : 'text-muted-foreground'}>{$form.system || m.choose_system()}</span></Select.Trigger>
-									<Select.Content>{#each systems as system (system)}<Select.Item value={system}>{system}</Select.Item>{/each}</Select.Content>
-								</Select.Root>
-								{#if project && !systems.length}<p class="text-muted-foreground text-xs">{m.no_systems_in_project()}</p>{/if}
-							</div>
-						{/if}
-						{#if field === 'startDate' && fields.startDate !== 'hidden'}
-									<div class="grid gap-2">
-										{@render fieldLabel(m.start(), fields.startDate, 's-start')}
-										<DatePicker
-											id="s-start"
-											value={$form.startDate || null}
-											onchange={(d) => ($form.startDate = d ?? '')}
+							{/if}
+							{#if field === 'title'}
+								<div class="grid gap-2">
+									<Label for="s-title">{m.title()}<span class="text-destructive" aria-hidden="true">*</span></Label>
+									<Input
+										id="s-title"
+										name="title"
+										bind:value={$form.title}
+										maxlength={300}
+										aria-invalid={$errors.title ? 'true' : undefined}
+									/>
+									{#if $errors.title}<p class="text-destructive text-sm">{localizeError($errors.title[0])}</p>{/if}
+								</div>
+							{/if}
+							{#if field === 'description' && fields.description !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.description(), fields.description)}
+									<div class="overflow-hidden rounded-md border">
+										<MarkdownEditor
+											bind:value={$form.description}
+											autoSave={false}
+											onSave={() => {}}
+											onImageBlob={addInlineImage}
+											ariaLabel={m.description()}
 										/>
-										<input type="hidden" name="startDate" value={$form.startDate} />
 									</div>
-						{/if}
-						{#if field === 'dueDate' && fields.dueDate !== 'hidden'}
-									<div class="grid gap-2">
-										{@render fieldLabel(m.due(), fields.dueDate, 's-due')}
-										<DatePicker
-											id="s-due"
-											value={$form.dueDate || null}
-											min={$form.startDate || null}
-											onchange={(d) => ($form.dueDate = d ?? '')}
-										/>
-										<input type="hidden" name="dueDate" value={$form.dueDate} />
-									</div>
-							{#if $errors.dueDate}<p class="text-destructive text-sm">{localizeError($errors.dueDate[0])}</p>{/if}
-						{/if}
-						{#if field === 'tags' && fields.tags !== 'hidden' && availableTags.length}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.tags(), fields.tags)}
-								<div class="flex flex-wrap gap-1.5" role="group" aria-label={m.tags()}>
-									{#each availableTags as t (t.name)}
-										<Toggle
-											size="sm"
-											variant="outline"
-											class="h-7 min-w-0 p-0"
-											style={`border-color: color-mix(in srgb, ${t.color} ${$form.tags.includes(t.name) ? '90%' : '25%'}, transparent)`}
-											pressed={$form.tags.includes(t.name)}
-											onPressedChange={(on) => toggleTag(t.name, on)}
-											aria-label={t.name}
+									<input type="hidden" name="description" value={$form.description} />
+									<input
+										bind:this={inlineInput}
+										type="file"
+										name="inlineImages"
+										multiple
+										class="hidden"
+										tabindex="-1"
+										aria-hidden="true"
+									/>
+									{#each inlineImages as image (image.url)}<input
+											type="hidden"
+											name="inlineImageUrls"
+											value={image.url}
+										/>{/each}
+								</div>
+							{/if}
+							{#if field === 'priority' && fields.priority !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.priority_2(), fields.priority, 's-priority')}
+									<Select.Root type="single" name="priority" bind:value={$form.priority}>
+										<Select.Trigger id="s-priority" class="w-full">
+											{#if $form.priority}
+												<span class="flex items-center gap-2"
+													><span class="prio prio-{$form.priority}"></span>{PRIORITY_LABELS[$form.priority]}</span
+												>
+											{:else}
+												<span class="text-muted-foreground">{m.choose_priority()}</span>
+											{/if}
+										</Select.Trigger>
+										<Select.Content>
+											{#each PRIORITIES as p (p)}
+												<Select.Item value={p} label={PRIORITY_LABELS[p]}
+													><span class="prio prio-{p}"></span>{PRIORITY_LABELS[p]}</Select.Item
+												>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+								</div>
+							{/if}
+							{#if field === 'system' && fields.system !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.system(), fields.system, 's-system')}
+									<Select.Root
+										type="single"
+										name="system"
+										bind:value={$form.system}
+										disabled={!project || !systems.length}
+									>
+										<Select.Trigger id="s-system" class="w-full"
+											><span class={$form.system ? '' : 'text-muted-foreground'}
+												>{$form.system || m.choose_system()}</span
+											></Select.Trigger
 										>
-											<TagBadge name={t.name} color={t.color} class="h-full rounded-[inherit] border-0 px-2">
-												{#if $form.tags.includes(t.name)}<Check class="size-3" />{/if}
-											</TagBadge>
-										</Toggle>
-									{/each}
+										<Select.Content
+											>{#each systems as system (system)}<Select.Item value={system}>{system}</Select.Item
+												>{/each}</Select.Content
+										>
+									</Select.Root>
+									{#if project && !systems.length}<p class="text-muted-foreground text-xs">
+											{m.no_systems_in_project()}
+										</p>{/if}
 								</div>
-								{#each $form.tags as name (name)}<input type="hidden" name="tags" value={name} />{/each}
-							</div>
-						{/if}
-						{#if field === 'attachments' && fields.attachments !== 'hidden'}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.attachments(), fields.attachments, 's-attachments')}
-								<FileDrop id="s-attachments" name="attachments" max={INTAKE_MAX_FILES} />
-								<p class="text-muted-foreground text-xs">{m.attachments_hint({ count: INTAKE_MAX_FILES })}</p>
-							</div>
-						{/if}
-						{#if field === 'email' && showEmail}
-							<div class="grid gap-2">
-								{@render fieldLabel(m.your_email(), intake.emailMode, 's-email')}
-								<Input
-									id="s-email"
-									name="email"
-									type="email"
-									autocomplete="email"
-									bind:value={$form.email}
-									aria-invalid={$errors.email ? 'true' : undefined}
-								/>
-								{#if $errors.email}
-									<p class="text-destructive text-sm">{localizeError($errors.email[0])}</p>
-								{:else}
-									<p class="text-muted-foreground text-xs">{m.email_hint()}</p>
-								{/if}
-							</div>
-						{/if}
+							{/if}
+							{#if field === 'startDate' && fields.startDate !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.start(), fields.startDate, 's-start')}
+									<DatePicker
+										id="s-start"
+										value={$form.startDate || null}
+										onchange={(d) => ($form.startDate = d ?? '')}
+									/>
+									<input type="hidden" name="startDate" value={$form.startDate} />
+								</div>
+							{/if}
+							{#if field === 'dueDate' && fields.dueDate !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.due(), fields.dueDate, 's-due')}
+									<DatePicker
+										id="s-due"
+										value={$form.dueDate || null}
+										min={$form.startDate || null}
+										onchange={(d) => ($form.dueDate = d ?? '')}
+									/>
+									<input type="hidden" name="dueDate" value={$form.dueDate} />
+								</div>
+								{#if $errors.dueDate}<p class="text-destructive text-sm">{localizeError($errors.dueDate[0])}</p>{/if}
+							{/if}
+							{#if field === 'tags' && fields.tags !== 'hidden' && availableTags.length}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.tags(), fields.tags)}
+									<div class="flex flex-wrap gap-1.5" role="group" aria-label={m.tags()}>
+										{#each availableTags as t (t.name)}
+											<Toggle
+												size="sm"
+												variant="outline"
+												class="h-7 min-w-0 p-0"
+												style={`border-color: color-mix(in srgb, ${t.color} ${$form.tags.includes(t.name) ? '90%' : '25%'}, transparent)`}
+												pressed={$form.tags.includes(t.name)}
+												onPressedChange={(on) => toggleTag(t.name, on)}
+												aria-label={t.name}
+											>
+												<TagBadge name={t.name} color={t.color} class="h-full rounded-[inherit] border-0 px-2">
+													{#if $form.tags.includes(t.name)}<Check class="size-3" />{/if}
+												</TagBadge>
+											</Toggle>
+										{/each}
+									</div>
+									{#each $form.tags as name (name)}<input type="hidden" name="tags" value={name} />{/each}
+								</div>
+							{/if}
+							{#if field === 'attachments' && fields.attachments !== 'hidden'}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.attachments(), fields.attachments, 's-attachments')}
+									<FileDrop id="s-attachments" name="attachments" max={INTAKE_MAX_FILES} />
+									<p class="text-muted-foreground text-xs">{m.attachments_hint({ count: INTAKE_MAX_FILES })}</p>
+								</div>
+							{/if}
+							{#if field === 'email' && showEmail}
+								<div class="grid gap-2">
+									{@render fieldLabel(m.your_email(), intake.emailMode, 's-email')}
+									<Input
+										id="s-email"
+										name="email"
+										type="email"
+										autocomplete="email"
+										bind:value={$form.email}
+										aria-invalid={$errors.email ? 'true' : undefined}
+									/>
+									{#if $errors.email}
+										<p class="text-destructive text-sm">{localizeError($errors.email[0])}</p>
+									{:else}
+										<p class="text-muted-foreground text-xs">{m.email_hint()}</p>
+									{/if}
+								</div>
+							{/if}
 						{/each}
 						<!-- Fallen-Feld gegen Bots: für Menschen unsichtbar und nicht per Tab erreichbar -->
 						<div class="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">

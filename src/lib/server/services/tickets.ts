@@ -287,13 +287,19 @@ const commentFields = {
 };
 
 function commentsForTicket(ticketId: number) {
+	const hasReporter = !!db
+		.select({ email: ticket.reporterEmail })
+		.from(ticket)
+		.where(eq(ticket.id, ticketId))
+		.get()?.email;
 	return db
 		.select(commentFields)
 		.from(ticketComment)
 		.leftJoin(user, eq(ticketComment.authorId, user.id))
 		.where(eq(ticketComment.ticketId, ticketId))
 		.orderBy(asc(ticketComment.createdAt), asc(ticketComment.id))
-		.all();
+		.all()
+		.map((comment) => ({ ...comment, isReporter: hasReporter && comment.authorId === null }));
 }
 
 export function listComments(ref: string | number, actorId: string) {
@@ -320,7 +326,7 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 			authorName: result.authorName ?? '–'
 		});
 	}
-	return result;
+	return { ...result, isReporter: false };
 }
 
 export function deleteComment(ref: string | number, commentId: number, actorId: string) {

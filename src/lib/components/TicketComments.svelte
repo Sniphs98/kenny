@@ -56,12 +56,24 @@
 		{#if comments.length}
 			<div class="flex flex-col gap-3">
 				{#each comments as comment (comment.id)}
-					<article class={comment.internal ? 'bg-muted/45 rounded-xl border border-dashed p-4' : 'bg-primary-soft rounded-xl border border-primary/60 p-4'}>
+					<article
+						class={comment.internal
+							? 'bg-muted/45 rounded-xl border border-dashed p-4'
+							: comment.isReporter
+								? 'bg-background ml-6 rounded-xl border-2 border-primary/40 p-4 shadow-sm'
+								: 'bg-primary-soft rounded-xl border border-primary/60 p-4'}
+					>
 						<div class="flex gap-3">
-							<UserAvatar name={comment.authorName} image={comment.authorImage} tooltip={false} />
+							<UserAvatar
+								name={comment.isReporter ? m.ticket_submitter() : comment.authorName}
+								image={comment.authorImage}
+								tooltip={false}
+							/>
 							<div class="min-w-0 grow">
 								<div class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-									<strong class="text-sm">{comment.authorName ?? m.deleted_user()}</strong>
+									<strong class="text-sm"
+										>{comment.isReporter ? m.ticket_submitter() : (comment.authorName ?? m.deleted_user())}</strong
+									>
 									<time class="text-muted-foreground text-xs" datetime={comment.createdAt.toISOString()}>
 										{comment.createdAt.toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
 									</time>

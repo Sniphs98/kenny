@@ -289,7 +289,10 @@ const errorTranslations = [
 		pattern: /^Test-E-Mail fehlgeschlagen: (.+)$/,
 		translate: (values: string[]) => m.email_notification_test_failed({ error: localizeError(values[0]) })
 	},
-	{ pattern: /^SMTP ist nicht konfiguriert\.$/, translate: () => m.email_notification_smtp_not_configured() }
+	{ pattern: /^SMTP ist nicht konfiguriert\.$/, translate: () => m.email_notification_smtp_not_configured() },
+	{ pattern: /^Status-Link ist ungültig\.$/, translate: () => m.status_link_invalid() },
+	{ pattern: /^Zu viele Kommentare\. Bitte später erneut versuchen\.$/, translate: () => m.too_many_comments() },
+	{ pattern: /^Bitte einen Kommentar eingeben\.$/, translate: () => m.enter_a_comment() }
 ];
 
 export function localizeError(message: string | undefined): string {

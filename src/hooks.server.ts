@@ -12,9 +12,9 @@ import '#lib/locale-choice.js';
 import { paraglideMiddleware } from '#lib/paraglide/server.js';
 
 // /submit/: Formulare zum Einreichen; ob eine Anmeldung nötig ist, entscheidet das Formular selbst
-const PUBLIC_PATHS = ['/login', '/api/', '/submit/'];
+const PUBLIC_PATHS = ['/login', '/api/', '/submit/', '/status/'];
 // Einstiegsseiten der Teams-App: melden selbst per Teams-SSO an
-const PUBLIC_PAGES = ['/teams', '/teams/config'];
+const PUBLIC_PAGES = ['/teams', '/teams/config', '/status'];
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });

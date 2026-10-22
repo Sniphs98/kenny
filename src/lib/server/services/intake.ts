@@ -22,6 +22,7 @@ import { notifyEmail } from './email-notifications';
 import { requireActiveUser } from './access';
 import { addAttachments, checkFileSizes } from './attachments';
 import { createTicket, updateTicket } from './tickets';
+import { publicTicketStatusPath } from './public-ticket-status.js';
 
 /** Unratbarer Teil des öffentlichen Links */
 const newToken = () => randomBytes(18).toString('base64url');
@@ -326,7 +327,18 @@ export async function submitForm(
 	token: string,
 	rawInput: unknown,
 	context: { user: { id: string } | null; ip: string; files?: File[]; inlineImages?: File[]; inlineImageUrls?: string[] }
-): Promise<{ key: string | null }> {
+): Promise<
+	| { key: null }
+	| {
+			key: string;
+			statusPath: string;
+			status: string | null;
+			closed: boolean;
+			updatedAt: number;
+			projectName: string;
+			projectColor: string;
+	}
+> {
 	const { form, fields, projects } = activeFormByToken(token);
 	if (form.requireLogin && !context.user) throw new ApiError(401, 'Für dieses Formular ist eine Anmeldung nötig.');
 	const input = parseInput(intakeSubmissionSchema, rawInput);
@@ -397,5 +409,13 @@ export async function submitForm(
 		updateTicket(ticket.key, { description: markdown });
 	}
 	notifyEmail('created', target.id, ticket.id);
-	return { key: ticket.key };
+	return {
+		key: ticket.key,
+		statusPath: publicTicketStatusPath(ticket.id, ticket.key)!,
+		status: ticket.status,
+		closed: ticket.closed,
+		updatedAt: ticket.updatedAt.getTime(),
+		projectName: target.name,
+		projectColor: target.color
+	};
 }

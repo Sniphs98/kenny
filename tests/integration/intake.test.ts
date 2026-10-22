@@ -123,8 +123,9 @@ describe('intake forms: management', () => {
 describe('intake forms: submitting', () => {
 	it('submits to the only project and records the origin', async () => {
 		const { web, form } = setup();
-		const { key } = await submitForm(form.token, { title: 'Login kaputt', email: 'kunde@example.com' }, anonymous);
-		expect(key).toBe('WEB-1');
+		const submitted = await submitForm(form.token, { title: 'Login kaputt', email: 'kunde@example.com' }, anonymous);
+		expect(submitted.key).toBe('WEB-1');
+		expect('statusPath' in submitted && submitted.statusPath).toMatch(/^\/status\/WEB-1\/[A-Za-z0-9_-]{43}$/);
 		const detail = getTicketDetail('WEB-1');
 		expect(detail.ticket.title).toBe('Login kaputt');
 		expect(detail.submission).toEqual({ form: 'Support', email: 'kunde@example.com' });

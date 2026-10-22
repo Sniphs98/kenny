@@ -9,6 +9,7 @@
 	import { EMBED_RESIZE_MESSAGE } from '#lib/embed.js';
 	import { accentStyle, accentVars } from '#lib/theme.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { rememberTicketStatus } from '#lib/ticket-status-storage.js';
 	import DatePicker from '#lib/components/DatePicker.svelte';
 	import FileDrop from '#lib/components/FileDrop.svelte';
 	import MarkdownEditor from '#lib/components/MarkdownEditor.svelte';
@@ -36,6 +37,7 @@
 
 	/** Schlüssel des eingereichten Tickets; '' bei erfolgreicher Einreichung ohne Schlüssel, null = Formular zeigen */
 	let submitted = $state<string | null>(null);
+	let submittedPath = $state<string | null>(null);
 	let inlineImages = $state<{ file: File; url: string }[]>([]);
 	let inlineInput: HTMLInputElement;
 
@@ -71,8 +73,23 @@
 			validators: zod4Client(intakeSubmissionSchema),
 			onResult: ({ result }) => {
 				if (result.type === 'success') {
+					const key = String(result.data?.submitted ?? '');
+					const statusTicket = result.data?.statusTicket;
+					const statusPath = typeof statusTicket?.path === 'string' ? statusTicket.path : null;
+					if (key && statusPath)
+						rememberTicketStatus({
+							key,
+							title: $form.title,
+							path: statusPath,
+							status: typeof statusTicket.status === 'string' ? statusTicket.status : undefined,
+							closed: statusTicket.closed === true,
+							updatedAt: typeof statusTicket.updatedAt === 'number' ? statusTicket.updatedAt : undefined,
+							projectName: typeof statusTicket.projectName === 'string' ? statusTicket.projectName : undefined,
+							projectColor: typeof statusTicket.projectColor === 'string' ? statusTicket.projectColor : undefined
+						});
 					clearInlineImages();
-					submitted = String(result.data?.submitted ?? '');
+					submitted = key;
+					submittedPath = statusPath;
 				}
 			}
 		}
@@ -166,7 +183,10 @@
 						<p class="text-muted-foreground text-sm">
 							{submitted ? m.submitted_text({ key: submitted }) : m.submitted_text_plain()}
 						</p>
-						<Button variant="outline" onclick={() => (submitted = null)}>{m.submit_another()}</Button>
+						<div class="flex flex-wrap justify-center gap-2">
+							{#if submittedPath}<Button href="/status">{m.my_tickets()}</Button>{/if}
+							<Button variant="outline" onclick={() => (submitted = null)}>{m.submit_another()}</Button>
+						</div>
 					</div>
 				{:else}
 					<form class="grid gap-4" method="POST" enctype="multipart/form-data" use:enhance novalidate>

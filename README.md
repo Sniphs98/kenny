@@ -33,7 +33,7 @@ Self-hosted project and task management with Kanban boards, Gantt timelines and 
 - **AI assistants (MCP):** read-only access to projects and tasks for tools such as Claude Code
 - **Microsoft Teams:** personal app, channel tabs with a project's board, and automatic sign-in (Teams SSO)
 - **Teams channel notifications** for new, completed and assigned tasks
-- **E-mail notifications** to form submitters when their ticket is created or completed or receives a public comment, configurable per project
+- **E-mail notifications** to form submitters when their ticket is created or completed or receives a public comment, with a personal link for viewing the status and replying without signing in; opened and newly created tickets are collected locally under **My tickets**, configurable per project
 
 **Everyday use**
 

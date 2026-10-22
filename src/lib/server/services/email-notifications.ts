@@ -28,6 +28,7 @@ import { ApiError } from '../errors.js';
 import { parseInput } from '../validation.js';
 import { requireActiveUser, requireProjectAccess } from './access.js';
 import { getProject } from './projects.js';
+import { publicTicketStatusUrlToken } from './public-ticket-status.js';
 
 type Locale = 'de' | 'en';
 type Row = typeof projectEmailNotification.$inferSelect;
@@ -85,6 +86,7 @@ const baseUrl = () => (BETTER_AUTH_URL ?? '').replace(/\/+$/, '');
 function ticketData(ticketId: number) {
 	const row = db
 		.select({
+			id: ticket.id,
 			number: ticket.number,
 			title: ticket.title,
 			description: ticket.description,
@@ -337,7 +339,8 @@ function htmlFor(
 		public_comment: () => m.email_notification_comment_intro({}, { locale })
 	}[event]();
 	const { accent, foreground } = emailColors(data.color);
-	const url = `${baseUrl()}/tickets/${data.key}-${data.number}`;
+	const accessToken = publicTicketStatusUrlToken(data.id);
+	const url = `${baseUrl()}/status/${data.key}-${data.number}/${accessToken}`;
 	const key = `${data.key}-${data.number}`;
 	const eventLabel = {
 		created: () => m.email_notification_event_created({}, { locale }),
@@ -394,7 +397,8 @@ async function mailFor(
 	const lines = [subject, '', intro];
 	if (event !== 'public_comment') lines.push('', ...detailRows(data, locale).map(([label, value]) => `${label}: ${value}`));
 	if (comment) lines.push('', `${comment.authorName}:`, comment.body);
-	lines.push('', `${m.email_notification_open({}, { locale })}: ${baseUrl()}/tickets/${key}`);
+	const accessToken = publicTicketStatusUrlToken(data.id);
+	lines.push('', `${m.email_notification_open({}, { locale })}: ${baseUrl()}/status/${key}/${accessToken}`);
 	const attachmentSource = comment?.body ?? (event === 'public_comment' ? undefined : data.description ?? undefined);
 	const attachments = [await brandAttachment(), ...(await referencedAttachments(attachmentSource, data))];
 	return {

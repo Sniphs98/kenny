@@ -38,7 +38,7 @@ export const actions = {
 		const form = await superValidate(data, zod4(intakeSubmissionSchema));
 		if (!form.valid) return fail(400, { form });
 		try {
-			const { key } = await submitForm(params.token, form.data, {
+			const result = await submitForm(params.token, form.data, {
 				user: locals.user ?? null,
 				ip: getClientAddress(),
 				files,
@@ -46,7 +46,21 @@ export const actions = {
 				inlineImageUrls
 			});
 			// Bei Bot-Einreichungen (Fallen-Feld) gibt es keinen Schlüssel; die Seite zeigt trotzdem „Danke“
-			return { form, submitted: key ?? '' };
+			return {
+				form,
+				submitted: result.key ?? '',
+				statusTicket:
+					'statusPath' in result
+						? {
+								path: result.statusPath,
+								status: result.status,
+								closed: result.closed,
+								updatedAt: result.updatedAt,
+								projectName: result.projectName,
+								projectColor: result.projectColor
+							}
+						: null
+			};
 		} catch (e) {
 			if (e instanceof ApiError) return fail(e.status, { form: { ...form, message: e.message } });
 			throw e;

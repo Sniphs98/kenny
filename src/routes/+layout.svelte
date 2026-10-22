@@ -57,9 +57,12 @@
 		return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
 	});
 
-	// Einreichungsformulare und die Teams-Einstiegsseiten stehen für sich, ohne App-Navigation
+	// Einreichungsformulare, öffentliche Statusseiten und Teams-Einstiegsseiten stehen für sich, ohne App-Navigation
 	const showHeader = $derived(
-		!!data.user && !page.url.pathname.startsWith('/submit/') && !/^\/teams(\/|$)/.test(page.url.pathname)
+		!!data.user &&
+		!page.url.pathname.startsWith('/submit/') &&
+		!/^\/status(\/|$)/.test(page.url.pathname) &&
+		!/^\/teams(\/|$)/.test(page.url.pathname)
 	);
 
 	async function logout() {

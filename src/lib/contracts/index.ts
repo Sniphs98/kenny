@@ -184,7 +184,34 @@ export const commentSchema = z.object({
 	authorId: z.string().nullable(),
 	authorName: z.string().nullable(),
 	authorImage: z.string().nullable(),
+	isReporter: z.boolean(),
 	createdAt: timestamp
+});
+export const publicCommentInputSchema = z.strictObject({
+	body: z.string().trim().min(1, 'Bitte einen Kommentar eingeben.').max(100_000)
+});
+export const publicTicketStatusSchema = z.object({
+	key: z.string(),
+	title: z.string(),
+	description: z.string(),
+	system: z.string().nullable(),
+	status: z.string(),
+	closed: z.boolean(),
+	createdAt: timestamp,
+	updatedAt: timestamp,
+	createdBy: z.string().nullable(),
+	assignees: z.array(z.string()),
+	tags: z.array(z.object({ name: z.string(), color: colorSchema })),
+	project: z.object({ name: z.string(), color: colorSchema }),
+	comments: z.array(
+		z.object({
+			id,
+			body: z.string(),
+			authorName: z.string().nullable(),
+			isReporter: z.boolean(),
+			createdAt: timestamp
+		})
+	)
 });
 export const dependencySchema = z.object({ id, sourceId: id, targetId: id });
 export const userSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
@@ -223,6 +250,8 @@ export type TicketSearchResult = z.output<typeof ticketSearchResultSchema>;
 export type AttachmentDto = z.output<typeof attachmentSchema>;
 export type CreateCommentInput = z.input<typeof createCommentSchema>;
 export type CommentDto = z.output<typeof commentSchema>;
+export type PublicCommentInput = z.input<typeof publicCommentInputSchema>;
+export type PublicTicketStatus = z.output<typeof publicTicketStatusSchema>;
 export type DependencyDto = z.output<typeof dependencySchema>;
 
 // Form defaults belong to the form, not to PATCH contracts (missing means unchanged).

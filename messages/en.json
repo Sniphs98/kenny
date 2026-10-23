@@ -308,6 +308,7 @@
 	"key_2_10_letters_or_digits_starting_with_a_letter": "Key: 2–10 letters or digits, starting with a letter.",
 	"tag": "Tag",
 	"month": "Month",
+	"year": "Year",
 	"close": "Close",
 	"endpoint_create_project": "Create project",
 	"endpoint_create_tag": "Create tag",

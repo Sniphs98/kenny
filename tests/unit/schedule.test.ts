@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ganttSpan, planningDates } from '#lib/schedule.js';
+import { ganttSpan, nextWeekday, planningDates, weekdayRange } from '#lib/schedule.js';
 
 describe('Gantt dates', () => {
 	it('does not turn a standalone deadline into a scheduled interval', () => {
@@ -28,5 +28,9 @@ describe('Gantt dates', () => {
 			startDate: '2026-01-30',
 			dueDate: '2026-02-01'
 		});
+	});
+	it('moves Gantt starts and intervals away from weekends', () => {
+		expect(nextWeekday(20736)).toBe(20738); // Saturday 2026-10-10 → Monday
+		expect(weekdayRange(20736, 20740)).toEqual({ start: 20735, end: 20739 });
 	});
 });

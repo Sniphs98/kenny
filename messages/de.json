@@ -308,6 +308,7 @@
 	"key_2_10_letters_or_digits_starting_with_a_letter": "Kürzel: 2–10 Buchstaben/Ziffern, beginnt mit Buchstabe.",
 	"tag": "Tag",
 	"month": "Monat",
+	"year": "Jahr",
 	"close": "Schließen",
 	"endpoint_create_project": "Projekt anlegen",
 	"endpoint_create_tag": "Tag anlegen",

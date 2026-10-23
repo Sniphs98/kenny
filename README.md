@@ -79,6 +79,7 @@ services:
     environment:
       ORIGIN: ${KENNY_ORIGIN:?Set KENNY_ORIGIN in .env}
       BETTER_AUTH_URL: ${KENNY_ORIGIN}
+      BASE_PATH: ${KENNY_BASE_PATH:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
       ATTACHMENT_MAX_MB: ${ATTACHMENT_MAX_MB:-25}
       BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-30M}
@@ -278,7 +279,7 @@ npm run docker:build
 npm run docker:test               # Container, API, uploads, and persistence after restart
 ```
 
-Unit tests live under `tests/unit`, service and migration tests under `tests/integration`, and browser and HTTP tests under `tests/e2e`. Service tests use in-memory SQLite. Playwright starts its own built Node server on port 4174 with a fresh database under `data/test`, leaving development data untouched. Each test creates its own project.
+Unit tests live under `tests/unit`, service and migration tests under `tests/integration`, and browser and HTTP tests under `tests/e2e`. Service tests use in-memory SQLite. Playwright starts its own built Node server on port 4174 with a fresh database under `data/test`, leaving development data untouched. Each test creates its own project. A dedicated browser test runs the same build under `/kenny` on port 4177 with its own database under `data/test-subpath`, covering client links, command-palette navigation and ticket modals.
 
 GitHub Actions checks pull requests and `main` automatically. Shared Zod contracts live in `src/lib/contracts`; forms use Superforms. [CONTRIBUTING.md](CONTRIBUTING.md) describes the issue/PR workflow, and [AGENTS.md](AGENTS.md) contains the rules for AI-assisted changes. The English and German UI uses ParaglideJS.
 

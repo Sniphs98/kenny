@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sanitizeMarkdownHtml } from '#lib/html-sanitizer.js';
 	import '@toast-ui/editor/dist/toastui-editor-viewer.css';
 	import { onMount } from 'svelte';
 	import type { Viewer } from '@toast-ui/editor';
@@ -22,7 +23,12 @@
 		let active = true;
 		import('@toast-ui/editor/dist/toastui-editor-viewer').then(({ default: ToastViewer }) => {
 			if (!active) return;
-			viewer = new ToastViewer({ el: container, initialValue: value, usageStatistics: false });
+			viewer = new ToastViewer({
+				el: container,
+				initialValue: value,
+				usageStatistics: false,
+				customHTMLSanitizer: sanitizeMarkdownHtml
+			});
 			prefixLegacyAttachmentUrls();
 		});
 		return () => {

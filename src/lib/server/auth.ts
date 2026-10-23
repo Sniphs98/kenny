@@ -14,11 +14,16 @@ import {
 } from '$app/env/private';
 
 import { db, schema } from './db';
-import { APIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from 'better-auth/api';
 import { requireActiveUser } from './services/access';
 import { bootstrapAdministrator, registrationAllowed } from './services/users';
 import { teamsEnabled } from './teams';
 import { withBase } from '#lib/paths.js';
+import {
+	assertMicrosoftAccountCanBeAdded,
+	assertMicrosoftLinkIdentity,
+	microsoftLinkingConfigured
+} from './services/account-connections.js';
 
 // Microsoft-Login wird nur aktiviert, wenn die Zugangsdaten gesetzt sind (siehe README)
 const socialProviders: BetterAuthOptions['socialProviders'] = {};
@@ -46,12 +51,51 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, { provider: 'sqlite', schema }),
 	emailAndPassword: { enabled: true },
 	user: {
+		validateUserInfo: async ({ user, source }, context) => {
+			if (source.action !== 'link-account' || source.method !== 'oauth' || source.oauth?.providerId !== 'microsoft')
+				return;
+			const session = await getAuthoritativeSessionFromCtx(context);
+			try {
+				assertMicrosoftLinkIdentity(user.id!, session?.user.id, source.oauth.profile, MICROSOFT_TENANT_ID);
+			} catch {
+				return { error: 'microsoft_link_rejected' };
+			}
+		},
 		additionalFields: {
 			role: { type: 'string', required: false, defaultValue: 'user', input: false },
 			active: { type: 'boolean', required: false, defaultValue: true, input: false }
 		}
 	},
+	hooks: {
+		before: createAuthMiddleware(async (context) => {
+			if (context.path !== '/link-social' || context.body?.provider !== 'microsoft') return;
+			const session = await getAuthoritativeSessionFromCtx(context);
+			if (!session)
+				throw new APIError('UNAUTHORIZED', { code: 'UNAUTHORIZED', message: 'Konto gesperrt oder nicht verfügbar.' });
+			try {
+				if (!microsoftLinkingConfigured()) throw new Error('Microsoft linking is not configured');
+				assertMicrosoftAccountCanBeAdded(session.user.id);
+			} catch {
+				throw new APIError('FORBIDDEN', {
+					code: 'MICROSOFT_LINK_UNAVAILABLE',
+					message: 'Das Microsoft-Konto konnte nicht verbunden werden.'
+				});
+			}
+		})
+	},
 	databaseHooks: {
+		account: {
+			create: {
+				before: async (created) => {
+					if (created.providerId !== 'microsoft') return;
+					try {
+						assertMicrosoftAccountCanBeAdded(created.userId);
+					} catch {
+						throw new APIError('FORBIDDEN', { message: 'Das Microsoft-Konto konnte nicht verbunden werden.' });
+					}
+				}
+			}
+		},
 		user: {
 			create: {
 				before: async () => {
@@ -73,6 +117,16 @@ export const auth = betterAuth({
 					}
 				}
 			}
+		}
+	},
+	// Linking is explicit: a matching email never attaches a Microsoft identity to a local user.
+	account: {
+		accountLinking: {
+			enabled: microsoftLinkingConfigured(),
+			disableImplicitLinking: true,
+			trustedProviders: microsoftLinkingConfigured() ? ['microsoft'] : [],
+			allowDifferentEmails: true,
+			updateUserInfoOnLink: false
 		}
 	},
 	socialProviders,

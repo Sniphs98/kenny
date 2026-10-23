@@ -29,7 +29,7 @@ PR titles follow Conventional Commits, for example `feat(tickets): add filtering
 | `npm run test:e2e:production`                 | Build and Playwright tests against the Node production server           |
 | `npm run docker:build && npm run docker:test` | Container login, API, uploads, and persistence after restart            |
 
-Run `npx playwright install chromium` once. E2E tests use dedicated users and disposable databases under `data/test`, `data/test-teams`, and `data/test-subpath`. They start the root server on port 4174, the Teams server on 4175 (with fake Entra ID on 4176), and the same production build under `/kenny` on 4177. Vitest uses an in-memory database. Docker tests create their own container and volume and remove both afterward.
+Run `npx playwright install chromium` once. E2E tests use dedicated users and disposable databases under `data/test`, `data/test-teams`, and `data/test-subpath`, and `data/test-microsoft`. They start the root server on port 4174, the Teams server on 4175 (with fake Entra ID on 4176), the same production build under `/kenny` on 4177, and a Microsoft account-linking instance under `/kenny` on 4178. Microsoft tests use a local OAuth provider with signed tokens; they do not call Microsoft Graph or a real tenant. Vitest uses an in-memory database. Docker tests create their own container and volume and remove both afterward.
 
 Coverage thresholds protect the baseline: 60% lines and 50% each for statements, branches, and functions. Shared contracts require 100% lines, statements, and functions, and 80% branches. This coverage applies to Vitest, not browser or container tests.
 

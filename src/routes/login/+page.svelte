@@ -25,6 +25,7 @@
 	let error = $state('');
 	let busy = $state(false);
 
+	const microsoftError = $derived(page.url.searchParams.get('error'));
 	const target = $derived(page.url.searchParams.get('redirect') || '/');
 
 	async function submit(e: SubmitEvent) {
@@ -51,7 +52,11 @@
 	}
 
 	async function microsoft() {
-		await authClient.signIn.social({ provider: 'microsoft', callbackURL: target });
+		await authClient.signIn.social({
+			provider: 'microsoft',
+			callbackURL: withBase(safeTarget(target)),
+			errorCallbackURL: withBase('/login')
+		});
 	}
 </script>
 
@@ -102,10 +107,15 @@
 							/>
 						</InputGroup.Root>
 					</div>
-					{#if error}
+					{#if error || microsoftError}
 						<Alert.Root variant="destructive">
 							<CircleAlert />
-							<Alert.Title>{error}</Alert.Title>
+							<Alert.Title
+								>{error ||
+									(microsoftError === 'account_not_linked'
+										? m.microsoft_login_link_required()
+										: m.login_failed())}</Alert.Title
+							>
 						</Alert.Root>
 					{/if}
 					<Button type="submit" disabled={busy}>{mode === 'login' ? m.sign_in() : m.sign_up()}</Button>

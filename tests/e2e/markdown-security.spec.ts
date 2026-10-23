@@ -15,7 +15,7 @@ test('Markdown editor and viewer keep formatting while removing executable HTML'
 		'<script>document.documentElement.dataset.markdownXss="yes"</script>'
 	].join('\n');
 	const ticket = await createTicket(request, project.key, { title: 'Markdown sanitization', description: markdown });
-	await api(request, 'POST', `/tickets/${ticket.key}/comments`, { body: markdown });
+	await api(request, 'POST', `/tickets/${ticket.key}/comments`, { body: markdown, internal: false });
 	await open(page, `/tickets/${ticket.key}`);
 
 	for (const contents of [

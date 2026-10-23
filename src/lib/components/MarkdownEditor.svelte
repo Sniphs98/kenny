@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sanitizeMarkdownHtml } from '#lib/html-sanitizer.js';
 	import '@toast-ui/editor/dist/toastui-editor.css';
 	import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
 	import type { Editor } from '@toast-ui/editor';
@@ -57,6 +58,7 @@
 			editor = new ToastEditor({
 				el: container,
 				initialValue: value,
+				customHTMLSanitizer: sanitizeMarkdownHtml,
 				initialEditType: 'wysiwyg',
 				hideModeSwitch: true,
 				height: 'auto',

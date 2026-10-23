@@ -74,6 +74,7 @@
 		"@toast-ui/editor": "^3.2.2",
 		"better-auth": "^1.7.7",
 		"better-sqlite3": "^13.0.3",
+		"dompurify": "^3.4.17",
 		"drizzle-orm": "^0.45.4",
 		"sveltekit-superforms": "^3.0.0",
 		"zod": "^4.6.5"
@@ -91,6 +92,9 @@
 		},
 		"runed": {
 			"@sveltejs/kit": "$@sveltejs/kit"
+		},
+		"@toast-ui/editor": {
+			"dompurify": "$dompurify"
 		}
 	}
 }

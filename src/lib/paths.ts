@@ -1,5 +1,7 @@
+import { BASE_PATH } from '$app/env/public';
+
 /** Unterpfad, unter dem Kenny läuft (z.B. "/kenny" hinter einem Reverse Proxy); leer an der Wurzel */
-export const BASE_PATH: string = __KENNY_BASE_PATH__;
+export { BASE_PATH };
 
 export type AppPath = `/${string}`;
 

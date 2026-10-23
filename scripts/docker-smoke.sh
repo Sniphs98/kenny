@@ -30,4 +30,24 @@ docker exec -i -e SMOKE_PHASE=create "$container" node --input-type=module < scr
 docker restart "$container" >/dev/null
 wait_ready
 docker exec -i -e SMOKE_PHASE=verify "$container" node --input-type=module < scripts/docker-smoke.mjs
-echo "Container smoke test passed (auth, migrations, API, uploads, persistent restart)."
+
+# The same image below a subpath: requests outside BASE_PATH are rejected, the healthcheck follows it
+docker rm -f "$container" >/dev/null
+docker run -d --name "$container" --mount "type=volume,source=$volume,target=/app/data" \
+  --cap-drop ALL --security-opt no-new-privileges:true -e BASE_PATH=/kenny \
+  -e ORIGIN=http://localhost:3000 -e BETTER_AUTH_URL=http://localhost:3000 \
+  -e BETTER_AUTH_SECRET=container-smoke-only-secret-0123456789 "$image" >/dev/null
+for attempt in $(seq 1 60); do
+  [ "$(docker inspect -f '{{.State.Health.Status}}' "$container")" = healthy ] && break
+  [ "$attempt" = 60 ] && { docker logs "$container"; exit 1; }
+  sleep 2
+done
+docker exec -i "$container" node --input-type=module <<'JS'
+const status = async (path) => (await fetch(`http://localhost:3000${path}`, { redirect: 'manual' })).status;
+const expected = { '/kenny/login': 200, '/kenny/api/health': 200, '/kenny': 308, '/login': 404 };
+for (const [path, code] of Object.entries(expected)) {
+	const actual = await status(path);
+	if (actual !== code) throw new Error(`${path}: expected ${code}, got ${actual}`);
+}
+JS
+echo "Container smoke test passed (auth, migrations, API, uploads, persistent restart, subpath)."

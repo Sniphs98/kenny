@@ -3,10 +3,12 @@ import { TEAMS_E2E } from './tests/e2e/teams-env';
 
 const PORT = 4174;
 const baseURL = `http://localhost:${PORT}`;
+const subpathURL = 'http://localhost:4177';
 
 /**
  * E2E-Tests gegen den gebauten Node-Server mit separater Datenbank unter data/test,
  * die vor jedem Lauf frisch angelegt wird. Die Entwicklungsdaten bleiben unberührt.
+ * Die Unterpfad-Tests verwenden denselben Build unter /kenny mit data/test-subpath.
  * Die Teams-Tests laufen gegen eine zweite Instanz im Teams-Modus (data/test-teams).
  */
 export default defineConfig({
@@ -26,7 +28,7 @@ export default defineConfig({
 		{ name: 'setup', testMatch: /auth\.setup\.ts/ },
 		{
 			name: 'chromium',
-			testIgnore: /(mobile|teams)\.spec\.ts/,
+			testIgnore: /(mobile|teams|subpath)\.spec\.ts/,
 			use: {
 				...devices['Desktop Chrome'],
 				viewport: { width: 1600, height: 1000 },
@@ -41,12 +43,33 @@ export default defineConfig({
 			dependencies: ['setup']
 		},
 		{
+			name: 'subpath-chromium',
+			testMatch: /subpath\.spec\.ts/,
+			use: { ...devices['Desktop Chrome'], baseURL: subpathURL, viewport: { width: 1600, height: 1000 } }
+		},
+		{
 			name: 'teams',
 			testMatch: /teams\.spec\.ts/,
 			use: { ...devices['Desktop Chrome'], baseURL: TEAMS_E2E.url, viewport: { width: 1400, height: 900 } }
 		}
 	],
 	webServer: [
+		{
+			command: `node -e "require('fs').rmSync('data/test-subpath',{recursive:true,force:true})" && node scripts/start-server.mjs`,
+			url: `${subpathURL}/kenny/login`,
+			reuseExistingServer: false,
+			timeout: 120_000,
+			env: {
+				PORT: '4177',
+				HOST: '127.0.0.1',
+				ORIGIN: subpathURL,
+				BASE_PATH: '/kenny',
+				DATABASE_URL: 'data/test-subpath/kenny.db',
+				ATTACHMENTS_DIR: 'data/test-subpath/attachments',
+				BETTER_AUTH_URL: subpathURL,
+				BETTER_AUTH_SECRET: 'e2e-subpath-secret-nur-fuer-playwright-0123456789'
+			}
+		},
 		{
 			command: `node -e "require('fs').rmSync('data/test',{recursive:true,force:true})" && node scripts/start-server.mjs`,
 			url: `${baseURL}/login`,

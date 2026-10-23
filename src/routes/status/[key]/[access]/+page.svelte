@@ -38,6 +38,7 @@
 <svelte:head>
 	<title>{m.ticket_status_title({ key: ticket.key })} · Kenny</title>
 	<meta name="robots" content="noindex, nofollow" />
+	<meta name="referrer" content="strict-origin" />
 </svelte:head>
 
 <div

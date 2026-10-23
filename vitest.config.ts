@@ -3,11 +3,11 @@ import { defineConfig } from 'vitest/config';
 
 const file = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineConfig({
-	define: { __KENNY_BASE_PATH__: JSON.stringify('') },
 	resolve: {
 		alias: {
 			'#lib': file('./src/lib'),
 			'$app/env/private': file('./tests/fixtures/env.ts'),
+			'$app/env/public': file('./tests/fixtures/env-public.ts'),
 			'$app/env': file('./tests/fixtures/environment.ts')
 		}
 	},

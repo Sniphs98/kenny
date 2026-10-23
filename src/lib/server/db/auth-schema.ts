@@ -1,5 +1,5 @@
 // Tabellen für Better Auth (Benutzer, Sessions, Accounts, Verifizierung)
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
@@ -61,7 +61,13 @@ export const account = sqliteTable(
 			.$onUpdate(() => new Date())
 			.notNull()
 	},
-	(t) => [index('account_user_id_idx').on(t.userId)]
+	(t) => [
+		index('account_user_id_idx').on(t.userId),
+		uniqueIndex('account_provider_identity_unique').on(t.providerId, t.accountId),
+		uniqueIndex('account_microsoft_user_unique')
+			.on(t.userId)
+			.where(sql`${t.providerId} = 'microsoft'`)
+	]
 );
 
 export const verification = sqliteTable(

@@ -64,7 +64,17 @@ The existing provider remains available through `MICROSOFT_CLIENT_ID`, `MICROSOF
 
 After a Microsoft user's first sign-in creates their account, a project administrator can add it to a project. Signing in does not grant access to existing projects. After the first account has been created, public registration is disabled, including creation of new Microsoft accounts. Instance administrators create accounts under **Users** (name, email and password) or through `POST /api/v1/admin/users`. Existing Microsoft accounts continue to sign in. Creating an account does not replace the administrator’s session or grant project membership.
 
-Invitations, explicit account linking, Entra group mapping, and automatic provisioning are follow-up work. Actual Entra sign-in requires a registered application and tenant credentials; local permission tests do not verify that external integration in a specific tenant.
+### Connect an existing account to Microsoft
+
+An existing password user can open **user menu → Account settings → Connect Microsoft account**, select their work account and complete Microsoft sign-in. The connection is added to the existing Kenny user: their name, email, password, roles, memberships and assignments stay unchanged. They can then use **Sign in with Microsoft** on the login page or keep using their password.
+
+This requires a configured Microsoft provider and a fixed directory (tenant) GUID in `MICROSOFT_TENANT_ID`; `common`, `organizations` and `consumers` do not enable linking. Keep the initiating Kenny session active until the callback completes. The callback must authenticate that same active user and a Microsoft identity from the configured tenant. Microsoft and Kenny email addresses may differ: matching emails never automatically connect accounts. Each Microsoft identity belongs to at most one Kenny user, and each Kenny user can connect one Microsoft identity. There is currently no self-service disconnect or replacement UI.
+
+If Microsoft sign-in returns an account-linking error, first sign in with the existing Kenny password and connect the account from Account settings. Do not create a second Kenny account for the same person. New Microsoft users still require a local account created by a Kenny administrator, followed by this connection step.
+
+Migration `0020` adds database uniqueness constraints for provider identities and Microsoft connections. Existing duplicate authentication identities must be investigated before upgrading; the migration never deletes or merges accounts automatically.
+
+Invitations, Entra group mapping, and automatic provisioning are follow-up work. Actual Entra sign-in requires a registered application and tenant credentials; local permission tests do not verify that external integration in a specific tenant.
 
 ## API token lifetime and permissions
 

@@ -702,5 +702,20 @@
 	"intake_choose_system": "Please choose a system.",
 	"comment_not_found": "Comment not found.",
 	"board_group_tasks_only": "Board groups only apply to tasks.",
-	"intake_field_duplicate": "Each field may only appear once."
+	"intake_field_duplicate": "Each field may only appear once.",
+	"account_settings": "Account settings",
+	"microsoft_account": "Microsoft account",
+	"microsoft_link_description": "Connect your Microsoft account to sign in to your existing Kenny account. Your projects, tasks and permissions are kept.",
+	"microsoft_account_connected": "Microsoft account connected",
+	"microsoft_signin_ready": "You can now use “Sign in with Microsoft”. If you have a Kenny password, you can continue using it.",
+	"microsoft_not_configured": "Microsoft sign-in is not configured for this installation.",
+	"microsoft_fixed_tenant_required": "An administrator must configure a fixed Microsoft company tenant before accounts can be connected.",
+	"microsoft_link_account_choice": "Choose your own Microsoft work account in the next step. Its email address may differ from your Kenny email.",
+	"connect_microsoft_account": "Connect Microsoft account",
+	"microsoft_link_failed": "The Microsoft account could not be connected. Sign in to Kenny again and use an account from your company tenant that is not already connected to another Kenny account.",
+	"microsoft_link_session_required": "An active session for this account is required.",
+	"microsoft_link_wrong_tenant": "The Microsoft account must belong to the configured company tenant.",
+	"microsoft_link_already_connected": "A Microsoft account is already connected.",
+	"microsoft_link_unavailable": "The Microsoft account could not be connected.",
+	"microsoft_login_link_required": "First sign in with your existing Kenny password and connect your Microsoft account in Account settings."
 }

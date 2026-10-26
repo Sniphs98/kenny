@@ -23,9 +23,17 @@ function generatedTopic() {
 function ensureTopic(userId: string) {
 	const existing = topicOf(userId);
 	if (existing) return existing;
-	const values = { userId, topic: generatedTopic(), events: [...NTFY_NOTIFICATION_EVENTS] };
+	const values = { userId, topic: generatedTopic(), events: [...NTFY_NOTIFICATION_EVENTS], testMode: false };
 	db.insert(userNtfyNotification).values(values).run();
 	return topicOf(userId)!;
+}
+
+function supportedEvents(events: unknown): NtfyNotificationEvent[] {
+	return Array.isArray(events)
+		? events.filter((event): event is NtfyNotificationEvent =>
+				NTFY_NOTIFICATION_EVENTS.includes(event as NtfyNotificationEvent)
+			)
+		: [];
 }
 
 export function getNtfyNotifications(userId: string): NtfyNotificationsDto {
@@ -33,7 +41,8 @@ export function getNtfyNotifications(userId: string): NtfyNotificationsDto {
 	return ntfyNotificationsDtoSchema.parse({
 		configured: true,
 		topic: row.topic,
-		events: row.events.filter((event) => NTFY_NOTIFICATION_EVENTS.includes(event))
+		events: supportedEvents(row.events),
+		testMode: row.testMode
 	});
 }
 
@@ -41,7 +50,8 @@ export function updateNtfyNotifications(userId: string, rawInput: unknown): Ntfy
 	const input = parseInput(updateNtfyNotificationsSchema, rawInput);
 	const current = ensureTopic(userId);
 	const values = {
-		events: input.events ? NTFY_NOTIFICATION_EVENTS.filter((event) => input.events!.includes(event)) : current.events
+		events: input.events ? NTFY_NOTIFICATION_EVENTS.filter((event) => input.events!.includes(event)) : supportedEvents(current.events),
+		testMode: input.testMode ?? current.testMode
 	};
 	db.update(userNtfyNotification).set(values).where(eq(userNtfyNotification.userId, userId)).run();
 	return getNtfyNotifications(userId);
@@ -60,23 +70,23 @@ const eventTitle: Record<NtfyNotificationEvent, string> = {
 	ticket_unassigned: 'Ticket entzogen'
 };
 
-function recipients(projectId: number, event: NtfyNotificationEvent, userIds?: string[]) {
+function recipients(projectId: number, event: NtfyNotificationEvent, userIds?: string[], actorId?: string | null) {
 	const conditions = [eq(projectMember.projectId, projectId)];
 	if (userIds !== undefined) {
 		if (!userIds.length) return [];
 		conditions.push(inArray(userNtfyNotification.userId, userIds));
 	}
 	return db
-		.select({ topic: userNtfyNotification.topic, events: userNtfyNotification.events })
+		.select({ userId: userNtfyNotification.userId, topic: userNtfyNotification.topic, events: userNtfyNotification.events, testMode: userNtfyNotification.testMode })
 		.from(userNtfyNotification)
 		.innerJoin(projectMember, eq(projectMember.userId, userNtfyNotification.userId))
 		.where(and(...conditions))
 		.all()
-		.filter((row) => row.events.includes(event));
+		.filter((row) => row.events.includes(event) && (row.userId !== actorId || row.testMode));
 }
 
 /** Zustellt an ntfy.sh. Themen sind absichtlich kein Geheimnis und werden nur dem jeweiligen Benutzer gezeigt. */
-export function notifyNtfy(event: NtfyNotificationEvent, ticketId: number, userIds?: string[]) {
+export function notifyNtfy(event: NtfyNotificationEvent, ticketId: number, userIds?: string[], actorId?: string | null) {
 	const row = db
 		.select({
 			projectId: ticket.projectId,
@@ -91,7 +101,7 @@ export function notifyNtfy(event: NtfyNotificationEvent, ticketId: number, userI
 		.where(eq(ticket.id, ticketId))
 		.get();
 	if (!row) return;
-	for (const recipient of recipients(row.projectId, event, userIds)) {
+	for (const recipient of recipients(row.projectId, event, userIds, actorId)) {
 		void fetch(`https://ntfy.sh/${encodeURIComponent(recipient.topic)}`, {
 			method: 'POST',
 			headers: {
@@ -106,9 +116,9 @@ export function notifyNtfy(event: NtfyNotificationEvent, ticketId: number, userI
 }
 
 /** Fälligkeit wird bei Anlage oder einer Änderung gemeldet; ein täglicher Erinnerungsjob kann dies später ergänzen. */
-export function notifyNtfyDue(ticketId: number, dueDate: string | null, userIds: string[]) {
+export function notifyNtfyDue(ticketId: number, dueDate: string | null, userIds: string[], actorId?: string | null) {
 	if (!dueDate) return;
 	const today = new Date().toISOString().slice(0, 10);
-	if (dueDate === today) notifyNtfy('due_today', ticketId, userIds);
-	if (dueDate < today) notifyNtfy('overdue', ticketId, userIds);
+	if (dueDate === today) notifyNtfy('due_today', ticketId, userIds, actorId);
+	if (dueDate < today) notifyNtfy('overdue', ticketId, userIds, actorId);
 }

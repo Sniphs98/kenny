@@ -131,7 +131,8 @@ export const userNtfyNotification = sqliteTable('user_ntfy_notification', {
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	topic: text('topic').notNull(),
-	events: text('events', { mode: 'json' }).$type<NtfyNotificationEvent[]>().notNull()
+	events: text('events', { mode: 'json' }).$type<NtfyNotificationEvent[]>().notNull(),
+	testMode: integer('test_mode', { mode: 'boolean' }).notNull().default(false)
 });
 
 /**

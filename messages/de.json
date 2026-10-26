@@ -544,6 +544,7 @@
 	"ntfy_topic": "ntfy-Thema",
 	"ntfy_topic_hint": "Abonniere dieses Thema in der ntfy-App oder unter ntfy.sh. Es wurde zufällig für dein Konto erzeugt.",
 	"ntfy_saved": "ntfy-Benachrichtigungen gespeichert",
+	"ntfy_test_mode": "Testmodus: Benachrichtigungen auch für meine eigenen Änderungen senden",
 	"ntfy_event_ticket_created": "Neues Ticket im Ticketsystem",
 	"ntfy_event_ticket_assigned": "Ticket wurde mir zugewiesen",
 	"ntfy_event_creator_commented_unassigned": "Ich kommentiere ein nicht zugewiesenes, von mir erstelltes Ticket",

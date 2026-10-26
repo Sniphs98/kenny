@@ -517,12 +517,14 @@ export const NTFY_NOTIFICATION_EVENTS = [
 export type NtfyNotificationEvent = (typeof NTFY_NOTIFICATION_EVENTS)[number];
 
 export const updateNtfyNotificationsSchema = z.strictObject({
-	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS)).max(NTFY_NOTIFICATION_EVENTS.length).optional()
+	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS)).max(NTFY_NOTIFICATION_EVENTS.length).optional(),
+	testMode: z.boolean().optional()
 });
 export const ntfyNotificationsDtoSchema = z.object({
 	configured: z.boolean(),
 	topic: z.string().nullable(),
-	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS))
+	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS)),
+	testMode: z.boolean()
 });
 export type UpdateNtfyNotificationsInput = z.input<typeof updateNtfyNotificationsSchema>;
 export type NtfyNotificationsDto = z.output<typeof ntfyNotificationsDtoSchema>;

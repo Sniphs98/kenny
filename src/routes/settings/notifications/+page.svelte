@@ -11,6 +11,7 @@
 
 	let { data } = $props();
 	let events = $state<NtfyNotificationEvent[]>([...data.ntfy.events]);
+	let testMode = $state(data.ntfy.testMode);
 	let busy = $state(false);
 	const labels: Record<NtfyNotificationEvent, string> = {
 		ticket_created: m.ntfy_event_ticket_created(),
@@ -29,7 +30,7 @@
 		event.preventDefault();
 		busy = true;
 		try {
-			await updateNtfyNotifications({ events });
+			await updateNtfyNotifications({ events, testMode });
 			await refreshAll();
 			toast.success(m.ntfy_saved());
 		} catch (error) {
@@ -59,6 +60,7 @@
 						<Label class="font-normal"><Checkbox checked={events.includes(event)} onCheckedChange={(on) => toggle(event, on)} />{labels[event]}</Label>
 					{/each}
 				</fieldset>
+				<Label class="font-normal"><Checkbox checked={testMode} onCheckedChange={(on) => (testMode = on)} />{m.ntfy_test_mode()}</Label>
 				<Button type="submit" disabled={busy}>{m.save()}</Button>
 			</form>
 		</Card.Content>

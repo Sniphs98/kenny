@@ -544,6 +544,7 @@
 	"ntfy_topic": "ntfy topic",
 	"ntfy_topic_hint": "Subscribe to this topic in the ntfy app or at ntfy.sh. It was randomly generated for your account.",
 	"ntfy_saved": "ntfy notifications saved",
+	"ntfy_test_mode": "Test mode: also send notifications for my own changes",
 	"ntfy_event_ticket_created": "New ticket in the ticket system",
 	"ntfy_event_ticket_assigned": "Task assigned to me",
 	"ntfy_event_creator_commented_unassigned": "I comment on an unassigned ticket I created",

@@ -141,3 +141,47 @@ it('carries existing single assignees over into the assignee list', () => {
 		client.close();
 	}
 });
+
+it('preserves existing credentials and Microsoft identities when adding ownership constraints', () => {
+	const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as {
+		entries: { tag: string; when: number }[];
+	};
+	const client = new Database(':memory:');
+	try {
+		client.pragma('foreign_keys = ON');
+		client.exec(
+			'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)'
+		);
+		for (const entry of journal.entries.slice(
+			0,
+			journal.entries.findIndex((entry) => entry.tag === '0020_microsoft_account_identity')
+		)) {
+			client.exec(readFileSync(`drizzle/${entry.tag}.sql`, 'utf8'));
+			client.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run('fixture', entry.when);
+		}
+		client.exec(
+			"INSERT INTO user (id, name, email, role) VALUES ('existing', 'Existing user', 'existing@example.com', 'admin')"
+		);
+		client.exec(
+			"INSERT INTO account (id, user_id, provider_id, account_id, password, updated_at) VALUES ('password', 'existing', 'credential', 'existing', 'test-password-hash', 1)"
+		);
+		client.exec(
+			"INSERT INTO account (id, user_id, provider_id, account_id, updated_at) VALUES ('microsoft', 'existing', 'microsoft', 'existing-microsoft-identity', 1)"
+		);
+		const before = client.prepare('SELECT * FROM account ORDER BY id').all();
+		migrate(drizzle(client), { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT * FROM account ORDER BY id').all()).toEqual(before);
+		expect(client.prepare('SELECT id, email, role FROM user').get()).toEqual({
+			id: 'existing',
+			email: 'existing@example.com',
+			role: 'admin'
+		});
+		expect(() =>
+			client.exec(
+				"INSERT INTO account (id, user_id, provider_id, account_id, updated_at) VALUES ('duplicate', 'existing', 'microsoft', 'another-identity', 1)"
+			)
+		).toThrow(/UNIQUE constraint failed/);
+	} finally {
+		client.close();
+	}
+});

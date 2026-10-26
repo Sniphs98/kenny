@@ -716,5 +716,20 @@
 	"intake_choose_system": "Bitte ein System wählen.",
 	"comment_not_found": "Kommentar nicht gefunden.",
 	"board_group_tasks_only": "Board-Gruppen gelten nur für Aufgaben.",
-	"intake_field_duplicate": "Jedes Feld darf nur einmal vorkommen."
+	"intake_field_duplicate": "Jedes Feld darf nur einmal vorkommen.",
+	"account_settings": "Kontoeinstellungen",
+	"microsoft_account": "Microsoft-Konto",
+	"microsoft_link_description": "Verbinde dein Microsoft-Konto, um dich damit bei deinem bestehenden Kenny-Konto anzumelden. Deine Projekte, Aufgaben und Berechtigungen bleiben erhalten.",
+	"microsoft_account_connected": "Microsoft-Konto verbunden",
+	"microsoft_signin_ready": "Du kannst dich jetzt über „Mit Microsoft anmelden“ anmelden. Falls du ein Kenny-Passwort hast, kannst du es weiterhin verwenden.",
+	"microsoft_not_configured": "Die Microsoft-Anmeldung ist für diese Installation nicht eingerichtet.",
+	"microsoft_fixed_tenant_required": "Für die Kontoverknüpfung muss ein Administrator einen festen Microsoft-Firmenmandanten konfigurieren.",
+	"microsoft_link_account_choice": "Wähle im nächsten Schritt dein eigenes Microsoft-Firmenkonto aus. Die Microsoft-E-Mail darf von deiner Kenny-E-Mail abweichen.",
+	"connect_microsoft_account": "Microsoft-Konto verbinden",
+	"microsoft_link_failed": "Das Microsoft-Konto konnte nicht verbunden werden. Melde dich erneut bei Kenny an und verwende ein Konto aus eurem Firmenmandanten, das noch nicht mit einem anderen Kenny-Konto verbunden ist.",
+	"microsoft_link_session_required": "Eine aktive Sitzung für dieses Konto ist erforderlich.",
+	"microsoft_link_wrong_tenant": "Das Microsoft-Konto muss zum konfigurierten Firmenmandanten gehören.",
+	"microsoft_link_already_connected": "Ein Microsoft-Konto ist bereits verbunden.",
+	"microsoft_link_unavailable": "Das Microsoft-Konto konnte nicht verbunden werden.",
+	"microsoft_login_link_required": "Melde dich zuerst mit deinem bisherigen Kenny-Passwort an und verbinde dein Microsoft-Konto in den Kontoeinstellungen."
 }

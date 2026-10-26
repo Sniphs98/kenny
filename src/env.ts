@@ -1,4 +1,5 @@
 import { defineEnvVars } from '@sveltejs/kit/env';
+import { normalizeBasePath } from '../scripts/runtime-base-path.mjs';
 
 // Optional settings keep their existing application defaults when absent.
 export const variables = defineEnvVars({
@@ -21,5 +22,7 @@ export const variables = defineEnvVars({
 	SMTP_PASSWORD: { schema: (input) => input ?? '' },
 	SMTP_FROM: { schema: (input) => input ?? '' },
 	DATABASE_URL: { schema: (input) => input ?? '' },
-	MIGRATIONS_DIR: { schema: (input) => input ?? '' }
+	MIGRATIONS_DIR: { schema: (input) => input ?? '' },
+	// Subpath behind a reverse proxy (e.g. /kenny); read at startup, also needed by the browser for links
+	BASE_PATH: { public: true, schema: (input) => normalizeBasePath(input) }
 });

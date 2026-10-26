@@ -7,6 +7,17 @@ export const intlLocale = () => (getLocale() === 'de' ? 'de-DE' : 'en-GB');
 // Public contracts keep their stable validation messages; localization belongs to presentation.
 const errorTranslations = [
 	{
+		pattern: /^Eine aktive Sitzung für dieses Konto ist erforderlich\.$/,
+		translate: () => m.microsoft_link_session_required()
+	},
+	{
+		pattern: /^Das Microsoft-Konto muss zum konfigurierten Firmenmandanten gehören\.$/,
+		translate: () => m.microsoft_link_wrong_tenant()
+	},
+	{ pattern: /^Ein Microsoft-Konto ist bereits verbunden\.$/, translate: () => m.microsoft_link_already_connected() },
+	{ pattern: /^Das Microsoft-Konto konnte nicht verbunden werden\.$/, translate: () => m.microsoft_link_unavailable() },
+
+	{
 		pattern: /^Versionen stehen oben; Hauptaufgaben gehören zu Versionen und Tasks zu Hauptaufgaben oder Tasks\.$/,
 		translate: () => m.ticket_kind_parent_error()
 	},

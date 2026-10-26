@@ -27,6 +27,7 @@
 	import Bell from '@lucide/svelte/icons/bell';
 	import MessagesSquare from '@lucide/svelte/icons/messages-square';
 	import Users from '@lucide/svelte/icons/users';
+	import UserRound from '@lucide/svelte/icons/user-round';
 	import LogOut from '@lucide/svelte/icons/log-out';
 
 	let { data, children } = $props();
@@ -140,6 +141,9 @@
 							><DropdownMenu.Item onSelect={() => goto(withBase('/admin/teams'))}
 								><MessagesSquare />{m.teams_admin_title()}</DropdownMenu.Item
 							>{/if}
+						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/account'))}>
+							<UserRound />{m.account_settings()}
+						</DropdownMenu.Item>
 						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/api'))}>
 							<KeyRound />
 							{m.api_tokens()}

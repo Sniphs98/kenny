@@ -176,3 +176,39 @@ test('Einbettungscode: Formular auf einer fremden Seite einreichen, App selbst n
 	await expect(frame.getByRole('status')).toContainText(`${p.key}-1`);
 	expect((await getTicket(request, `${p.key}-1`)).title).toBe('Von der Webseite');
 });
+
+test('Statusantwort im Browser behält den Origin und verbirgt den privaten Link im Referer', async ({
+	page,
+	browser,
+	baseURL,
+	request
+}) => {
+	const p = await createProject(request, 'Statusantwort');
+	const link = await createIntakeForm(page, `Status ${p.key}`, { projects: [`Statusantwort ${p.key}`] });
+	const context = await browser.newContext({ baseURL, locale: 'de-DE', storageState: { cookies: [], origins: [] } });
+	try {
+		const guest = await context.newPage();
+		await open(guest, link);
+		await guest.getByLabel('Titel').fill('Rückfrage zum Ticket');
+		await guest.getByRole('button', { name: 'Einreichen' }).click();
+		await expect(guest.getByRole('status')).toContainText(`${p.key}-1`);
+		await guest.getByRole('link', { name: 'Meine Tickets' }).click();
+		await guest.locator(`a[href*="/status/${p.key}-1/"]`).click();
+		await guest.locator('textarea[name="body"]').fill('Ergänzung vom Einreicher');
+		const sent = guest.waitForRequest((r) => r.method() === 'POST' && r.url().includes(`/status/${p.key}-1/`));
+		const response = guest.waitForResponse(
+			(r) => r.request().method() === 'POST' && r.url().includes(`/status/${p.key}-1/`)
+		);
+		await guest.locator('button[type="submit"]').click();
+		const submitted = await sent;
+		const origin = new URL(baseURL!).origin;
+		expect(submitted.headers().origin).toBe(origin);
+		expect(submitted.headers().referer).toBe(`${origin}/`);
+		expect((await response).status()).toBe(200);
+		await expect(guest.getByRole('article').filter({ hasText: 'Ergänzung vom Einreicher' })).toBeVisible();
+		await guest.goto(guest.url());
+		await expect(guest.getByRole('article').filter({ hasText: 'Ergänzung vom Einreicher' })).toBeVisible();
+	} finally {
+		await context.close();
+	}
+});

@@ -13,7 +13,8 @@ function status(key: string, access: string) {
 }
 
 export const load = ({ params, setHeaders }) => {
-	setHeaders({ 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' });
+	// Hide the signed status path without making native form POSTs send Origin: null.
+	setHeaders({ 'cache-control': 'private, no-store', 'referrer-policy': 'strict-origin' });
 	return { ticket: status(params.key, params.access) };
 };
 

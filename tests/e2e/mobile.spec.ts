@@ -20,6 +20,9 @@ test('touch navigation, board status change and full-screen ticket editing', asy
 		.filter({ hasText: `Touch workflow ${p.key}` })
 		.tap();
 	await expect(page).toHaveURL(`/projects/${p.key}/board`);
+	// The open backlog must leave enough room to reach cards on a phone.
+	await expect(page.getByRole('button', { name: /^Backlog/ })).toHaveAttribute('aria-expanded', 'true');
+	await fitsViewport(page);
 	await card(page, t.title).getByRole('button', { name: 'Aufgabe verschieben' }).tap();
 	await page.getByRole('menuitem', { name: 'Review', exact: true }).tap();
 	await expect.poll(async () => (await getTicket(request, t.key)).status).toBe('Review');

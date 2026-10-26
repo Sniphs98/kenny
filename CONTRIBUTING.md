@@ -29,6 +29,8 @@ PR titles follow Conventional Commits, for example `feat(tickets): add filtering
 | `npm run test:e2e:production`                 | Build and Playwright tests against the Node production server           |
 | `npm run docker:build && npm run docker:test` | Container login, API, uploads, and persistence after restart            |
 
+Before pushing, run `npm run format` to fix formatting, then `npm run verify:local` to run the complete CI checks locally, including the dependency audit, production browser tests, and Docker build/smoke test. This requires Docker and Chromium; install the browser once with `npx playwright install chromium` (on Linux, use `npx playwright install --with-deps chromium` if system libraries are missing). The command stops at the first failure. For a shorter check without browser/container tests, use `npm run verify`. Local checks do not replace the release gate on GitHub.
+
 Run `npx playwright install chromium` once. E2E tests use dedicated users and disposable databases under `data/test`, `data/test-teams`, and `data/test-subpath`, and `data/test-microsoft`. They start the root server on port 4174, the Teams server on 4175 (with fake Entra ID on 4176), the same production build under `/kenny` on 4177, and a Microsoft account-linking instance under `/kenny` on 4178. Microsoft tests use a local OAuth provider with signed tokens; they do not call Microsoft Graph or a real tenant. Vitest uses an in-memory database. Docker tests create their own container and volume and remove both afterward.
 
 Coverage thresholds protect the baseline: 60% lines and 50% each for statements, branches, and functions. Shared contracts require 100% lines, statements, and functions, and 80% branches. This coverage applies to Vitest, not browser or container tests.
@@ -43,11 +45,13 @@ Prefer the existing shadcn components under `src/lib/components/ui/` for selecti
 
 The repository includes workflows and templates. `.github/rulesets/main.json` also contains an importable ruleset for a solo repository without mandatory reviews by another person. Import it in GitHub or activate it through the API; the file alone does not enable branch protection. After pushing, configure the repository settings:
 
-- Ruleset for `main`: require pull requests, successful `Quality checks`, `Production E2E`, `Docker smoke test`, and `Conventional PR title` checks, and an up-to-date branch before merging; prohibit force pushes and branch deletion.
+- Ruleset for `main`: require pull requests, successful `Quality checks` and `Conventional PR title` checks, and an up-to-date branch before merging; prohibit force pushes and branch deletion.
 - Require at least one review once another contributor can review, and dismiss stale reviews after new changes. Do not impose an impossible external-review requirement on a solo repository.
 - Use squash merging with the PR title as the commit title.
 - Enable Dependabot alerts and any available secret scanning and push protection.
 - If needed, make the GHCR package public after the first release. A public repository does not automatically make a new package public.
+
+Pull requests run quality checks (including coverage, build, and dependency audit) and PR title validation. Production E2E and Docker smoke tests run in the release workflow after pushes to `main` or version tags, and when CI is manually dispatched. The release workflow reuses CI, so pushes to `main` do not start a second standalone CI run. If an existing GitHub ruleset requires `Production E2E` or `Docker smoke test`, remove those two required checks when adopting this configuration; the checked-in ruleset does not update GitHub automatically.
 
 CI runs without production secrets. `npm audit --audit-level=high` blocks high and critical advisories. Lower-severity findings remain visible and should be addressed through dependency PRs. The local repository hygiene guard complements secret scanning; it does not replace a full secret scanner.
 

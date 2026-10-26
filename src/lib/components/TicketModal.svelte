@@ -20,7 +20,7 @@
 		// Beim Shallow Routing zeigt page.url weiter auf den Hintergrund (Board/Gantt),
 		// daher die Ticket-URL selbst bilden
 		if (!data) return;
-		const href = `/tickets/${data.ticket.key}`;
+		const href = withBase(`/tickets/${data.ticket.key}`);
 		await refreshAll();
 		const result = await preloadData(href);
 		if (result.type === 'loaded' && result.status === 200) {
@@ -35,7 +35,7 @@
 	/** Nur das Ticket im Modal neu laden; ist es inzwischen gelöscht, Modal schließen */
 	async function reloadTicket() {
 		if (!data) return;
-		const result = await preloadData(`/tickets/${data.ticket.key}`);
+		const result = await preloadData(withBase(`/tickets/${data.ticket.key}`));
 
 		if (result.type === 'loaded' && result.status === 200)
 			goto('', {

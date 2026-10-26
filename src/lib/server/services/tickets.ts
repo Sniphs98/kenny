@@ -30,6 +30,7 @@ import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
 import { notifyEmail } from './email-notifications.js';
+import { notifyNtfy, notifyNtfyDue } from './ntfy-notifications.js';
 import { searchTokens } from '#lib/search.js';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
@@ -327,6 +328,12 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 			authorName: result.authorName ?? '–'
 		});
 	}
+	const assigneeIds =
+		assigneesByTicket([t.id])
+			.get(t.id)
+			?.map((person) => person.id) ?? [];
+	if (assigneeIds.length) notifyNtfy('assigned_ticket_commented', t.id, assigneeIds, actorId);
+	else if (t.createdById === actorId) notifyNtfy('creator_commented_unassigned', t.id, [actorId], actorId);
 	return { ...result, isReporter: false };
 }
 
@@ -732,14 +739,30 @@ export function createTicket(
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
+	notifyNtfy('ticket_created', created.id, undefined, userId);
 	if (!origin?.deferCreatedEmail) notifyEmail('created', p.id, created.id);
-	if (created.added.length) notifyTicket('assigned', p.id, created.id);
+	if (created.added.length) {
+		notifyTicket('assigned', p.id, created.id);
+		notifyNtfy('ticket_assigned', created.id, created.added, userId);
+	}
+	notifyNtfyDue(
+		created.id,
+		created.dueDate,
+		assigneesByTicket([created.id])
+			.get(created.id)
+			?.map((person) => person.id) ?? [],
+		userId
+	);
 	return result;
 }
 
-export function updateTicket(ref: string | number, rawInput: unknown) {
+export function updateTicket(ref: string | number, rawInput: unknown, actorId?: string | null) {
 	const input = parseInput(updateTicketSchema, rawInput);
 	const t = resolveTicket(ref);
+	const beforeAssignees =
+		assigneesByTicket([t.id])
+			.get(t.id)
+			?.map((person) => person.id) ?? [];
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
@@ -801,18 +824,36 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 		return added;
 	});
 	const result = getTicket(t.id);
+	const afterAssignees = result.assigneeIds;
+	const removed = beforeAssignees.filter((id) => !afterAssignees.includes(id));
 	publish(t.projectId, { ticket: result.key });
-	notifyChanges(t, resolveTicket(t.id));
-	if (added.length) notifyTicket('assigned', t.projectId, t.id);
+	notifyChanges(t, resolveTicket(t.id), actorId);
+	if (added.length) {
+		notifyTicket('assigned', t.projectId, t.id);
+		notifyNtfy('ticket_assigned', t.id, added, actorId);
+	}
+	if (removed.length) notifyNtfy('ticket_unassigned', t.id, removed, actorId);
+	if (input.column !== undefined || input.columnId !== undefined)
+		notifyNtfy('assigned_ticket_status_changed', t.id, afterAssignees, actorId);
+	notifyNtfyDue(t.id, result.dueDate, afterAssignees, actorId);
 	return result;
 }
 
 /** Benachrichtigung, wenn ein Ticket erledigt wurde (Vergleich vorher/nachher) */
-function notifyChanges(before: Ticket, after: Ticket) {
+function notifyChanges(before: Ticket, after: Ticket, actorId?: string | null) {
 	if (before.closedAt === null && after.closedAt !== null) {
 		notifyTicket('closed', after.projectId, after.id);
 		notifyEmail('closed', after.projectId, after.id);
 	}
+	if (before.closedAt !== after.closedAt)
+		notifyNtfy(
+			'assigned_ticket_status_changed',
+			after.id,
+			assigneesByTicket([after.id])
+				.get(after.id)
+				?.map((person) => person.id) ?? [],
+			actorId
+		);
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */
@@ -866,24 +907,25 @@ export function reorderTickets(projectRef: string | number, rawInput: unknown) {
 	return { columnId: col.id, tickets: order };
 }
 
-export function closeTicket(ref: string | number) {
+export function closeTicket(ref: string | number, actorId?: string | null) {
 	const t = resolveTicket(ref);
 	const col = getColumns(t.projectId).find((c) => c.isDone);
 	if (!col) throw new ApiError(409, 'Das Projekt hat keine Spalte, die als "erledigt" markiert ist.');
 	db.transaction((tx) => moveTicket(tx, t, col, null));
 	const result = getTicket(t.id);
 	publish(t.projectId, { ticket: result.key });
-	notifyChanges(t, resolveTicket(t.id));
+	notifyChanges(t, resolveTicket(t.id), actorId);
 	return result;
 }
 
-export function reopenTicket(ref: string | number) {
+export function reopenTicket(ref: string | number, actorId?: string | null) {
 	const t = resolveTicket(ref);
 	const col = getColumns(t.projectId).find((c) => !c.isDone);
 	if (!col) throw new ApiError(409, 'Das Projekt hat keine offene Spalte.');
 	db.transaction((tx) => moveTicket(tx, t, col, null));
 	const result = getTicket(t.id);
 	publish(t.projectId, { ticket: result.key });
+	notifyChanges(t, resolveTicket(t.id), actorId);
 	return result;
 }
 

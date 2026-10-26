@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { withBase } from '#lib/paths.js';
-	import { ganttSpan, planningDates } from '#lib/schedule.js';
+	import { ganttSpan, isWeekendDay, nextWeekday, planningDates, weekdayRange } from '#lib/schedule.js';
 	import { intlLocale } from '#lib/i18n.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { UpdateTicketInput } from '#lib/contracts/index.js';
@@ -52,7 +52,7 @@
 		readOnly?: boolean;
 		tickets: Item[];
 		dependencies: DependencyDto[];
-		/** Board-Spalten; Tickets in Backlog-Spalten sind standardmäßig ausgeblendet */
+		/** Board-Spalten; Tickets in Backlog-Spalten werden im Gantt ausgeblendet */
 		columns: BoardColumnDto[];
 		/** Für das Anlegen neuer Tickets aus der Einplanen-Suche */
 		projectKey: string;
@@ -73,16 +73,18 @@
 	let width = $state(1000);
 	const labelWidth = $derived(width < 600 ? 190 : 280);
 	const ROW = $derived(width < 600 ? 44 : 34);
-	const ZOOMS = { day: 36, week: 16, month: 6 } as const;
+	const ZOOMS = { day: 36, week: 16, month: 6, year: 1.5 } as const;
+	const zoomLevels = Object.keys(ZOOMS) as (keyof typeof ZOOMS)[];
 
-	let zoom = $state<keyof typeof ZOOMS>('week');
+	let px = $state<number>(ZOOMS.week);
+	let scrollLeft = $state(0);
+	const zoomLevel = $derived(px >= 26 ? 'day' : px >= 10 ? 'week' : px >= 3.5 ? 'month' : 'year');
+	const selectedZoom = $derived(zoomLevels.find((level) => ZOOMS[level] === px));
 	let hideClosed = $state(false);
-	let showBacklog = $state(false);
 	/** Tickets ohne Termin standardmäßig ausblenden; eingeplant wird über „Ticket einplanen…“ */
 	let showUndated = $state(false);
 
 	const backlogColumns = $derived(new Set(columns.filter((c) => c.isBacklog).map((c) => c.id)));
-	const backlogCount = $derived(source.filter((t) => t.kind === 'version' && backlogColumns.has(t.columnId)).length);
 	const statusColumns = $derived([
 		...columns.filter((column) => !column.isBacklog && !column.isDone).slice(0, 2),
 		...columns.filter((column) => column.isDone).slice(0, 1)
@@ -100,10 +102,18 @@
 		return () => clearTimeout(timer);
 	});
 
-	const px = $derived(ZOOMS[zoom]);
+	function setZoom(level: keyof typeof ZOOMS) {
+		px = ZOOMS[level];
+	}
 
 	const fromDay = (d: number) => new Date(d * DAY).toISOString().slice(0, 10);
 	const today = Math.floor(Date.now() / DAY);
+	function weekdaysOnly(dates: { startDate: string; dueDate: string }) {
+		const start = Math.round(Date.parse(`${dates.startDate}T00:00:00Z`) / DAY);
+		const end = Math.round(Date.parse(`${dates.dueDate ?? dates.startDate}T00:00:00Z`) / DAY);
+		const range = weekdayRange(start, end);
+		return { startDate: fromDay(range.start), dueDate: fromDay(range.end) };
+	}
 
 	// Lokale Kopie, damit Ziehen von Balken sofort sichtbar ist
 	let tickets = $state<Item[]>([]);
@@ -163,7 +173,7 @@
 			(t) =>
 				t.kind !== 'task' &&
 				(!hideClosed || !t.closed) &&
-				(t.kind === 'main' || mainParentIds.has(t.id) || showBacklog || !backlogColumns.has(t.columnId))
+				(t.kind === 'main' || mainParentIds.has(t.id) || !backlogColumns.has(t.columnId))
 		);
 		if (!showUndated) {
 			// Hauptaufgaben und Tickets mit Termin, dazu ihre Elterntickets für die Hierarchie
@@ -227,6 +237,11 @@
 	});
 
 	const x = (day: number) => (day - range.start) * px;
+	const timelineWidth = $derived(Math.max(1, width - labelWidth));
+	const timelineContentWidth = $derived(range.days * px);
+	const maxScroll = $derived(Math.max(0, timelineContentWidth - timelineWidth));
+	const navigatorWidth = $derived(Math.min(100, (timelineWidth / timelineContentWidth) * 100));
+	const navigatorLeft = $derived(maxScroll ? (scrollLeft / maxScroll) * (100 - navigatorWidth) : 0);
 	const groupBands = $derived.by(() => {
 		const bands: { id: number; left: number; top: number; width: number; height: number }[] = [];
 		for (let i = 0; i < rows.length; i++) {
@@ -263,7 +278,12 @@
 			const date = new Date(d * DAY);
 			const next = Math.min(end, Math.round(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / DAY));
 			out.push({
-				label: date.toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+				label: date.toLocaleDateString(
+					intlLocale(),
+					zoomLevel === 'year'
+						? { month: 'short', year: date.getUTCMonth() === 0 ? 'numeric' : undefined, timeZone: 'UTC' }
+						: { month: 'long', year: 'numeric', timeZone: 'UTC' }
+				),
 				left: x(d),
 				width: (next - d) * px
 			});
@@ -276,11 +296,12 @@
 
 	function dayLabel(d: number) {
 		const date = new Date(d * DAY);
-		if (zoom === 'day') return String(date.getUTCDate());
-		if (zoom === 'week' && date.getUTCDay() === 1) return String(date.getUTCDate());
+		if (zoomLevel === 'day') return String(date.getUTCDate());
+		if (zoomLevel === 'week' && date.getUTCDay() === 1) return String(date.getUTCDate());
+		if (zoomLevel === 'month' && date.getUTCDate() === 1) return String(date.getUTCDate());
 		return '';
 	}
-	const isWeekend = (d: number) => [0, 6].includes(new Date(d * DAY).getUTCDay());
+	const isWeekend = isWeekendDay;
 
 	// Abhängigkeitspfeile: vom Ende der Voraussetzung zum Start des abhängigen Tickets
 	const arrows = $derived.by(() => {
@@ -343,14 +364,46 @@
 
 	function pointerMove(e: PointerEvent) {
 		if (!drag) return;
-		const delta = Math.round((e.clientX - drag.startX) / px);
+		const rawDelta = e.clientX - drag.startX;
+		let delta = Math.round(rawDelta / px);
+		if (drag.mode === 'move') {
+			const snapDeltas = tickets
+				.filter((other) => other.id !== drag!.t.id)
+				.flatMap((other) => {
+					const otherSpan = span(other);
+					return otherSpan ? [otherSpan.end + 1 - drag!.orig.start, otherSpan.start - (drag!.orig.end + 1)] : [];
+				});
+			const snapped = snapDeltas.find((candidate) => Math.abs(candidate * px - rawDelta) <= 10);
+			if (snapped !== undefined) delta = snapped;
+		} else {
+			const snapDeltas = tickets
+				.filter((other) => other.id !== drag!.t.id)
+				.flatMap((other) => {
+					const otherSpan = span(other);
+					return otherSpan
+						? drag!.mode === 'start'
+							? [otherSpan.end + 1 - drag!.orig.start]
+							: [otherSpan.start - 1 - drag!.orig.end]
+						: [];
+				});
+			const snapped = snapDeltas.find((candidate) => Math.abs(candidate * px - rawDelta) <= 10);
+			if (snapped !== undefined) delta = snapped;
+		}
 		if (delta !== 0) drag.moved = true;
 		let { start, end } = drag.orig;
 		if (drag.mode === 'move') {
 			start += delta;
 			end += delta;
-		} else if (drag.mode === 'start') start = Math.min(end, start + delta);
-		else end = Math.max(start, end + delta);
+			({ start, end } = weekdayRange(start, end));
+		} else if (drag.mode === 'start') {
+			start = Math.min(end, start + delta);
+			while (isWeekend(start)) start--;
+			if (start > end) start = end;
+		} else {
+			end = Math.max(start, end + delta);
+			while (isWeekend(end)) end--;
+			if (end < start) end = start;
+		}
 		drag.t.startDate = fromDay(start);
 		drag.t.dueDate = fromDay(end);
 	}
@@ -372,13 +425,23 @@
 		await refreshAll();
 	}
 
+	function globalPointerMove(e: PointerEvent) {
+		pointerMove(e);
+		navigatorMove(e);
+	}
+
+	function globalPointerUp() {
+		void pointerUp();
+		navigatorDrag = null;
+	}
+
 	/** Klick in eine leere Zeile setzt Start- und Enddatum für Tickets ohne Termin */
 	async function setDates(e: MouseEvent, t: Item) {
 		if (readOnly) return;
 		if (span(t)) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-		const day = range.start + Math.floor((e.clientX - rect.left) / px);
-		const dates = planningDates(t, fromDay(day));
+		const day = nextWeekday(range.start + Math.floor((e.clientX - rect.left) / px));
+		const dates = weekdaysOnly(planningDates(t, fromDay(day)));
 		if (dates.startDate > dates.dueDate) {
 			toast.error(m.plan_after_deadline());
 			return;
@@ -416,7 +479,7 @@
 		if (readOnly) return;
 		if (e) {
 			const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-			planDay = range.start + Math.floor((e.clientX - rect.left) / px);
+			planDay = nextWeekday(range.start + Math.floor((e.clientX - rect.left) / px));
 		} else planDay = null;
 		planQuery = '';
 		planOpen = true;
@@ -456,8 +519,8 @@
 	async function plan(t: Item) {
 		if (readOnly) return;
 		planOpen = false;
-		const start = planDay ?? today;
-		const body = planningDates(t, fromDay(start));
+		const start = nextWeekday(planDay ?? today);
+		const body = weekdaysOnly(planningDates(t, fromDay(start)));
 		if (body.startDate > body.dueDate) {
 			toast.error(m.plan_after_deadline());
 			return;
@@ -472,7 +535,12 @@
 		for (let p = t.parentId; p !== null; p = source.find((x) => x.id === p)?.parentId ?? null) expanded.add(p);
 		try {
 			await updateTicket(t.id, update);
-			toast.success(m.scheduled_from({ value1: t.title, value2: fmtDay(start) }));
+			toast.success(
+				m.scheduled_from({
+					value1: t.title,
+					value2: fmtDay(Math.round(Date.parse(`${body.startDate}T00:00:00Z`) / DAY))
+				})
+			);
 		} catch (err) {
 			toast.error((err as Error).message);
 		}
@@ -501,14 +569,15 @@
 		if (readOnly) return;
 		const title = planQuery.trim();
 		planOpen = false;
-		const start = planDay ?? today;
+		const start = nextWeekday(planDay ?? today);
+		const dates = weekdayRange(start, start + 2);
 		let id: number | null = null;
 		try {
 			const t = await createTicket(projectKey, {
 				title,
 				kind: 'main',
-				startDate: fromDay(start),
-				dueDate: fromDay(start + 2)
+				startDate: fromDay(dates.start),
+				dueDate: fromDay(dates.end)
 			});
 			id = t.id;
 			toast.success(m.created_and_scheduled_from({ value1: t.title, value2: fmtDay(start) }));
@@ -552,31 +621,83 @@
 	}
 
 	let scroller: HTMLDivElement;
+	let navigator: HTMLDivElement;
+	let navigatorDrag = $state<{
+		mode: 'move' | 'start' | 'end';
+		startX: number;
+		startScroll: number;
+		startPx: number;
+		trackWidth: number;
+		thumbWidth: number;
+	} | null>(null);
+
+	function setScrollLeft(left: number) {
+		const next = Math.max(0, Math.min(maxScroll, left));
+		scrollLeft = next;
+		scroller?.scrollTo({ left: next });
+	}
+
+	function navigatorStart(e: PointerEvent, mode: 'move' | 'start' | 'end') {
+		e.stopPropagation();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		navigatorDrag = {
+			mode,
+			startX: e.clientX,
+			startScroll: scrollLeft,
+			startPx: px,
+			trackWidth: navigator.clientWidth,
+			thumbWidth: (navigatorWidth / 100) * navigator.clientWidth
+		};
+	}
+
+	function navigatorMove(e: PointerEvent) {
+		if (!navigatorDrag) return;
+		const { mode, startX, startScroll, startPx, trackWidth, thumbWidth } = navigatorDrag;
+		const delta = e.clientX - startX;
+		if (mode === 'move') {
+			const available = Math.max(1, trackWidth - thumbWidth);
+			setScrollLeft(startScroll + (delta / available) * maxScroll);
+			return;
+		}
+		const thumbDelta = mode === 'start' ? -delta : delta;
+		px = Math.max(1.5, Math.min(36, (startPx * thumbWidth) / Math.max(20, thumbWidth + thumbDelta)));
+	}
+
+	function navigatorKey(e: KeyboardEvent) {
+		const step = timelineWidth / 5;
+		if (e.key === 'ArrowLeft') setScrollLeft(scrollLeft - step);
+		else if (e.key === 'ArrowRight') setScrollLeft(scrollLeft + step);
+		else if (e.key === 'Home') setScrollLeft(0);
+		else if (e.key === 'End') setScrollLeft(maxScroll);
+		else return;
+		e.preventDefault();
+	}
+
 	function scrollToToday() {
 		scroller?.scrollTo({ left: Math.max(0, x(today) - 200), behavior: 'smooth' });
 	}
 	$effect(() => {
-		const scale = px;
+		const project = projectKey;
 		queueMicrotask(() => {
-			if (scale > 0) scrollToToday();
+			if (project) scrollToToday();
 		});
 	});
 </script>
 
-<svelte:window onpointermove={pointerMove} onpointerup={pointerUp} />
+<svelte:window onpointermove={globalPointerMove} onpointerup={globalPointerUp} />
 
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
 	<ToggleGroup.Root
 		type="single"
 		size="sm"
 		variant="outline"
-		value={zoom}
-		onValueChange={(v) => v && (zoom = v as keyof typeof ZOOMS)}
+		value={selectedZoom ?? ''}
+		onValueChange={(v) => v && setZoom(v as keyof typeof ZOOMS)}
 		aria-label={m.zoom()}
 	>
-		{#each Object.keys(ZOOMS) as z (z)}
+		{#each zoomLevels as z (z)}
 			<ToggleGroup.Item value={z} class="px-3"
-				>{z === 'day' ? m.day() : z === 'week' ? m.week() : m.month()}</ToggleGroup.Item
+				>{z === 'day' ? m.day() : z === 'week' ? m.week() : z === 'month' ? m.month() : m.year()}</ToggleGroup.Item
 			>
 		{/each}
 	</ToggleGroup.Root>
@@ -586,12 +707,6 @@
 		<Checkbox bind:checked={showUndated} />
 		{m.show_unscheduled()} <span class="text-muted-foreground text-xs">({undatedCount})</span>
 	</Label>
-	{#if backlogColumns.size}
-		<Label class="ml-1 font-normal">
-			<Checkbox bind:checked={showBacklog} />
-			{m.show_backlog()} <span class="text-muted-foreground text-xs">({backlogCount})</span>
-		</Label>
-	{/if}
 	{#if tree.parents.length}
 		<Button variant="ghost" size="sm" onclick={toggleAll}>
 			{#if allExpanded}<ChevronsDownUp /> {m.collapse_all()}{:else}<ChevronsUpDown /> {m.expand_all()}{/if}
@@ -606,10 +721,11 @@
 </div>
 
 <div
-	class="gantt bg-card rounded-xl border shadow-xs"
+	class="gantt bg-card rounded-t-xl border shadow-xs"
 	class:compact={width < 600}
 	bind:this={scroller}
 	bind:clientWidth={width}
+	onscroll={(event) => (scrollLeft = event.currentTarget.scrollLeft)}
 	style="--px: {px}px; --row: {ROW}px; --label-width: {labelWidth}px; --c: var(--primary, {color}); max-height: {resizable
 		? `${height}px`
 		: maxHeight}"
@@ -919,6 +1035,42 @@
 	</div>
 </div>
 
+<div class="timeline-navigator" bind:this={navigator}>
+	<div
+		class="navigator-thumb"
+		class:dragging={navigatorDrag}
+		style="left: {navigatorLeft}%; width: {navigatorWidth}%"
+		onpointerdown={(event) => navigatorStart(event, 'move')}
+		role="slider"
+		aria-label={m.zoom()}
+		aria-valuemin={0}
+		aria-valuemax={100}
+		aria-valuenow={navigatorLeft}
+		aria-valuetext={zoomLevel === 'day'
+			? m.day()
+			: zoomLevel === 'week'
+				? m.week()
+				: zoomLevel === 'month'
+					? m.month()
+					: m.year()}
+		tabindex="0"
+		onkeydown={navigatorKey}
+	>
+		<button
+			type="button"
+			class="navigator-handle start"
+			aria-label={m.year()}
+			onpointerdown={(event) => navigatorStart(event, 'start')}
+		></button>
+		<button
+			type="button"
+			class="navigator-handle end"
+			aria-label={m.day()}
+			onpointerdown={(event) => navigatorStart(event, 'end')}
+		></button>
+	</div>
+</div>
+
 {#if resizable}
 	<!-- Griff zum Ändern der Höhe; Doppelklick setzt sie zurück -->
 	<!-- Ein fokussierbarer separator ist laut ARIA ein bedienbares Element (Fensterteiler) -->
@@ -950,6 +1102,57 @@
 {/if}
 
 <style>
+	.timeline-navigator {
+		position: relative;
+		height: 1.75rem;
+		margin: 0 1.25rem 1.25rem;
+		padding: 0.45rem 0.75rem;
+		border: 1px solid var(--border);
+		border-top: 0;
+		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+		background: var(--card);
+		touch-action: none;
+	}
+	.timeline-navigator::before {
+		position: absolute;
+		inset: 0.65rem 0.75rem;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--muted-foreground) 25%, transparent);
+		content: '';
+	}
+	.navigator-thumb {
+		position: absolute;
+		top: 0.58rem;
+		bottom: 0.58rem;
+		min-width: 1.75rem;
+		border-radius: 999px;
+		background: var(--muted-foreground);
+		cursor: grab;
+		touch-action: none;
+		z-index: 1;
+	}
+	.navigator-thumb.dragging {
+		cursor: grabbing;
+	}
+	.navigator-handle {
+		position: absolute;
+		top: -0.2rem;
+		bottom: -0.2rem;
+		width: 0.7rem;
+		border: 0;
+		padding: 0;
+		background: transparent;
+		cursor: ew-resize;
+	}
+	.navigator-handle.start {
+		left: 0;
+	}
+	.navigator-handle.end {
+		right: 0;
+	}
+	.gantt::-webkit-scrollbar:horizontal {
+		display: none;
+	}
 	.resize {
 		display: grid;
 		place-items: center;
@@ -975,8 +1178,9 @@
 		background: var(--primary);
 	}
 	.gantt {
-		margin: 0 1.25rem 1.25rem;
-		overflow: auto;
+		margin: 0 1.25rem;
+		overflow-x: hidden;
+		overflow-y: auto;
 		position: relative;
 	}
 	.grid {

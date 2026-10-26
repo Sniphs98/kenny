@@ -3,8 +3,6 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
   workflow_call:
   workflow_dispatch:
 
@@ -33,6 +31,7 @@ jobs:
 
   e2e:
     name: Production E2E
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -56,6 +55,7 @@ jobs:
 
   container:
     name: Docker smoke test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -1570,9 +1570,9 @@
 		{/each}
 	</div>
 {:else}
-	<div class="flex items-start gap-3.5 px-5 pb-5">
+	<div class="flex items-start gap-3.5 px-5 pb-5 max-sm:flex-col">
 		{@render backlogColumn()}
-		<div class="scrollbar-soft min-w-0 grow overflow-x-auto" use:scrollActivity>
+		<div class="scrollbar-soft min-w-0 grow overflow-x-auto max-sm:w-full" use:scrollActivity>
 			<div class="flex w-max min-w-full flex-col gap-2">
 				<!-- Spaltenköpfe einmal oben, beim Scrollen sichtbar -->
 				<div class="bg-background sticky top-0 z-10 flex gap-3.5 pb-1">

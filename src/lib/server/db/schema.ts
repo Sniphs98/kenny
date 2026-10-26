@@ -60,6 +60,7 @@ import {
 	type IntakeFieldOrder,
 	type IntakeDesign,
 	type NotificationEvent,
+	type NtfyNotificationEvent,
 	type EmailNotificationEvent
 } from '#lib/contracts/index.js';
 
@@ -123,6 +124,16 @@ export const ticketComment = sqliteTable(
 	},
 	(t) => [index('ticket_comment_ticket_idx').on(t.ticketId)]
 );
+
+/** Persönliche ntfy-Themen und die vom Benutzer gewählten Ereignisse. */
+export const userNtfyNotification = sqliteTable('user_ntfy_notification', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	topic: text('topic').notNull(),
+	events: text('events', { mode: 'json' }).$type<NtfyNotificationEvent[]>().notNull(),
+	testMode: integer('test_mode', { mode: 'boolean' }).notNull().default(false)
+});
 
 /**
  * Verknüpfung zwischen zwei Tickets.

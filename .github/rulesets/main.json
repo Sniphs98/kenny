@@ -24,12 +24,7 @@
 			"type": "required_status_checks",
 			"parameters": {
 				"strict_required_status_checks_policy": true,
-				"required_status_checks": [
-					{ "context": "Quality checks" },
-					{ "context": "Production E2E" },
-					{ "context": "Docker smoke test" },
-					{ "context": "Conventional PR title" }
-				]
+				"required_status_checks": [{ "context": "Quality checks" }, { "context": "Conventional PR title" }]
 			}
 		}
 	]

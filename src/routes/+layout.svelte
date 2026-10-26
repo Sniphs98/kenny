@@ -24,6 +24,7 @@
 	import FolderKanban from '@lucide/svelte/icons/folder-kanban';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import KeyRound from '@lucide/svelte/icons/key-round';
+	import Bell from '@lucide/svelte/icons/bell';
 	import MessagesSquare from '@lucide/svelte/icons/messages-square';
 	import Users from '@lucide/svelte/icons/users';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -51,7 +52,8 @@
 					icon: Inbox,
 					match: (p: string) => p.startsWith('/settings/forms')
 				},
-				{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') }
+				{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') },
+				{ href: '/settings/notifications', label: m.ntfy_title(), icon: Bell, match: (p: string) => p.startsWith('/settings/notifications') }
 			] satisfies NavLink[]
 		).filter((link) => link.href !== '/settings/forms' || data.user?.role === 'admin')
 	);
@@ -142,6 +144,7 @@
 							<KeyRound />
 							{m.api_tokens()}
 						</DropdownMenu.Item>
+						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/notifications'))}><Bell />{m.ntfy_title()}</DropdownMenu.Item>
 						<DropdownMenu.Separator />
 						<DropdownMenu.Item onSelect={logout}>
 							<LogOut />

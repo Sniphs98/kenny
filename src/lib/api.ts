@@ -40,7 +40,10 @@ import {
 	type UpdateNotificationsInput,
 	emailNotificationsDtoSchema,
 	updateEmailNotificationsSchema,
-	type UpdateEmailNotificationsInput
+	type UpdateEmailNotificationsInput,
+	ntfyNotificationsDtoSchema,
+	updateNtfyNotificationsSchema,
+	type UpdateNtfyNotificationsInput
 } from '#lib/contracts/index.js';
 
 const errorSchema = z.object({ error: z.string() });
@@ -213,6 +216,15 @@ export async function updateEmailNotifications(project: string | number, input: 
 }
 export async function sendTestEmailNotification(project: string | number) {
 	return emailNotificationsDtoSchema.parse(await api('POST', `/projects/${ref(project)}/email-notifications/test`));
+}
+
+export async function getNtfyNotifications() {
+	return ntfyNotificationsDtoSchema.parse(await api('GET', '/me/ntfy-notifications'));
+}
+export async function updateNtfyNotifications(input: UpdateNtfyNotificationsInput) {
+	return ntfyNotificationsDtoSchema.parse(
+		await api('PUT', '/me/ntfy-notifications', updateNtfyNotificationsSchema.parse(input))
+	);
 }
 
 /** Tickets aller sichtbaren Projekte, nach Treffergüte sortiert */

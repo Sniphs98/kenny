@@ -502,6 +502,31 @@ export const notificationsDtoSchema = z.object({
 export type UpdateNotificationsInput = z.input<typeof updateNotificationsSchema>;
 export type NotificationsDto = z.output<typeof notificationsDtoSchema>;
 
+// --- Persönliche ntfy-Benachrichtigungen ---
+
+export const NTFY_NOTIFICATION_EVENTS = [
+	'ticket_created',
+	'ticket_assigned',
+	'creator_commented_unassigned',
+	'assigned_ticket_commented',
+	'due_today',
+	'overdue',
+	'assigned_ticket_status_changed',
+	'ticket_unassigned'
+] as const;
+export type NtfyNotificationEvent = (typeof NTFY_NOTIFICATION_EVENTS)[number];
+
+export const updateNtfyNotificationsSchema = z.strictObject({
+	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS)).max(NTFY_NOTIFICATION_EVENTS.length).optional()
+});
+export const ntfyNotificationsDtoSchema = z.object({
+	configured: z.boolean(),
+	topic: z.string().nullable(),
+	events: z.array(z.enum(NTFY_NOTIFICATION_EVENTS))
+});
+export type UpdateNtfyNotificationsInput = z.input<typeof updateNtfyNotificationsSchema>;
+export type NtfyNotificationsDto = z.output<typeof ntfyNotificationsDtoSchema>;
+
 // --- E-Mail-Benachrichtigungen eines Projekts ---
 
 export const EMAIL_NOTIFICATION_EVENTS = ['created', 'closed', 'public_comment'] as const;

@@ -30,6 +30,7 @@ import { ApiError } from '../errors';
 import { publish } from '../live';
 import { notifyTicket } from './notifications';
 import { notifyEmail } from './email-notifications.js';
+import { notifyNtfy, notifyNtfyDue } from './ntfy-notifications.js';
 import { searchTokens } from '#lib/search.js';
 import { getColumns, getProject, listProjects } from './projects';
 import { setTicketTags, tagsByTicket } from './tags';
@@ -327,6 +328,9 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 			authorName: result.authorName ?? '–'
 		});
 	}
+	const assigneeIds = assigneesByTicket([t.id]).get(t.id)?.map((person) => person.id) ?? [];
+	if (assigneeIds.length) notifyNtfy('assigned_ticket_commented', t.id, assigneeIds);
+	else if (t.createdById === actorId) notifyNtfy('creator_commented_unassigned', t.id, [actorId]);
 	return { ...result, isReporter: false };
 }
 
@@ -732,14 +736,20 @@ export function createTicket(
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
+	notifyNtfy('ticket_created', created.id);
 	if (!origin?.deferCreatedEmail) notifyEmail('created', p.id, created.id);
-	if (created.added.length) notifyTicket('assigned', p.id, created.id);
+	if (created.added.length) {
+		notifyTicket('assigned', p.id, created.id);
+		notifyNtfy('ticket_assigned', created.id, created.added);
+	}
+	notifyNtfyDue(created.id, created.dueDate, assigneesByTicket([created.id]).get(created.id)?.map((person) => person.id) ?? []);
 	return result;
 }
 
 export function updateTicket(ref: string | number, rawInput: unknown) {
 	const input = parseInput(updateTicketSchema, rawInput);
 	const t = resolveTicket(ref);
+	const beforeAssignees = assigneesByTicket([t.id]).get(t.id)?.map((person) => person.id) ?? [];
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
@@ -801,9 +811,17 @@ export function updateTicket(ref: string | number, rawInput: unknown) {
 		return added;
 	});
 	const result = getTicket(t.id);
+	const afterAssignees = result.assigneeIds;
+	const removed = beforeAssignees.filter((id) => !afterAssignees.includes(id));
 	publish(t.projectId, { ticket: result.key });
 	notifyChanges(t, resolveTicket(t.id));
-	if (added.length) notifyTicket('assigned', t.projectId, t.id);
+	if (added.length) {
+		notifyTicket('assigned', t.projectId, t.id);
+		notifyNtfy('ticket_assigned', t.id, added);
+	}
+	if (removed.length) notifyNtfy('ticket_unassigned', t.id, removed);
+	if (input.column !== undefined || input.columnId !== undefined) notifyNtfy('assigned_ticket_status_changed', t.id, afterAssignees);
+	notifyNtfyDue(t.id, result.dueDate, afterAssignees);
 	return result;
 }
 
@@ -813,6 +831,7 @@ function notifyChanges(before: Ticket, after: Ticket) {
 		notifyTicket('closed', after.projectId, after.id);
 		notifyEmail('closed', after.projectId, after.id);
 	}
+	if (before.closedAt !== after.closedAt) notifyNtfy('assigned_ticket_status_changed', after.id, assigneesByTicket([after.id]).get(after.id)?.map((person) => person.id) ?? []);
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */

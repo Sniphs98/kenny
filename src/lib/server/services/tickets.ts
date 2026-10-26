@@ -328,7 +328,10 @@ export function addComment(ref: string | number, raw: unknown, actorId: string) 
 			authorName: result.authorName ?? '–'
 		});
 	}
-	const assigneeIds = assigneesByTicket([t.id]).get(t.id)?.map((person) => person.id) ?? [];
+	const assigneeIds =
+		assigneesByTicket([t.id])
+			.get(t.id)
+			?.map((person) => person.id) ?? [];
 	if (assigneeIds.length) notifyNtfy('assigned_ticket_commented', t.id, assigneeIds, actorId);
 	else if (t.createdById === actorId) notifyNtfy('creator_commented_unassigned', t.id, [actorId], actorId);
 	return { ...result, isReporter: false };
@@ -742,14 +745,24 @@ export function createTicket(
 		notifyTicket('assigned', p.id, created.id);
 		notifyNtfy('ticket_assigned', created.id, created.added, userId);
 	}
-	notifyNtfyDue(created.id, created.dueDate, assigneesByTicket([created.id]).get(created.id)?.map((person) => person.id) ?? [], userId);
+	notifyNtfyDue(
+		created.id,
+		created.dueDate,
+		assigneesByTicket([created.id])
+			.get(created.id)
+			?.map((person) => person.id) ?? [],
+		userId
+	);
 	return result;
 }
 
 export function updateTicket(ref: string | number, rawInput: unknown, actorId?: string | null) {
 	const input = parseInput(updateTicketSchema, rawInput);
 	const t = resolveTicket(ref);
-	const beforeAssignees = assigneesByTicket([t.id]).get(t.id)?.map((person) => person.id) ?? [];
+	const beforeAssignees =
+		assigneesByTicket([t.id])
+			.get(t.id)
+			?.map((person) => person.id) ?? [];
 	const added = db.transaction((tx) => {
 		const patch: Partial<typeof ticket.$inferInsert> = {};
 		if (input.title !== undefined) patch.title = str(input.title, 'title', { max: 300 });
@@ -833,7 +846,14 @@ function notifyChanges(before: Ticket, after: Ticket, actorId?: string | null) {
 		notifyEmail('closed', after.projectId, after.id);
 	}
 	if (before.closedAt !== after.closedAt)
-		notifyNtfy('assigned_ticket_status_changed', after.id, assigneesByTicket([after.id]).get(after.id)?.map((person) => person.id) ?? [], actorId);
+		notifyNtfy(
+			'assigned_ticket_status_changed',
+			after.id,
+			assigneesByTicket([after.id])
+				.get(after.id)
+				?.map((person) => person.id) ?? [],
+			actorId
+		);
 }
 
 /** Ticket in eine Spalte verschieben, an Position einsortieren und Status anpassen */

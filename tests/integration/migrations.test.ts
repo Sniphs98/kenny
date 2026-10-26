@@ -185,3 +185,42 @@ it('preserves existing credentials and Microsoft identities when adding ownershi
 		client.close();
 	}
 });
+
+it('preserves notification topics and choices when adding test mode and restarting', () => {
+	const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as {
+		entries: { tag: string; when: number }[];
+	};
+	const client = new Database(':memory:');
+	try {
+		client.pragma('foreign_keys = ON');
+		client.exec(
+			'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)'
+		);
+		const testModeIndex = journal.entries.findIndex((entry) => entry.tag === '0021_user_ntfy_test_mode');
+		expect(testModeIndex).toBeGreaterThan(0);
+		for (const entry of journal.entries.slice(0, testModeIndex)) {
+			client.exec(readFileSync(`drizzle/${entry.tag}.sql`, 'utf8'));
+			client.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run('fixture', entry.when);
+		}
+		client.exec("INSERT INTO user (id, name, email) VALUES ('notify', 'Notify', 'notify@example.com')");
+		client
+			.prepare('INSERT INTO user_ntfy_notification (user_id, topic, events) VALUES (?, ?, ?)')
+			.run('notify', 'test-topic', '["ticket_created"]');
+		const db = drizzle(client);
+		migrate(db, { migrationsFolder: 'drizzle' });
+		migrate(db, { migrationsFolder: 'drizzle' });
+		expect(client.prepare('SELECT * FROM user_ntfy_notification').get()).toEqual({
+			user_id: 'notify',
+			topic: 'test-topic',
+			events: '["ticket_created"]',
+			test_mode: 0
+		});
+		expect(
+			client
+				.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'account_%_unique' ORDER BY name")
+				.all()
+		).toEqual([{ name: 'account_microsoft_user_unique' }, { name: 'account_provider_identity_unique' }]);
+	} finally {
+		client.close();
+	}
+});

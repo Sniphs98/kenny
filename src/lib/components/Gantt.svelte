@@ -76,7 +76,7 @@
 	const ZOOMS = { day: 36, week: 16, month: 6, year: 1.5 } as const;
 	const zoomLevels = Object.keys(ZOOMS) as (keyof typeof ZOOMS)[];
 
-	let px = $state(ZOOMS.week);
+	let px = $state<number>(ZOOMS.week);
 	let scrollLeft = $state(0);
 	const zoomLevel = $derived(px >= 26 ? 'day' : px >= 10 ? 'week' : px >= 3.5 ? 'month' : 'year');
 	const selectedZoom = $derived(zoomLevels.find((level) => ZOOMS[level] === px));
@@ -108,12 +108,11 @@
 
 	const fromDay = (d: number) => new Date(d * DAY).toISOString().slice(0, 10);
 	const today = Math.floor(Date.now() / DAY);
-	function weekdaysOnly(dates: Pick<UpdateTicketInput, 'startDate' | 'dueDate'>) {
-		if (!dates.startDate) return dates;
+	function weekdaysOnly(dates: { startDate: string; dueDate: string }) {
 		const start = Math.round(Date.parse(`${dates.startDate}T00:00:00Z`) / DAY);
 		const end = Math.round(Date.parse(`${dates.dueDate ?? dates.startDate}T00:00:00Z`) / DAY);
 		const range = weekdayRange(start, end);
-		return { startDate: fromDay(range.start), dueDate: dates.dueDate ? fromDay(range.end) : null };
+		return { startDate: fromDay(range.start), dueDate: fromDay(range.end) };
 	}
 
 	// Lokale Kopie, damit Ziehen von Balken sofort sichtbar ist
@@ -372,9 +371,7 @@
 				.filter((other) => other.id !== drag!.t.id)
 				.flatMap((other) => {
 					const otherSpan = span(other);
-					return otherSpan
-						? [otherSpan.end + 1 - drag!.orig.start, otherSpan.start - (drag!.orig.end + 1)]
-						: [];
+					return otherSpan ? [otherSpan.end + 1 - drag!.orig.start, otherSpan.start - (drag!.orig.end + 1)] : [];
 				});
 			const snapped = snapDeltas.find((candidate) => Math.abs(candidate * px - rawDelta) <= 10);
 			if (snapped !== undefined) delta = snapped;
@@ -1038,10 +1035,7 @@
 	</div>
 </div>
 
-<div
-	class="timeline-navigator"
-	bind:this={navigator}
->
+<div class="timeline-navigator" bind:this={navigator}>
 	<div
 		class="navigator-thumb"
 		class:dragging={navigatorDrag}
@@ -1052,7 +1046,13 @@
 		aria-valuemin={0}
 		aria-valuemax={100}
 		aria-valuenow={navigatorLeft}
-		aria-valuetext={zoomLevel === 'day' ? m.day() : zoomLevel === 'week' ? m.week() : zoomLevel === 'month' ? m.month() : m.year()}
+		aria-valuetext={zoomLevel === 'day'
+			? m.day()
+			: zoomLevel === 'week'
+				? m.week()
+				: zoomLevel === 'month'
+					? m.month()
+					: m.year()}
 		tabindex="0"
 		onkeydown={navigatorKey}
 	>

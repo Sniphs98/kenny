@@ -54,7 +54,12 @@
 					match: (p: string) => p.startsWith('/settings/forms')
 				},
 				{ href: '/settings/api', label: 'API', icon: KeyRound, match: (p: string) => p.startsWith('/settings/api') },
-				{ href: '/settings/notifications', label: m.ntfy_title(), icon: Bell, match: (p: string) => p.startsWith('/settings/notifications') }
+				{
+					href: '/settings/notifications',
+					label: m.ntfy_title(),
+					icon: Bell,
+					match: (p: string) => p.startsWith('/settings/notifications')
+				}
 			] satisfies NavLink[]
 		).filter((link) => link.href !== '/settings/forms' || data.user?.role === 'admin')
 	);
@@ -101,7 +106,7 @@
 				</a>
 				<nav
 					aria-label={m.mobile_navigation()}
-					class="flex gap-1 max-sm:order-last max-sm:basis-full max-sm:justify-between"
+					class="flex gap-1 max-sm:order-last max-sm:basis-full max-sm:flex-wrap max-sm:justify-between"
 				>
 					{#each links as l (l.href)}
 						<a
@@ -148,7 +153,9 @@
 							<KeyRound />
 							{m.api_tokens()}
 						</DropdownMenu.Item>
-						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/notifications'))}><Bell />{m.ntfy_title()}</DropdownMenu.Item>
+						<DropdownMenu.Item onSelect={() => goto(withBase('/settings/notifications'))}
+							><Bell />{m.ntfy_title()}</DropdownMenu.Item
+						>
 						<DropdownMenu.Separator />
 						<DropdownMenu.Item onSelect={logout}>
 							<LogOut />

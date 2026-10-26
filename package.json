@@ -24,6 +24,7 @@
 		"test:integration": "vitest run --project integration",
 		"test:coverage": "vitest run --coverage",
 		"guard": "node scripts/hygiene-guard.mjs",
+		"verify:local": "npm run verify && npm audit --audit-level=high && npm run test:e2e && npm run docker:build && npm run docker:test",
 		"verify": "npm run guard && npm run format:check && npm run lint && npm run check && npm run test:ci && npm run build",
 		"test:e2e:production": "npm run build && playwright test",
 		"docker:build": "docker build -t kenny:local .",

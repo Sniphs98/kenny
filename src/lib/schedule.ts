@@ -16,8 +16,7 @@ export function nextWeekday(day: number) {
 export function weekdayRange(start: number, end: number) {
 	for (let distance = 0; distance < 7; distance++) {
 		for (const shift of distance === 0 ? [0] : [-distance, distance]) {
-			if (!isWeekendDay(start + shift) && !isWeekendDay(end + shift))
-				return { start: start + shift, end: end + shift };
+			if (!isWeekendDay(start + shift) && !isWeekendDay(end + shift)) return { start: start + shift, end: end + shift };
 		}
 	}
 	return { start, end };

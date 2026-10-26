@@ -57,10 +57,16 @@
 				<fieldset class="grid gap-2">
 					<legend class="mb-2 text-sm font-medium">{m.notification_events()}</legend>
 					{#each NTFY_NOTIFICATION_EVENTS as event (event)}
-						<Label class="font-normal"><Checkbox checked={events.includes(event)} onCheckedChange={(on) => toggle(event, on)} />{labels[event]}</Label>
+						<Label class="font-normal"
+							><Checkbox checked={events.includes(event)} onCheckedChange={(on) => toggle(event, on)} />{labels[
+								event
+							]}</Label
+						>
 					{/each}
 				</fieldset>
-				<Label class="font-normal"><Checkbox checked={testMode} onCheckedChange={(on) => (testMode = on)} />{m.ntfy_test_mode()}</Label>
+				<Label class="font-normal"
+					><Checkbox checked={testMode} onCheckedChange={(on) => (testMode = on)} />{m.ntfy_test_mode()}</Label
+				>
 				<Button type="submit" disabled={busy}>{m.save()}</Button>
 			</form>
 		</Card.Content>

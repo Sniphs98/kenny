@@ -50,7 +50,9 @@ export function updateNtfyNotifications(userId: string, rawInput: unknown): Ntfy
 	const input = parseInput(updateNtfyNotificationsSchema, rawInput);
 	const current = ensureTopic(userId);
 	const values = {
-		events: input.events ? NTFY_NOTIFICATION_EVENTS.filter((event) => input.events!.includes(event)) : supportedEvents(current.events),
+		events: input.events
+			? NTFY_NOTIFICATION_EVENTS.filter((event) => input.events!.includes(event))
+			: supportedEvents(current.events),
 		testMode: input.testMode ?? current.testMode
 	};
 	db.update(userNtfyNotification).set(values).where(eq(userNtfyNotification.userId, userId)).run();
@@ -77,7 +79,12 @@ function recipients(projectId: number, event: NtfyNotificationEvent, userIds?: s
 		conditions.push(inArray(userNtfyNotification.userId, userIds));
 	}
 	return db
-		.select({ userId: userNtfyNotification.userId, topic: userNtfyNotification.topic, events: userNtfyNotification.events, testMode: userNtfyNotification.testMode })
+		.select({
+			userId: userNtfyNotification.userId,
+			topic: userNtfyNotification.topic,
+			events: userNtfyNotification.events,
+			testMode: userNtfyNotification.testMode
+		})
 		.from(userNtfyNotification)
 		.innerJoin(projectMember, eq(projectMember.userId, userNtfyNotification.userId))
 		.where(and(...conditions))
@@ -86,7 +93,12 @@ function recipients(projectId: number, event: NtfyNotificationEvent, userIds?: s
 }
 
 /** Zustellt an ntfy.sh. Themen sind absichtlich kein Geheimnis und werden nur dem jeweiligen Benutzer gezeigt. */
-export function notifyNtfy(event: NtfyNotificationEvent, ticketId: number, userIds?: string[], actorId?: string | null) {
+export function notifyNtfy(
+	event: NtfyNotificationEvent,
+	ticketId: number,
+	userIds?: string[],
+	actorId?: string | null
+) {
 	const row = db
 		.select({
 			projectId: ticket.projectId,

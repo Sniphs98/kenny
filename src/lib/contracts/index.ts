@@ -219,6 +219,7 @@ export const publicTicketStatusSchema = z.object({
 export const dependencySchema = z.object({ id, sourceId: id, targetId: id });
 export const userSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });
 export const ticketDetailSchema = ticketDtoSchema.extend({
+	subscribed: z.boolean(),
 	boardGroup: z.enum(['general', 'tickets']).nullable(),
 	parent: ticketSchema.nullable(),
 	/** openBlockers: offene Voraussetzungen (depends_on) der Unteraufgabe */
@@ -241,6 +242,8 @@ export const ticketDetailSchema = ticketDtoSchema.extend({
 		.nullable()
 });
 
+export const ticketSubscriptionSchema = z.object({ subscribed: z.boolean() });
+
 export type CreateProjectInput = z.input<typeof createProjectSchema>;
 export type UpdateProjectInput = z.input<typeof updateProjectSchema>;
 export type CreateTicketInput = z.input<typeof createTicketSchema>;
@@ -251,6 +254,7 @@ export type BoardColumnDto = z.output<typeof columnSchema>;
 export type TicketDto = z.output<typeof ticketDtoSchema>;
 export type TicketListItem = z.output<typeof ticketListItemSchema>;
 export type TicketDetail = z.output<typeof ticketDetailSchema>;
+export type TicketSubscription = z.output<typeof ticketSubscriptionSchema>;
 export type TicketSearchInput = z.input<typeof ticketSearchSchema>;
 export type TicketSearchResult = z.output<typeof ticketSearchResultSchema>;
 export type AttachmentDto = z.output<typeof attachmentSchema>;

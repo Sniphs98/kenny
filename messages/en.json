@@ -117,6 +117,8 @@
 	"complete": "Complete",
 	"status": "Status",
 	"assign_to_me": "Assign to me",
+	"subscribe_to_ticket": "Subscribe to ticket",
+	"unsubscribe_from_ticket": "Unsubscribe",
 	"created": "Created {value1}",
 	"updated": "Updated {value1}",
 	"delete_ticket": "Delete task",

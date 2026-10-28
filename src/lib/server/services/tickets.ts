@@ -20,6 +20,7 @@ import {
 	project,
 	ticket,
 	ticketAssignee,
+	ticketSubscriber,
 	ticketComment,
 	ticketLink,
 	user,
@@ -269,11 +270,27 @@ function searchRank(t: TicketListItem, query: string) {
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
 export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	requireProjectAccess(userId, resolveTicket(ref).projectId);
-	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission } = getTicketDetail(
+	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission, subscribed } = getTicketDetail(
 		ref,
 		userId
 	);
-	return { ...ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission };
+	return { ...ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission, subscribed };
+}
+
+export function subscribeToTicket(ref: string | number, userId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(userId, t.projectId, 'member');
+	db.insert(ticketSubscriber).values({ ticketId: t.id, userId }).onConflictDoNothing().run();
+	return { subscribed: true };
+}
+
+export function unsubscribeFromTicket(ref: string | number, userId: string) {
+	const t = resolveTicket(ref);
+	requireProjectAccess(userId, t.projectId, 'member');
+	db.delete(ticketSubscriber)
+		.where(and(eq(ticketSubscriber.ticketId, t.id), eq(ticketSubscriber.userId, userId)))
+		.run();
+	return { subscribed: false };
 }
 
 const commentFields = {
@@ -429,6 +446,13 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 	}));
 
 	const assignees = people.get(t.id) ?? [];
+	const subscribed = actorId
+		? !!db
+				.select({ userId: ticketSubscriber.userId })
+				.from(ticketSubscriber)
+				.where(and(eq(ticketSubscriber.ticketId, t.id), eq(ticketSubscriber.userId, actorId)))
+				.get()
+		: false;
 
 	return {
 		ticket: {
@@ -445,6 +469,7 @@ export function getTicketDetail(ref: string | number, actorId?: string) {
 		comments: commentsForTicket(t.id),
 		assignee: assignees[0] ?? null,
 		assignees,
+		subscribed,
 		submission:
 			t.intakeFormId !== null || t.reporterEmail !== null
 				? {

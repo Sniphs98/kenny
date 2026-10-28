@@ -10,7 +10,7 @@ import {
 import { BASE_PATH } from '#lib/paths.js';
 import { BETTER_AUTH_URL } from '$app/env/private';
 import { db } from '../db';
-import { boardColumn, project, projectMember, ticket, userNtfyNotification } from '../db/schema';
+import { boardColumn, project, projectMember, ticket, ticketSubscriber, userNtfyNotification } from '../db/schema';
 import { parseInput } from '../validation';
 
 const topicOf = (userId: string) =>
@@ -113,7 +113,14 @@ export function notifyNtfy(
 		.where(eq(ticket.id, ticketId))
 		.get();
 	if (!row) return;
-	for (const recipient of recipients(row.projectId, event, userIds, actorId)) {
+	const subscriberIds = db
+		.select({ userId: ticketSubscriber.userId })
+		.from(ticketSubscriber)
+		.where(eq(ticketSubscriber.ticketId, ticketId))
+		.all()
+		.map((subscriber) => subscriber.userId);
+	const recipientIds = userIds === undefined ? undefined : [...new Set([...userIds, ...subscriberIds])];
+	for (const recipient of recipients(row.projectId, event, recipientIds, actorId)) {
 		void fetch(`https://ntfy.sh/${encodeURIComponent(recipient.topic)}`, {
 			method: 'POST',
 			headers: {

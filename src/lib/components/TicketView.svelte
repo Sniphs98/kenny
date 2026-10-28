@@ -6,7 +6,15 @@
 	import { goto, refreshAll } from '$app/navigation';
 	import type { PageData } from '../../routes/tickets/[key]/$types';
 	import { page } from '$app/state';
-	import { api, closeTicket, reopenTicket, updateTicket, PRIORITY_LABELS } from '#lib/api.js';
+	import {
+		api,
+		closeTicket,
+		reopenTicket,
+		subscribeToTicket,
+		unsubscribeFromTicket,
+		updateTicket,
+		PRIORITY_LABELS
+	} from '#lib/api.js';
 	import AssigneePicker from '#lib/components/AssigneePicker.svelte';
 	import Attachments from '#lib/components/Attachments.svelte';
 	import TicketComments from '#lib/components/TicketComments.svelte';
@@ -35,6 +43,8 @@
 	import { toast } from 'svelte-sonner';
 	import AlignLeft from '@lucide/svelte/icons/align-left';
 	import Ban from '@lucide/svelte/icons/ban';
+	import Bell from '@lucide/svelte/icons/bell';
+	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Check from '@lucide/svelte/icons/check';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Inbox from '@lucide/svelte/icons/inbox';
@@ -95,6 +105,8 @@
 	}
 
 	const patch = (body: UpdateTicketInput) => run(() => updateTicket(t.id, body));
+	const toggleSubscription = () =>
+		run(() => (data.subscribed ? unsubscribeFromTicket(t.id) : subscribeToTicket(t.id)));
 
 	async function saveTitle() {
 		// Eingefügte Zeilenumbrüche gehören nicht in den Titel
@@ -210,20 +222,37 @@
 
 {#if !data.canEdit}<p class="text-muted-foreground mb-4 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex min-w-0 flex-col gap-4">
-	<!-- Mehrzeilig, damit lange Titel umbrechen statt abgeschnitten zu werden; Enter speichert -->
-	<textarea
-		class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight break-words outline-none focus-visible:ring-3"
-		rows="1"
-		readonly={!data.canEdit}
-		bind:value={title.value}
-		{@attach autosize(() => title.value)}
-		onblur={saveTitle}
-		onkeydown={(e) => {
-			if (e.key !== 'Enter' && e.key !== 'Escape') return;
-			e.preventDefault();
-			e.currentTarget.blur();
-		}}
-		aria-label={m.title()}></textarea>
+	<div class="flex items-start gap-1">
+		<!-- Mehrzeilig, damit lange Titel umbrechen statt abgeschnitten zu werden; Enter speichert -->
+		<textarea
+			class="hover:border-border focus-visible:border-ring focus-visible:ring-ring/50 -ml-2 grow resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight break-words outline-none focus-visible:ring-3"
+			rows="1"
+			readonly={!data.canEdit}
+			bind:value={title.value}
+			{@attach autosize(() => title.value)}
+			onblur={saveTitle}
+			onkeydown={(e) => {
+				if (e.key !== 'Enter' && e.key !== 'Escape') return;
+				e.preventDefault();
+				e.currentTarget.blur();
+			}}
+			aria-label={m.title()}></textarea>
+		<Hint text={data.subscribed ? m.unsubscribe_from_ticket() : m.subscribe_to_ticket()}>
+			{#snippet children(props)}
+				<Button
+					{...props}
+					variant="ghost"
+					size="icon-sm"
+					class={data.subscribed ? 'text-primary hover:text-primary' : undefined}
+					disabled={!data.canEdit}
+					onclick={toggleSubscription}
+					aria-label={data.subscribed ? m.unsubscribe_from_ticket() : m.subscribe_to_ticket()}
+				>
+					{#if data.subscribed}<BellRing fill="currentColor" />{:else}<Bell />{/if}
+				</Button>
+			{/snippet}
+		</Hint>
+	</div>
 	{#if data.submission}
 		<div
 			class="text-muted-foreground -mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs"

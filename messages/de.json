@@ -117,6 +117,8 @@
 	"complete": "Abschließen",
 	"status": "Status",
 	"assign_to_me": "Mir zuweisen",
+	"subscribe_to_ticket": "Ticket abonnieren",
+	"unsubscribe_from_ticket": "Abo beenden",
 	"created": "Erstellt {value1}",
 	"updated": "Geändert {value1}",
 	"delete_ticket": "Aufgabe löschen",

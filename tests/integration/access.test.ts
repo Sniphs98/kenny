@@ -37,6 +37,8 @@ import {
 	listDependencies,
 	removeLink,
 	searchTickets,
+	subscribeToTicket,
+	unsubscribeFromTicket,
 	updateTicket,
 	viewTicket
 } from '#lib/server/services/tickets.js';
@@ -278,6 +280,17 @@ describe('user management and project permissions', () => {
 		denied(() => updateTicket(both.id, { assignees: ['member', 'outsider'] }), 400);
 		denied(() => updateTicket(both.id, { assignees: ['nobody@example.com'] }), 400);
 		expect(getTicketDetail(both.id).ticket.assigneeIds).toEqual([]);
+	});
+	it('lets project members subscribe to a ticket independently of its assignees', () => {
+		const { t } = fixture();
+		expect(viewTicket(t.id, 'owner').subscribed).toBe(false);
+		expect(subscribeToTicket(t.id, 'owner')).toEqual({ subscribed: true });
+		expect(subscribeToTicket(t.id, 'owner')).toEqual({ subscribed: true });
+		expect(viewTicket(t.id, 'owner').subscribed).toBe(true);
+		expect(viewTicket(t.id, 'member').subscribed).toBe(false);
+		expect(unsubscribeFromTicket(t.id, 'owner')).toEqual({ subscribed: false });
+		expect(viewTicket(t.id, 'owner').subscribed).toBe(false);
+		denied(() => subscribeToTicket(t.id, 'outsider'), 404);
 	});
 	it('inherits main-task assignees unless the task provides its own selection', () => {
 		const { p } = fixture();

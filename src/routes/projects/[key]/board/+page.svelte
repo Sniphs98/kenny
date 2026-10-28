@@ -19,10 +19,12 @@
 	import TicketDialog from '#lib/components/TicketDialog.svelte';
 	import UserAvatar from '#lib/components/UserAvatar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
 	import * as InputGroup from '#lib/components/ui/input-group/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
@@ -161,6 +163,7 @@
 		columnBy: ColumnBy;
 		columnSort: Record<string, Sort>;
 		cardFields: CardField[];
+		showSubtasks: boolean;
 	};
 	type SavedBoardView = {
 		id: string;
@@ -174,6 +177,7 @@
 	let groupBy = $state<Group>('main');
 	let columnBy = $state<ColumnBy>('status');
 	let cardFields = $state<CardField[]>([...DEFAULT_CARD_FIELDS]);
+	let showSubtasks = $state(false);
 	let backlogOpen = $state(true);
 	const collapsedLanes = new SvelteSet<string>();
 	const initiallyVisibleMainIds = new Set(
@@ -272,7 +276,8 @@
 			groupBy: settings.groupBy && settings.groupBy in GROUPS ? settings.groupBy : 'main',
 			columnBy: validColumnBy(settings.columnBy),
 			columnSort: validColumnSort(settings.columnSort),
-			cardFields: validCardFields(settings.cardFields)
+			cardFields: validCardFields(settings.cardFields),
+			showSubtasks: settings.showSubtasks === true
 		};
 	}
 
@@ -286,7 +291,8 @@
 			groupBy,
 			columnBy,
 			columnSort: { ...columnSort },
-			cardFields: [...cardFields]
+			cardFields: [...cardFields],
+			showSubtasks
 		};
 	}
 
@@ -300,6 +306,7 @@
 		columnBy = settings.columnBy === settings.groupBy ? 'status' : settings.columnBy;
 		columnSort = validColumnSort(settings.columnSort);
 		cardFields = validCardFields(settings.cardFields);
+		showSubtasks = settings.showSubtasks;
 	}
 
 	function setGroupBy(value: Group) {
@@ -422,6 +429,7 @@
 			priorityFilter = [];
 			columnBy = 'status';
 			cardFields = [...DEFAULT_CARD_FIELDS];
+			showSubtasks = false;
 			try {
 				const v = JSON.parse(localStorage.getItem(key) ?? '{}');
 				showGeneral = v.showGeneral !== false;
@@ -443,6 +451,7 @@
 				if (columnBy === groupBy) columnBy = 'status';
 				columnSort = validColumnSort(v.columnSort);
 				cardFields = validCardFields(v.cardFields);
+				showSubtasks = v.showSubtasks === true;
 				collapsedLanes.clear();
 				for (const l of Array.isArray(v.collapsed) ? v.collapsed : []) collapsedLanes.add(String(l));
 			} catch {
@@ -463,6 +472,7 @@
 			columnBy,
 			columnSort,
 			cardFields,
+			showSubtasks,
 			collapsed: [...collapsedLanes],
 			showGeneral,
 			showTicketSystem,
@@ -667,6 +677,10 @@
 		else expanded.add(id);
 	}
 
+	function isSubtask(ticket: Item) {
+		return ticket.parentId !== null && byId.get(ticket.parentId)?.kind === 'task';
+	}
+
 	function matchesAssignee(t: Item) {
 		return (
 			!assigneeFilter.length ||
@@ -684,6 +698,7 @@
 		tickets.filter(
 			(t) =>
 				t.kind === 'task' &&
+				(showSubtasks || !isSubtask(t)) &&
 				matchesCategory(t) &&
 				matchesAssignee(t) &&
 				(!tagFilter.length || t.tags.some((g) => tagFilter.includes(String(g.id)))) &&
@@ -700,7 +715,9 @@
 	const visible = $derived(matchingTickets.filter((ticket) => !backlogColumnIds.has(ticket.columnId)));
 	const backlogTickets = $derived(
 		tickets
-			.filter((ticket) => ticket.kind === 'task' && backlogColumnIds.has(ticket.columnId))
+			.filter(
+				(ticket) => ticket.kind === 'task' && (showSubtasks || !isSubtask(ticket)) && backlogColumnIds.has(ticket.columnId)
+			)
 			.sort(comparators[sortBy])
 	);
 
@@ -1498,6 +1515,10 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 					</div>
+					<Label class="border-border bg-muted/20 flex items-center gap-2 rounded-md border p-3 font-normal sm:col-span-2">
+						<Checkbox bind:checked={showSubtasks} />
+						{m.show_subtasks_separately()}
+					</Label>
 				</div>
 			</div>
 		</Popover.Content>

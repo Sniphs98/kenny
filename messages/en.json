@@ -195,6 +195,7 @@
 	"unassigned": "Unassigned",
 	"all_tags": "All tags",
 	"show_subtasks": "Show subtasks",
+	"show_subtasks_separately": "Show subtasks separately",
 	"group": "Group:",
 	"group_swimlanes": "Group (swimlanes)",
 	"sort": "Sort:",

@@ -195,6 +195,7 @@
 	"unassigned": "Nicht zugewiesen",
 	"all_tags": "Alle Tags",
 	"show_subtasks": "Unteraufgaben anzeigen",
+	"show_subtasks_separately": "Unteraufgaben separat anzeigen",
 	"group": "Gruppe:",
 	"group_swimlanes": "Gruppieren (Swimlanes)",
 	"sort": "Sortierung:",

@@ -36,6 +36,11 @@
 	let editor: Editor | undefined;
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
+	export function clear() {
+		editor?.setMarkdown('');
+		value = '';
+	}
+
 	function scheduleSave() {
 		if (!autoSave) return;
 		clearTimeout(saveTimer);

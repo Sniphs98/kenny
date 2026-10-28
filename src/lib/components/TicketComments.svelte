@@ -28,13 +28,14 @@
 	let internal = $state(false);
 	let uploadCount = $state(0);
 	let sending = $state(false);
+	let commentEditor: MarkdownEditor;
 
 	async function submit() {
 		if (!body.trim() || sending || uploadCount) return;
 		sending = true;
 		try {
 			await addComment(ticketId, { body, internal });
-			body = '';
+			commentEditor.clear();
 			await refresh();
 		} catch (error) {
 			toast.error((error as Error).message);
@@ -119,6 +120,7 @@
 		{#if canEdit}
 			<div class="overflow-hidden rounded-lg border">
 				<MarkdownEditor
+					bind:this={commentEditor}
 					bind:value={body}
 					bind:uploadCount
 					{ticketId}
@@ -130,21 +132,21 @@
 			</div>
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div class="flex items-center gap-2 text-sm">
-					<span>{m.public()}</span>
+					<span>{m.internal()}</span>
 					<button
 						type="button"
 						role="switch"
 						aria-label={m.comment_visibility()}
-						aria-checked={internal}
+						aria-checked={!internal}
 						onclick={() => (internal = !internal)}
 						class="relative h-6 w-11 rounded-full border bg-muted transition-colors aria-checked:bg-primary"
 					>
 						<span
 							class="bg-background absolute top-0.5 left-0.5 size-4 rounded-full shadow-sm transition-transform"
-							class:translate-x-5={internal}
+							class:translate-x-5={!internal}
 						></span>
 					</button>
-					<span>{m.internal()}</span>
+					<span>{m.public()}</span>
 				</div>
 				<Button disabled={!body.trim() || sending || uploadCount > 0} onclick={submit}>{m.post_comment()}</Button>
 			</div>

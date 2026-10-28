@@ -20,6 +20,11 @@
 	let { data, form } = $props();
 	const ticket = $derived(form?.ticket ?? data.ticket);
 	const dateTime = (value: Date) => value.toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	let commentBody = $state('');
+
+	$effect(() => {
+		commentBody = form?.body ?? '';
+	});
 
 	onMount(() => {
 		rememberTicketStatus({
@@ -145,7 +150,7 @@
 							rows={5}
 							maxlength={100000}
 							required
-							value={form?.body ?? ''}
+							bind:value={commentBody}
 							placeholder={m.write_comment()}
 						/>
 					</div>

@@ -105,8 +105,7 @@
 	}
 
 	const patch = (body: UpdateTicketInput) => run(() => updateTicket(t.id, body));
-	const toggleSubscription = () =>
-		run(() => (data.subscribed ? unsubscribeFromTicket(t.id) : subscribeToTicket(t.id)));
+	const toggleSubscription = () => run(() => (data.subscribed ? unsubscribeFromTicket(t.id) : subscribeToTicket(t.id)));
 
 	async function saveTitle() {
 		// Eingefügte Zeilenumbrüche gehören nicht in den Titel

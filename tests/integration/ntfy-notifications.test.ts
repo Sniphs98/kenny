@@ -17,7 +17,10 @@ beforeEach(() => {
 			{ id: 'member', name: 'Max Member', email: 'member@example.com' }
 		])
 		.run();
-	vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })));
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(async () => new Response(null, { status: 200 }))
+	);
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -48,7 +51,12 @@ describe('ntfy notifications', () => {
 			reporterEmail: null
 		});
 		vi.mocked(fetch).mockClear();
-		addPublicTicketComment(unassigned.key, publicTicketStatusUrlToken(unassigned.id)!, { body: 'Any news?' }, '127.0.0.1');
+		addPublicTicketComment(
+			unassigned.key,
+			publicTicketStatusUrlToken(unassigned.id)!,
+			{ body: 'Any news?' },
+			'127.0.0.1'
+		);
 		expect(fetch).toHaveBeenCalledTimes(2);
 
 		const assigned = createTicket(p.key, { title: 'Assigned form ticket', assignee: 'owner' }, null, {
@@ -56,7 +64,12 @@ describe('ntfy notifications', () => {
 			reporterEmail: null
 		});
 		vi.mocked(fetch).mockClear();
-		addPublicTicketComment(assigned.key, publicTicketStatusUrlToken(assigned.id)!, { body: 'Please help' }, '127.0.0.2');
+		addPublicTicketComment(
+			assigned.key,
+			publicTicketStatusUrlToken(assigned.id)!,
+			{ body: 'Please help' },
+			'127.0.0.2'
+		);
 		expect(fetch).toHaveBeenCalledOnce();
 		expect(fetch).toHaveBeenCalledWith(expect.stringContaining(ownerNtfy.topic!), expect.anything());
 	});

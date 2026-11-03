@@ -270,10 +270,8 @@ function searchRank(t: TicketListItem, query: string) {
 /** Ticket-Detail wie GET /api/v1/tickets/:ticket, mit Zugriffsprüfung für den Benutzer */
 export function viewTicket(ref: string | number, userId: string): TicketDetail {
 	requireProjectAccess(userId, resolveTicket(ref).projectId);
-	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission, subscribed } = getTicketDetail(
-		ref,
-		userId
-	);
+	const { ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission, subscribed } =
+		getTicketDetail(ref, userId);
 	return { ...ticket, parent, subtasks, links, attachments, comments, assignee, assignees, submission, subscribed };
 }
 

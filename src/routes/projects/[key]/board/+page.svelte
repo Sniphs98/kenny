@@ -716,7 +716,8 @@
 	const backlogTickets = $derived(
 		tickets
 			.filter(
-				(ticket) => ticket.kind === 'task' && (showSubtasks || !isSubtask(ticket)) && backlogColumnIds.has(ticket.columnId)
+				(ticket) =>
+					ticket.kind === 'task' && (showSubtasks || !isSubtask(ticket)) && backlogColumnIds.has(ticket.columnId)
 			)
 			.sort(comparators[sortBy])
 	);
@@ -1378,8 +1379,12 @@
 						<Ellipsis />
 					</DropdownMenu.Trigger>
 					<DropdownMenu.Content align="end">
-						<DropdownMenu.Item onclick={() => boardViewsFileInput.click()}><Upload /> {m.import_board_views()}</DropdownMenu.Item>
-						<DropdownMenu.Item disabled={!savedViews.length} onclick={exportBoardViews}><Download /> {m.export_board_views()}</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={() => boardViewsFileInput.click()}
+							><Upload /> {m.import_board_views()}</DropdownMenu.Item
+						>
+						<DropdownMenu.Item disabled={!savedViews.length} onclick={exportBoardViews}
+							><Download /> {m.export_board_views()}</DropdownMenu.Item
+						>
 						{#if activeView}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item onclick={() => openViewDialog('rename')}
@@ -1515,7 +1520,9 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 					</div>
-					<Label class="border-border bg-muted/20 flex items-center gap-2 rounded-md border p-3 font-normal sm:col-span-2">
+					<Label
+						class="border-border bg-muted/20 flex items-center gap-2 rounded-md border p-3 font-normal sm:col-span-2"
+					>
 						<Checkbox bind:checked={showSubtasks} />
 						{m.show_subtasks_separately()}
 					</Label>

@@ -513,6 +513,7 @@ export const NTFY_NOTIFICATION_EVENTS = [
 	'ticket_assigned',
 	'creator_commented_unassigned',
 	'assigned_ticket_commented',
+	'form_ticket_commented',
 	'due_today',
 	'overdue',
 	'assigned_ticket_status_changed',

@@ -66,6 +66,7 @@ const eventTitle: Record<NtfyNotificationEvent, string> = {
 	ticket_assigned: 'Ticket zugewiesen',
 	creator_commented_unassigned: 'Ticket kommentiert',
 	assigned_ticket_commented: 'Neuer Kommentar',
+	form_ticket_commented: 'Neuer Kommentar zu Formular-Ticket',
 	due_today: 'Heute fällig',
 	overdue: 'Ticket überfällig',
 	assigned_ticket_status_changed: 'Statusupdate',

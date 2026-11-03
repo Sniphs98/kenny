@@ -764,7 +764,7 @@ export function createTicket(
 	const result = getTicket(created.id);
 	publish(p.id, { ticket: result.key });
 	notifyTicket('created', p.id, created.id);
-	notifyNtfy('ticket_created', created.id, undefined, userId);
+	if (created.intakeFormId !== null) notifyNtfy('ticket_created', created.id, undefined, userId);
 	if (!origin?.deferCreatedEmail) notifyEmail('created', p.id, created.id);
 	if (created.added.length) {
 		notifyTicket('assigned', p.id, created.id);

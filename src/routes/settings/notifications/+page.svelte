@@ -18,6 +18,7 @@
 		ticket_assigned: m.ntfy_event_ticket_assigned(),
 		creator_commented_unassigned: m.ntfy_event_creator_commented_unassigned(),
 		assigned_ticket_commented: m.ntfy_event_assigned_ticket_commented(),
+		form_ticket_commented: m.ntfy_event_form_ticket_commented(),
 		due_today: m.ntfy_event_due_today(),
 		overdue: m.ntfy_event_overdue(),
 		assigned_ticket_status_changed: m.ntfy_event_assigned_ticket_status_changed(),

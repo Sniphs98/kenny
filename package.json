@@ -89,10 +89,10 @@
 	},
 	"overrides": {
 		"better-auth": {
-			"@sveltejs/kit": "$@sveltejs/kit"
+			"@sveltejs/kit": "^3.0.1"
 		},
 		"runed": {
-			"@sveltejs/kit": "$@sveltejs/kit"
+			"@sveltejs/kit": "^3.0.1"
 		},
 		"@toast-ui/editor": {
 			"dompurify": "$dompurify"

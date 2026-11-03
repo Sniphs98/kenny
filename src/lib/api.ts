@@ -43,7 +43,8 @@ import {
 	type UpdateEmailNotificationsInput,
 	ntfyNotificationsDtoSchema,
 	updateNtfyNotificationsSchema,
-	type UpdateNtfyNotificationsInput
+	type UpdateNtfyNotificationsInput,
+	ticketSubscriptionSchema
 } from '#lib/contracts/index.js';
 
 const errorSchema = z.object({ error: z.string() });
@@ -113,6 +114,12 @@ export async function reopenTicket(ticket: string | number) {
 }
 export async function getTicket(ticket: string | number) {
 	return ticketDetailSchema.parse(await api('GET', `/tickets/${ref(ticket)}`));
+}
+export async function subscribeToTicket(ticket: string | number) {
+	return ticketSubscriptionSchema.parse(await api('PUT', `/tickets/${ref(ticket)}/subscription`));
+}
+export async function unsubscribeFromTicket(ticket: string | number) {
+	return ticketSubscriptionSchema.parse(await api('DELETE', `/tickets/${ref(ticket)}/subscription`));
 }
 export async function addComment(ticket: string | number, input: CreateCommentInput) {
 	return commentSchema.parse(await api('POST', `/tickets/${ref(ticket)}/comments`, createCommentSchema.parse(input)));

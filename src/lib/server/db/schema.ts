@@ -179,6 +179,20 @@ export const ticketAssignee = sqliteTable(
 	(t) => [primaryKey({ columns: [t.ticketId, t.userId] }), index('ticket_assignee_user_idx').on(t.userId)]
 );
 
+/** Personen, die persönliche Benachrichtigungen zu einem Ticket erhalten möchten. */
+export const ticketSubscriber = sqliteTable(
+	'ticket_subscriber',
+	{
+		ticketId: integer('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.ticketId, t.userId] }), index('ticket_subscriber_user_idx').on(t.userId)]
+);
+
 /** Tags pro Projekt, z.B. "Bug", "Feature", "Story" */
 export const tag = sqliteTable(
 	'tag',

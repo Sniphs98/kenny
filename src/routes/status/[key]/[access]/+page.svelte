@@ -20,6 +20,11 @@
 	let { data, form } = $props();
 	const ticket = $derived(form?.ticket ?? data.ticket);
 	const dateTime = (value: Date) => value.toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	let commentBody = $state('');
+
+	$effect(() => {
+		commentBody = form?.body ?? '';
+	});
 
 	onMount(() => {
 		rememberTicketStatus({
@@ -47,7 +52,7 @@
 >
 	<div class="mx-auto grid w-full max-w-2xl gap-5">
 		<header class="relative text-center">
-			<Button href={withBase('/status')} variant="outline" class="mb-5 sm:absolute sm:top-0 sm:left-0 sm:mb-0"
+			<Button href={withBase('/status')} variant="outline" class="mb-5 sm:absolute sm:-top-6 sm:left-0 sm:mb-0"
 				>{m.my_tickets()}</Button
 			>
 			<p class="text-primary text-sm font-semibold">{ticket.project.name} · {ticket.key}</p>
@@ -145,7 +150,7 @@
 							rows={5}
 							maxlength={100000}
 							required
-							value={form?.body ?? ''}
+							bind:value={commentBody}
 							placeholder={m.write_comment()}
 						/>
 					</div>

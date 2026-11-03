@@ -186,7 +186,7 @@ it('preserves existing credentials and Microsoft identities when adding ownershi
 	}
 });
 
-it('preserves notification topics and choices when adding test mode and restarting', () => {
+it('preserves notification topics and enables form-ticket comment notifications when migrating', () => {
 	const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8')) as {
 		entries: { tag: string; when: number }[];
 	};
@@ -212,7 +212,7 @@ it('preserves notification topics and choices when adding test mode and restarti
 		expect(client.prepare('SELECT * FROM user_ntfy_notification').get()).toEqual({
 			user_id: 'notify',
 			topic: 'test-topic',
-			events: '["ticket_created"]',
+			events: '["ticket_created","form_ticket_commented"]',
 			test_mode: 0
 		});
 		expect(

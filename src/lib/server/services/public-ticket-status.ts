@@ -7,6 +7,7 @@ import { boardColumn, project, tag, ticket, ticketAssignee, ticketComment, ticke
 import { ApiError } from '../errors.js';
 import { publish } from '../live.js';
 import { parseInput } from '../validation.js';
+import { notifyNtfy } from './ntfy-notifications.js';
 
 const accessTokenFor = (row: Pick<typeof ticket.$inferSelect, 'id' | 'createdAt'>) =>
 	createHmac('sha256', BETTER_AUTH_SECRET)
@@ -126,5 +127,14 @@ export function addPublicTicketComment(ref: string, tokenValue: string, rawInput
 	checkRateLimit(`${row.id}:${ip}`);
 	db.insert(ticketComment).values({ ticketId: row.id, authorId: null, body: input.body, internal: false }).run();
 	publish(row.projectId, { ticket: ref });
+	if (row.intakeFormId !== null) {
+		const assigneeIds = db
+			.select({ userId: ticketAssignee.userId })
+			.from(ticketAssignee)
+			.where(eq(ticketAssignee.ticketId, row.id))
+			.all()
+			.map((assignee) => assignee.userId);
+		notifyNtfy('form_ticket_commented', row.id, assigneeIds.length ? assigneeIds : undefined);
+	}
 	return present(ref, tokenValue);
 }

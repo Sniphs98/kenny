@@ -19,10 +19,12 @@
 	import TicketDialog from '#lib/components/TicketDialog.svelte';
 	import UserAvatar from '#lib/components/UserAvatar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
 	import * as InputGroup from '#lib/components/ui/input-group/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
@@ -36,6 +38,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Download from '@lucide/svelte/icons/download';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Eye from '@lucide/svelte/icons/eye';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -45,6 +48,7 @@
 	import Search from '@lucide/svelte/icons/search';
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Upload from '@lucide/svelte/icons/upload';
 	import UserRound from '@lucide/svelte/icons/user-round';
 
 	let { data } = $props();
@@ -159,6 +163,7 @@
 		columnBy: ColumnBy;
 		columnSort: Record<string, Sort>;
 		cardFields: CardField[];
+		showSubtasks: boolean;
 	};
 	type SavedBoardView = {
 		id: string;
@@ -172,6 +177,7 @@
 	let groupBy = $state<Group>('main');
 	let columnBy = $state<ColumnBy>('status');
 	let cardFields = $state<CardField[]>([...DEFAULT_CARD_FIELDS]);
+	let showSubtasks = $state(false);
 	let backlogOpen = $state(true);
 	const collapsedLanes = new SvelteSet<string>();
 	const initiallyVisibleMainIds = new Set(
@@ -203,6 +209,8 @@
 	let savedViewsLoaded = $state(false);
 	let savedViews = $state<SavedBoardView[]>([]);
 	let activeViewId = $state<string | null>(null);
+	let boardViewsOpen = $state(false);
+	let boardViewsFileInput: HTMLInputElement;
 	let viewDialogOpen = $state(false);
 	let viewDialogMode = $state<'create' | 'rename'>('create');
 	let viewName = $state('');
@@ -268,7 +276,8 @@
 			groupBy: settings.groupBy && settings.groupBy in GROUPS ? settings.groupBy : 'main',
 			columnBy: validColumnBy(settings.columnBy),
 			columnSort: validColumnSort(settings.columnSort),
-			cardFields: validCardFields(settings.cardFields)
+			cardFields: validCardFields(settings.cardFields),
+			showSubtasks: settings.showSubtasks === true
 		};
 	}
 
@@ -282,7 +291,8 @@
 			groupBy,
 			columnBy,
 			columnSort: { ...columnSort },
-			cardFields: [...cardFields]
+			cardFields: [...cardFields],
+			showSubtasks
 		};
 	}
 
@@ -296,6 +306,7 @@
 		columnBy = settings.columnBy === settings.groupBy ? 'status' : settings.columnBy;
 		columnSort = validColumnSort(settings.columnSort);
 		cardFields = validCardFields(settings.cardFields);
+		showSubtasks = settings.showSubtasks;
 	}
 
 	function setGroupBy(value: Group) {
@@ -363,6 +374,45 @@
 		deleteViewOpen = false;
 	}
 
+	function exportBoardViews() {
+		const url = URL.createObjectURL(
+			new Blob([JSON.stringify({ version: 1, views: savedViews }, null, 2)], { type: 'application/json' })
+		);
+		const link = Object.assign(document.createElement('a'), {
+			href: url,
+			download: `${data.project.key.toLowerCase()}-board-views.json`
+		});
+		document.body.append(link);
+		link.click();
+		link.remove();
+		URL.revokeObjectURL(url);
+	}
+
+	async function importBoardViews(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+
+		try {
+			const imported = JSON.parse(await file.text());
+			const candidates = Array.isArray(imported) ? imported : imported?.views;
+			if (!Array.isArray(candidates)) throw new Error('Invalid board views file');
+			const views = candidates.flatMap((view: unknown) => {
+				if (!view || typeof view !== 'object') return [];
+				const candidate = view as Partial<SavedBoardView>;
+				const name = typeof candidate.name === 'string' ? candidate.name.trim().slice(0, 80) : '';
+				const settings = parseViewSettings(candidate.settings);
+				return name && settings ? [{ id: crypto.randomUUID(), name, settings }] : [];
+			});
+			if (!views.length) throw new Error('No valid board views');
+			savedViews = [...savedViews, ...views];
+			toast.success(m.board_views_imported({ count: views.length }));
+		} catch {
+			toast.error(m.board_views_import_error());
+		}
+	}
+
 	$effect(() => {
 		const key = viewKey;
 		// Nur beim Projektwechsel laden, nicht bei Änderungen an der Ansicht selbst
@@ -379,6 +429,7 @@
 			priorityFilter = [];
 			columnBy = 'status';
 			cardFields = [...DEFAULT_CARD_FIELDS];
+			showSubtasks = false;
 			try {
 				const v = JSON.parse(localStorage.getItem(key) ?? '{}');
 				showGeneral = v.showGeneral !== false;
@@ -400,6 +451,7 @@
 				if (columnBy === groupBy) columnBy = 'status';
 				columnSort = validColumnSort(v.columnSort);
 				cardFields = validCardFields(v.cardFields);
+				showSubtasks = v.showSubtasks === true;
 				collapsedLanes.clear();
 				for (const l of Array.isArray(v.collapsed) ? v.collapsed : []) collapsedLanes.add(String(l));
 			} catch {
@@ -420,6 +472,7 @@
 			columnBy,
 			columnSort,
 			cardFields,
+			showSubtasks,
 			collapsed: [...collapsedLanes],
 			showGeneral,
 			showTicketSystem,
@@ -624,6 +677,10 @@
 		else expanded.add(id);
 	}
 
+	function isSubtask(ticket: Item) {
+		return ticket.parentId !== null && byId.get(ticket.parentId)?.kind === 'task';
+	}
+
 	function matchesAssignee(t: Item) {
 		return (
 			!assigneeFilter.length ||
@@ -641,6 +698,7 @@
 		tickets.filter(
 			(t) =>
 				t.kind === 'task' &&
+				(showSubtasks || !isSubtask(t)) &&
 				matchesCategory(t) &&
 				matchesAssignee(t) &&
 				(!tagFilter.length || t.tags.some((g) => tagFilter.includes(String(g.id)))) &&
@@ -657,7 +715,10 @@
 	const visible = $derived(matchingTickets.filter((ticket) => !backlogColumnIds.has(ticket.columnId)));
 	const backlogTickets = $derived(
 		tickets
-			.filter((ticket) => ticket.kind === 'task' && backlogColumnIds.has(ticket.columnId))
+			.filter(
+				(ticket) =>
+					ticket.kind === 'task' && (showSubtasks || !isSubtask(ticket)) && backlogColumnIds.has(ticket.columnId)
+			)
 			.sort(comparators[sortBy])
 	);
 
@@ -1246,7 +1307,15 @@
 
 {#if !data.canEdit}<p class="text-muted-foreground px-5 pt-3 text-sm">{m.um_read_only()}</p>{/if}
 <div class="flex flex-wrap items-center gap-2 px-5 py-3.5">
-	<Popover.Root>
+	{#if boardViewsOpen}
+		<button
+			type="button"
+			class="fixed inset-0 z-40 cursor-default bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+			aria-label={m.close()}
+			onclick={() => (boardViewsOpen = false)}
+		></button>
+	{/if}
+	<Popover.Root bind:open={boardViewsOpen}>
 		<Popover.Trigger
 			class="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 flex h-11 min-w-72 flex-1 items-center gap-3 rounded-lg border px-3 text-left shadow-xs outline-none focus-visible:ring-3 max-sm:w-full"
 		>
@@ -1266,6 +1335,13 @@
 			align="center"
 			class="max-h-[calc(100vh-2rem)] w-[min(44rem,calc(100vw-2.5rem))] gap-0 overflow-y-auto p-0"
 		>
+			<input
+				bind:this={boardViewsFileInput}
+				type="file"
+				accept="application/json,.json"
+				class="hidden"
+				onchange={importBoardViews}
+			/>
 			<div class="border-b p-4">
 				<Popover.Title>{m.board_views()}</Popover.Title>
 				<Popover.Description>{m.board_view_description()}</Popover.Description>
@@ -1294,14 +1370,23 @@
 						<Save />
 						{m.update_view()}
 					</Button>
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger
-							class="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 inline-flex size-8 items-center justify-center rounded-md border outline-none focus-visible:ring-3"
-							aria-label={m.manage_view()}
+				{/if}
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger
+						class="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 inline-flex size-8 items-center justify-center rounded-md border outline-none focus-visible:ring-3"
+						aria-label={m.manage_view()}
+					>
+						<Ellipsis />
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end">
+						<DropdownMenu.Item onclick={() => boardViewsFileInput.click()}
+							><Upload /> {m.import_board_views()}</DropdownMenu.Item
 						>
-							<Ellipsis />
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Content align="end">
+						<DropdownMenu.Item disabled={!savedViews.length} onclick={exportBoardViews}
+							><Download /> {m.export_board_views()}</DropdownMenu.Item
+						>
+						{#if activeView}
+							<DropdownMenu.Separator />
 							<DropdownMenu.Item onclick={() => openViewDialog('rename')}
 								><Pencil /> {m.rename_view()}</DropdownMenu.Item
 							>
@@ -1309,9 +1394,9 @@
 								<Trash2 />
 								{m.delete_view()}
 							</DropdownMenu.Item>
-						</DropdownMenu.Content>
-					</DropdownMenu.Root>
-				{/if}
+						{/if}
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
 			</div>
 			<div class="p-4">
 				<h2 class="mb-3 text-sm font-semibold">{m.filters()}</h2>
@@ -1435,6 +1520,12 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 					</div>
+					<Label
+						class="border-border bg-muted/20 flex items-center gap-2 rounded-md border p-3 font-normal sm:col-span-2"
+					>
+						<Checkbox bind:checked={showSubtasks} />
+						{m.show_subtasks_separately()}
+					</Label>
 				</div>
 			</div>
 		</Popover.Content>
